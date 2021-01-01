@@ -56,14 +56,16 @@ fn keyboard_input_system(
         || keyboard_input.just_released(KeyCode::D) {
 
         for mut character in query.iter_mut() {
-            if  !keyboard_input.pressed(KeyCode::W)
-                && !keyboard_input.pressed(KeyCode::A)
-                && !keyboard_input.pressed(KeyCode::S)
-                && !keyboard_input.pressed(KeyCode::D)
+            if !keyboard_input.pressed(KeyCode::W) && !keyboard_input.pressed(KeyCode::S) {
+                character.velocity.y = 0.0;
+            }
+            if !keyboard_input.pressed(KeyCode::A) && !keyboard_input.pressed(KeyCode::D) {
+                character.velocity.x = 0.0;
+            }
+            // disable animation if no longer moving
+            if character.velocity.distance(Vec3::zero()) < 0.01
             {
                 character.make_idle();
-                character.velocity.x = 0.0;
-                character.velocity.y = 0.0;
             }
 
         }
@@ -77,7 +79,7 @@ fn setup_system(
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
     let texture_handle = asset_server.load("sprites/character.png");
-    let bg_handle = asset_server.load("backgrounds/StoneFloor.png");
+    let bg_handle = asset_server.load("backgrounds/world_map_wallpaper.png");
     let texture_atlas = TextureAtlas::from_grid(texture_handle,
                                                 Vec2::new(31.0, 32.0), 8, 16);
     let texture_atlas_handle = texture_atlases.add(texture_atlas);
@@ -94,7 +96,7 @@ fn setup_system(
         // background
         .spawn(SpriteBundle {
             material: materials.add(bg_handle.into()),
-            transform: Transform::from_scale(Vec3::splat(4.0)),
+            transform: Transform::from_scale(Vec3::splat(2.0)),
             ..Default::default()
         });
 }
