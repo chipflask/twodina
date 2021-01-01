@@ -1,5 +1,8 @@
 use bevy::prelude::*;
 
+mod character;
+use character::{Character, CharacterState, Direction};
+
 fn main() {
     App::build()
         .add_plugins(DefaultPlugins)
@@ -9,18 +12,6 @@ fn main() {
         .run();
 }
 
-struct Character {
-    direction: Direction,
-    animation_index: u32,
-}
-
-#[derive(Copy, Clone, Debug)]
-enum Direction {
-    North,
-    South,
-    East,
-    West,
-}
 
 fn keyboard_input_system(
     keyboard_input: Res<Input<KeyCode>>,
@@ -29,21 +20,34 @@ fn keyboard_input_system(
     if keyboard_input.just_pressed(KeyCode::W) {
         for mut character in query.iter_mut() {
             character.direction = Direction::North;
+            character.state = CharacterState::Walking;
         }
     }
     if keyboard_input.just_pressed(KeyCode::A) {
         for mut character in query.iter_mut() {
             character.direction = Direction::West;
+            character.state = CharacterState::Walking;
         }
     }
     if keyboard_input.just_pressed(KeyCode::S) {
         for mut character in query.iter_mut() {
             character.direction = Direction::South;
+            character.state = CharacterState::Walking;
         }
     }
     if keyboard_input.just_pressed(KeyCode::D) {
         for mut character in query.iter_mut() {
             character.direction = Direction::East;
+            character.state = CharacterState::Walking;
+        }
+    }
+    if keyboard_input.just_released(KeyCode::W)
+        || keyboard_input.just_released(KeyCode::A)
+        || keyboard_input.just_released(KeyCode::S)
+        || keyboard_input.just_released(KeyCode::D) {
+
+        for mut character in query.iter_mut() {
+            character.make_idle();
         }
     }
 }
@@ -65,7 +69,7 @@ fn setup_system(
             ..Default::default()
         })
         .with(Timer::from_seconds(0.1, true))
-        .with(Character { direction: Direction::South, animation_index: 0 });
+        .with(Character::default());
 }
 
 fn animate_sprite_system(
@@ -84,11 +88,13 @@ fn animate_sprite_system(
                 Direction::East => 2,
                 Direction::West => 1,
             };
-            let num_cells_in_animation = 3;
+            let num_cells_per_row = 8;
+            let (num_cells_in_animation, start_index) = match character.state {
+                CharacterState::Idle    => (1, row * num_cells_per_row + 1),
+                CharacterState::Walking => (3, row * num_cells_per_row),
+            };
             let index_in_animation = (character.animation_index + 1) % num_cells_in_animation;
             character.animation_index = index_in_animation;
-            let num_cells_per_row = 8;
-            let start_index = row * num_cells_per_row;
             sprite.index = ((start_index + index_in_animation as usize) % total_num_cells) as u32;
         }
     }
