@@ -1,8 +1,12 @@
+use bevy::math::Vec3;
+
 #[derive(Debug)]
 pub struct Character {
     pub direction: Direction,
     pub state: CharacterState,
+    pub velocity: Vec3,
     pub animation_index: u32,
+    pub movement_speed: f32,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -32,6 +36,8 @@ impl Default for Character {
             direction: Direction::South,
             state: CharacterState::Idle,
             animation_index: 0,
+            velocity: Vec3::zero(),
+            movement_speed: 175.0,
         }
     }
 }
