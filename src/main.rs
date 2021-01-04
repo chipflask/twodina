@@ -1,4 +1,5 @@
 use bevy::{prelude::*, render::camera::{Camera, OrthographicProjection}};
+use bevy_tiled_prototype::{TiledMapCenter, TiledMapComponents, TiledMapPlugin};
 
 mod character;
 use character::{Character, CharacterState, Direction};
@@ -8,6 +9,7 @@ struct Player;
 fn main() {
     App::build()
         .add_plugins(DefaultPlugins)
+        .add_plugin(TiledMapPlugin)
         .add_startup_system(setup_system.system())
         .add_system(animate_sprite_system.system())
         .add_system(move_sprite_system.system())
@@ -82,10 +84,8 @@ fn setup_system(
     commands: &mut Commands,
     asset_server: Res<AssetServer>,
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
     let texture_handle = asset_server.load("sprites/character.png");
-    let bg_handle = asset_server.load("backgrounds/world_map_wallpaper.png");
     let texture_atlas = TextureAtlas::from_grid(texture_handle,
                                                 Vec2::new(PLAYER_WIDTH, PLAYER_HEIGHT), 8, 16);
     let texture_atlas_handle = texture_atlases.add(texture_atlas);
@@ -100,10 +100,11 @@ fn setup_system(
         .with(Timer::from_seconds(0.1, true))
         .with(Character::default())
         .with(Player {})
-        // background
-        .spawn(SpriteBundle {
-            material: materials.add(bg_handle.into()),
-            transform: Transform::from_scale(Vec3::splat(2.0)),
+        // Map
+        .spawn(TiledMapComponents {
+            map_asset: asset_server.load("maps/ortho_map.tmx"),
+            center: TiledMapCenter(true),
+            origin: Transform::from_scale(Vec3::new(4.0, 4.0, 1.0)),
             ..Default::default()
         });
 }

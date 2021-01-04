@@ -8,6 +8,7 @@ edition = "2018"
 
 [dependencies]
 bevy = "0.4.0"
+bevy_tiled_prototype = { git = "https://github.com/framp/bevy_tiled", branch = "master" }
 
 [profile.dev.package."*"]
 # Optimize dependencies.
