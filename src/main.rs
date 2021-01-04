@@ -21,7 +21,7 @@ fn main() {
 
 fn keyboard_input_system(
     keyboard_input: Res<Input<KeyCode>>,
-    mut query: Query<&mut Character>,
+    mut query: Query<&mut Character, With<Player>>,
 ) {
     if keyboard_input.just_pressed(KeyCode::W) {
         for mut character in query.iter_mut() {
@@ -99,8 +99,26 @@ fn setup_system(
         })
         .with(Timer::from_seconds(0.1, true))
         .with(Character::default())
-        .with(Player {})
-        // Map
+        .with(Player {});
+    // Non-player character.
+    {
+        let texture_handle = asset_server.load("sprites/character2.png");
+        let texture_atlas = TextureAtlas::from_grid(texture_handle,
+                                                    Vec2::new(PLAYER_WIDTH, PLAYER_HEIGHT), 8, 16);
+        let texture_atlas_handle = texture_atlases.add(texture_atlas);
+        commands
+            .spawn(Camera2dBundle::default())
+            .spawn(SpriteSheetBundle {
+                texture_atlas: texture_atlas_handle,
+                transform: Transform::from_scale(Vec3::splat(4.0))
+                            .mul_transform(Transform::from_translation(Vec3::new(PLAYER_WIDTH + 20.0, 0.0, 5.0))),
+                ..Default::default()
+            })
+            .with(Timer::from_seconds(0.1, true))
+            .with(Character::default());
+    }
+    // Map
+    commands
         .spawn(TiledMapComponents {
             map_asset: asset_server.load("maps/ortho_map.tmx"),
             center: TiledMapCenter(true),
