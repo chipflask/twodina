@@ -1,8 +1,10 @@
+use std::convert::TryFrom;
+
 use bevy::{prelude::*, render::camera::{Camera, OrthographicProjection}};
 use bevy_tiled_prototype::{TiledMapCenter, TiledMapComponents, TiledMapPlugin};
 
 mod character;
-use character::{Character, CharacterState, Direction};
+use character::{AnimatedSprite, Character, CharacterState, Direction};
 
 struct Player;
 
@@ -21,10 +23,10 @@ fn main() {
 
 fn keyboard_input_system(
     keyboard_input: Res<Input<KeyCode>>,
-    mut query: Query<&mut Character, With<Player>>,
+    mut query: Query<(&mut Character, Option<&mut AnimatedSprite>), With<Player>>,
 ) {
     if keyboard_input.just_pressed(KeyCode::W) {
-        for mut character in query.iter_mut() {
+        for (mut character, _) in query.iter_mut() {
             character.direction = Direction::North;
             character.state = CharacterState::Walking;
             character.velocity.x = 0.0;
@@ -32,7 +34,7 @@ fn keyboard_input_system(
         }
     }
     if keyboard_input.just_pressed(KeyCode::A) {
-        for mut character in query.iter_mut() {
+        for (mut character, _) in query.iter_mut() {
             character.direction = Direction::West;
             character.state = CharacterState::Walking;
             character.velocity.x = -1.0;
@@ -40,7 +42,7 @@ fn keyboard_input_system(
         }
     }
     if keyboard_input.just_pressed(KeyCode::S) {
-        for mut character in query.iter_mut() {
+        for (mut character, _) in query.iter_mut() {
             character.direction = Direction::South;
             character.state = CharacterState::Walking;
             character.velocity.x = 0.0;
@@ -48,7 +50,7 @@ fn keyboard_input_system(
         }
     }
     if keyboard_input.just_pressed(KeyCode::D) {
-        for mut character in query.iter_mut() {
+        for (mut character, _) in query.iter_mut() {
             character.direction = Direction::East;
             character.state = CharacterState::Walking;
             character.velocity.x = 1.0;
@@ -60,7 +62,7 @@ fn keyboard_input_system(
         || keyboard_input.just_released(KeyCode::S)
         || keyboard_input.just_released(KeyCode::D) {
 
-        for mut character in query.iter_mut() {
+        for (mut character, animated_sprite_option) in query.iter_mut() {
             if !keyboard_input.pressed(KeyCode::W) && !keyboard_input.pressed(KeyCode::S) {
                 character.velocity.y = 0.0;
             }
@@ -68,9 +70,11 @@ fn keyboard_input_system(
                 character.velocity.x = 0.0;
             }
             // disable animation if no longer moving
-            if character.velocity.distance(Vec3::zero()) < 0.01
-            {
+            if character.velocity.distance(Vec3::zero()) < 0.01 {
                 character.make_idle();
+                if let Some(mut animated_sprite) = animated_sprite_option {
+                    animated_sprite.reset();
+                }
             }
 
         }
@@ -97,7 +101,7 @@ fn setup_system(
                         .mul_transform(Transform::from_translation(Vec3::new(0.0, 0.0, 5.0))),
             ..Default::default()
         })
-        .with(Timer::from_seconds(0.1, true))
+        .with(AnimatedSprite::with_frame_seconds(0.1))
         .with(Character::default())
         .with(Player {});
     // Non-player character.
@@ -114,7 +118,7 @@ fn setup_system(
                             .mul_transform(Transform::from_translation(Vec3::new(PLAYER_WIDTH + 20.0, 0.0, 5.0))),
                 ..Default::default()
             })
-            .with(Timer::from_seconds(0.1, true))
+            .with(AnimatedSprite::with_frame_seconds(0.1))
             .with(Character::default());
     }
     // Map
@@ -187,26 +191,36 @@ fn update_camera_system(
 fn animate_sprite_system(
     time: Res<Time>,
     texture_atlases: Res<Assets<TextureAtlas>>,
-    mut query: Query<(&mut Timer, &mut TextureAtlasSprite, &Handle<TextureAtlas>, &mut Character)>
+    mut query: Query<(&mut TextureAtlasSprite, &Handle<TextureAtlas>, &mut AnimatedSprite, Option<&Character>)>
 ) {
-    for (mut timer, mut sprite, texture_atlas_handle, mut character) in query.iter_mut() {
-        timer.tick(time.delta_seconds());
-        if timer.finished() {
+    for (mut sprite, texture_atlas_handle, mut animated_sprite, character_option) in query.iter_mut() {
+        animated_sprite.timer.tick(time.delta_seconds());
+        if animated_sprite.timer.finished() {
             let texture_atlas = texture_atlases.get(texture_atlas_handle).expect("should have found texture atlas handle");
             let total_num_cells = texture_atlas.textures.len();
-            let row = match character.direction {
-                Direction::North => 3,
-                Direction::South => 0,
-                Direction::East => 2,
-                Direction::West => 1,
+            let (num_cells_in_animation, start_index) = match character_option {
+                None => {
+                    // No character.  Just use all the cells.
+                    (u32::try_from(total_num_cells).expect("num cells didn't fit in u32"), 0)
+                }
+                Some(character) => {
+                    // This animated sprite is a character.
+                    let row = match character.direction {
+                        Direction::North => 3,
+                        Direction::South => 0,
+                        Direction::East => 2,
+                        Direction::West => 1,
+                    };
+                    let num_cells_per_row = 8;
+
+                    match character.state {
+                        CharacterState::Idle    => (1, row * num_cells_per_row + 1),
+                        CharacterState::Walking => (3, row * num_cells_per_row),
+                    }
+                }
             };
-            let num_cells_per_row = 8;
-            let (num_cells_in_animation, start_index) = match character.state {
-                CharacterState::Idle    => (1, row * num_cells_per_row + 1),
-                CharacterState::Walking => (3, row * num_cells_per_row),
-            };
-            let index_in_animation = (character.animation_index + 1) % num_cells_in_animation;
-            character.animation_index = index_in_animation;
+            let index_in_animation = (animated_sprite.animation_index + 1) % num_cells_in_animation;
+            animated_sprite.animation_index = index_in_animation;
             sprite.index = ((start_index + index_in_animation as usize) % total_num_cells) as u32;
         }
     }

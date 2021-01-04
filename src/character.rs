@@ -1,12 +1,18 @@
 use bevy::math::Vec3;
+use bevy::prelude::Timer;
 
 #[derive(Debug)]
 pub struct Character {
     pub direction: Direction,
     pub state: CharacterState,
     pub velocity: Vec3,
-    pub animation_index: u32,
     pub movement_speed: f32,
+}
+
+#[derive(Debug)]
+pub struct AnimatedSprite {
+    pub animation_index: u32,
+    pub timer: Timer,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -26,18 +32,30 @@ pub enum CharacterState {
 impl Character {
     pub fn make_idle(&mut self) {
         self.state = CharacterState::Idle;
-        self.animation_index = 0;
     }
 }
 
 impl Default for Character {
-    fn default() -> Character {
+    fn default() -> Self {
         Character {
             direction: Direction::South,
             state: CharacterState::Idle,
-            animation_index: 0,
             velocity: Vec3::zero(),
             movement_speed: 175.0,
         }
+    }
+}
+
+impl AnimatedSprite {
+    // Specify the amount of time for each animation frame in seconds.
+    pub fn with_frame_seconds(seconds: f32) -> AnimatedSprite {
+        AnimatedSprite {
+            animation_index: 0,
+            timer: Timer::from_seconds(seconds, true),
+        }
+    }
+
+    pub fn reset(&mut self) {
+        self.animation_index = 0;
     }
 }
