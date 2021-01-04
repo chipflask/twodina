@@ -117,7 +117,7 @@ fn move_sprite_system(
     }
 }
 
-fn bounding_box(translation: Vec3, size: Vec2) -> Rect::<f32> {
+fn bounding_box(translation: Vec3, size: Vec2) -> Rect<f32> {
     Rect {
         left: translation.x,
         right: translation.x + size.x,
@@ -126,7 +126,7 @@ fn bounding_box(translation: Vec3, size: Vec2) -> Rect::<f32> {
     }
 }
 
-fn viewport(camera_transform: &Transform, projection: &OrthographicProjection) -> Rect::<f32> {
+fn viewport(camera_transform: &Transform, projection: &OrthographicProjection) -> Rect<f32> {
     let translation = camera_transform.translation;
     Rect {
         left: projection.left + translation.x,
@@ -137,7 +137,7 @@ fn viewport(camera_transform: &Transform, projection: &OrthographicProjection) -
 }
 
 // Returns true if r1 is completely contained withing r2.
-fn is_rect_completely_inside(r1: &Rect::<f32>, r2: &Rect::<f32>) -> bool {
+fn is_rect_completely_inside(r1: &Rect<f32>, r2: &Rect<f32>) -> bool {
     r1.left > r2.left && r1.right < r2.right &&
     r1.bottom > r2.bottom && r1.top < r2.top
 }
