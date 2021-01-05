@@ -24,6 +24,7 @@ fn main() {
         .add_system(update_camera_system.system())
         .add_system(keyboard_input_system.system())
         .add_system(position_display_system.system())
+        .add_system(bevy::input::system::exit_on_esc_system.system())
         .run();
 }
 
