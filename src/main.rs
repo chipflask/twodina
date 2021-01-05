@@ -1,12 +1,18 @@
 use std::convert::TryFrom;
 
-use bevy::{prelude::*, render::camera::{Camera, OrthographicProjection}};
+use bevy::{prelude::*, render::camera::OrthographicProjection};
 use bevy_tiled_prototype::{TiledMapCenter, TiledMapComponents, TiledMapPlugin};
 
 mod character;
 use character::{AnimatedSprite, Character, CharacterState, Direction};
 
 struct Player;
+
+struct PlayerPositionDisplay;
+
+// We have multiple cameras, so this one marks the camera that follows the
+// player.
+struct PlayerCamera;
 
 fn main() {
     App::build()
@@ -17,6 +23,7 @@ fn main() {
         .add_system(move_sprite_system.system())
         .add_system(update_camera_system.system())
         .add_system(keyboard_input_system.system())
+        .add_system(position_display_system.system())
         .run();
 }
 
@@ -95,6 +102,8 @@ fn setup_system(
     let texture_atlas_handle = texture_atlases.add(texture_atlas);
     commands
         .spawn(Camera2dBundle::default())
+        .with(PlayerCamera {})
+        .spawn(CameraUiBundle::default())
         .spawn(SpriteSheetBundle {
             texture_atlas: texture_atlas_handle,
             transform: Transform::from_scale(Vec3::splat(4.0))
@@ -129,6 +138,31 @@ fn setup_system(
             origin: Transform::from_scale(Vec3::new(4.0, 4.0, 1.0)),
             ..Default::default()
         });
+
+    commands
+        // HUD
+        .spawn(TextBundle {
+            text: Text {
+                font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                value: "Position:".to_string(),
+                style: TextStyle {
+                    color: Color::rgb(0.7, 0.7, 0.7),
+                    font_size: 24.0,
+                    ..Default::default()
+                },
+            },
+            style: Style {
+                position_type: PositionType::Absolute,
+                position: Rect {
+                    top: Val::Px(5.0),
+                    left: Val::Px(5.0),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+        .with(PlayerPositionDisplay {});
 }
 
 fn move_sprite_system(
@@ -167,7 +201,7 @@ fn is_rect_completely_inside(r1: &Rect<f32>, r2: &Rect<f32>) -> bool {
 
 fn update_camera_system(
     mut player_query: Query<&Transform, With<Player>>,
-    mut camera_query: Query<(&mut Transform, &OrthographicProjection), With<Camera>>,
+    mut camera_query: Query<(&mut Transform, &OrthographicProjection), With<PlayerCamera>>,
 ) {
     for player_transform in player_query.iter_mut() {
         // Is sprite in view frame?
@@ -222,6 +256,20 @@ fn animate_sprite_system(
             let index_in_animation = (animated_sprite.animation_index + 1) % num_cells_in_animation;
             animated_sprite.animation_index = index_in_animation;
             sprite.index = ((start_index + index_in_animation as usize) % total_num_cells) as u32;
+        }
+    }
+}
+
+fn position_display_system(
+    mut character_query: Query<&Transform, With<Player>>,
+    mut text_query: Query<&mut Text, With<PlayerPositionDisplay>>,
+) {
+    for char_transform in character_query.iter_mut() {
+        for mut text in text_query.iter_mut() {
+            text.value = format!("Position: ({:.1}, {:.1}, {:.1})",
+                char_transform.translation.x,
+                char_transform.translation.y,
+                char_transform.translation.z);
         }
     }
 }
