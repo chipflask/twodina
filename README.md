@@ -8,12 +8,13 @@ Run it with the following:
 cargo run --release
 ```
 
-Controls:
-
-- WASD keys
-
 When developing, use this to dynamically link with bevy for faster builds:
 
 ```shell
 cargo run --features bevy/dynamic
 ```
+
+### Controls
+
+- WASD keys to move
+- Escape to exit
