@@ -1,6 +1,10 @@
 use bevy::math::Vec3;
 use bevy::prelude::Timer;
 
+// If two scalars have an absolute value difference less than this, then they're
+// considered equal.
+pub const VELOCITY_EPSILON: f32 = 0.001;
+
 #[derive(Debug)]
 pub struct Character {
     pub direction: Direction,
@@ -15,7 +19,7 @@ pub struct AnimatedSprite {
     pub timer: Timer,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Direction {
     North,
     South,
@@ -23,7 +27,7 @@ pub enum Direction {
     West,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum CharacterState {
     Idle,
     Walking,

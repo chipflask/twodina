@@ -4,7 +4,7 @@ use bevy::{prelude::*, render::camera::OrthographicProjection};
 use bevy_tiled_prototype::{TiledMapCenter, TiledMapComponents, TiledMapPlugin};
 
 mod character;
-use character::{AnimatedSprite, Character, CharacterState, Direction};
+use character::{AnimatedSprite, Character, CharacterState, Direction, VELOCITY_EPSILON};
 
 struct Player;
 
@@ -33,59 +33,56 @@ fn keyboard_input_system(
     keyboard_input: Res<Input<KeyCode>>,
     mut query: Query<(&mut Character, Option<&mut AnimatedSprite>), With<Player>>,
 ) {
-    if keyboard_input.just_pressed(KeyCode::W) {
-        for (mut character, _) in query.iter_mut() {
-            character.direction = Direction::North;
-            character.state = CharacterState::Walking;
-            character.velocity.x = 0.0;
-            character.velocity.y = 1.0;
-        }
+    let mut new_direction = None;
+    let mut new_velocity = Vec2::zero();
+    let mut new_state = CharacterState::Idle;
+    if keyboard_input.pressed(KeyCode::W) {
+        new_direction = Some(Direction::North);
+        new_velocity.y = 1.0;
+        new_state = CharacterState::Walking;
     }
-    if keyboard_input.just_pressed(KeyCode::A) {
-        for (mut character, _) in query.iter_mut() {
-            character.direction = Direction::West;
-            character.state = CharacterState::Walking;
-            character.velocity.x = -1.0;
-            character.velocity.y = 0.0;
-        }
+    if keyboard_input.pressed(KeyCode::S) {
+        new_direction = Some(Direction::South);
+        new_velocity.y = -1.0;
+        new_state = CharacterState::Walking;
     }
-    if keyboard_input.just_pressed(KeyCode::S) {
-        for (mut character, _) in query.iter_mut() {
-            character.direction = Direction::South;
-            character.state = CharacterState::Walking;
-            character.velocity.x = 0.0;
-            character.velocity.y = -1.0;
-        }
-    }
-    if keyboard_input.just_pressed(KeyCode::D) {
-        for (mut character, _) in query.iter_mut() {
-            character.direction = Direction::East;
-            character.state = CharacterState::Walking;
-            character.velocity.x = 1.0;
-            character.velocity.y = 0.0;
-        }
-    }
-    if keyboard_input.just_released(KeyCode::W)
-        || keyboard_input.just_released(KeyCode::A)
-        || keyboard_input.just_released(KeyCode::S)
-        || keyboard_input.just_released(KeyCode::D) {
 
-        for (mut character, animated_sprite_option) in query.iter_mut() {
-            if !keyboard_input.pressed(KeyCode::W) && !keyboard_input.pressed(KeyCode::S) {
-                character.velocity.y = 0.0;
-            }
-            if !keyboard_input.pressed(KeyCode::A) && !keyboard_input.pressed(KeyCode::D) {
-                character.velocity.x = 0.0;
-            }
-            // disable animation if no longer moving
-            if character.velocity.distance(Vec3::zero()) < 0.01 {
-                character.make_idle();
-                if let Some(mut animated_sprite) = animated_sprite_option {
-                    animated_sprite.reset();
-                }
-            }
+    // Favor facing left or right when two directions are pressed simultaneously
+    // by checking left/right after up/down.
+    if keyboard_input.pressed(KeyCode::A) {
+        new_direction = Some(Direction::West);
+        new_velocity.x = -1.0;
+        new_state = CharacterState::Walking;
+    }
+    if keyboard_input.pressed(KeyCode::D) {
+        new_direction = Some(Direction::East);
+        new_velocity.x = 1.0;
+        new_state = CharacterState::Walking;
+    }
 
+    // If the user is pressing two directions at once, go diagonally with
+    // unit velocity.
+    if !new_velocity.abs_diff_eq(Vec2::zero(), VELOCITY_EPSILON) {
+        new_velocity = new_velocity.normalize();
+    }
+
+    for (mut character, animated_sprite_option) in query.iter_mut() {
+        if let Some(direction) = new_direction {
+            character.direction = direction;
         }
+        character.velocity.x = new_velocity.x;
+        character.velocity.y = new_velocity.y;
+        // Don't modify z if the character has a z velocity for some reason.
+
+        let old_state = character.state;
+        if old_state != new_state && new_state == CharacterState::Idle {
+            // We're transitioning to idle.
+            character.make_idle();
+            if let Some(mut animated_sprite) = animated_sprite_option {
+                animated_sprite.reset();
+            }
+        }
+        character.state = new_state;
     }
 }
 
