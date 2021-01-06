@@ -17,6 +17,7 @@ pub struct Character {
 pub struct AnimatedSprite {
     pub animation_index: u32,
     pub timer: Timer,
+    pub needs_paint: bool,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -56,10 +57,20 @@ impl AnimatedSprite {
         AnimatedSprite {
             animation_index: 0,
             timer: Timer::from_seconds(seconds, true),
+            needs_paint: false,
         }
     }
 
     pub fn reset(&mut self) {
         self.animation_index = 0;
+    }
+
+    pub fn reset_immediately(&mut self, animation_index: u32) {
+        self.animation_index = animation_index;
+        self.needs_paint = true;
+    }
+
+    pub fn done_painting(&mut self) {
+        self.needs_paint = false;
     }
 }

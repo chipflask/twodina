@@ -75,11 +75,24 @@ fn keyboard_input_system(
         // Don't modify z if the character has a z velocity for some reason.
 
         let old_state = character.state;
-        if old_state != new_state && new_state == CharacterState::Idle {
-            // We're transitioning to idle.
-            character.make_idle();
-            if let Some(mut animated_sprite) = animated_sprite_option {
-                animated_sprite.reset();
+        if old_state != new_state {
+            // We're transitioning to a new state.
+            match new_state {
+                CharacterState::Idle => {
+                    character.make_idle();
+                    if let Some(mut animated_sprite) = animated_sprite_option {
+                        animated_sprite.reset();
+                    }
+                }
+                CharacterState::Walking => {
+                    if let Some(mut animated_sprite) = animated_sprite_option {
+                        // Reset immediately to frame 1 so that the character looks like it starts
+                        // walking when you press the key, not sliding until the next animation
+                        // frame.  The fact that it's index 1 is just because of how our sprites
+                        // are made, with the idle frame at index 1.
+                        animated_sprite.reset_immediately(1);
+                    }
+                }
             }
         }
         character.state = new_state;
@@ -227,7 +240,7 @@ fn animate_sprite_system(
 ) {
     for (mut sprite, texture_atlas_handle, mut animated_sprite, character_option) in query.iter_mut() {
         animated_sprite.timer.tick(time.delta_seconds());
-        if animated_sprite.timer.finished() {
+        if animated_sprite.needs_paint || animated_sprite.timer.finished() {
             let texture_atlas = texture_atlases.get(texture_atlas_handle).expect("should have found texture atlas handle");
             let total_num_cells = texture_atlas.textures.len();
             let (num_cells_in_animation, start_index) = match character_option {
@@ -254,6 +267,7 @@ fn animate_sprite_system(
             let index_in_animation = (animated_sprite.animation_index + 1) % num_cells_in_animation;
             animated_sprite.animation_index = index_in_animation;
             sprite.index = ((start_index + index_in_animation as usize) % total_num_cells) as u32;
+            animated_sprite.done_painting();
         }
     }
 }
