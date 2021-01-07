@@ -8,9 +8,15 @@ use character::{AnimatedSprite, Character, CharacterState, Direction, VELOCITY_E
 mod input;
 use input::{Action, InputActionSet};
 
-struct Player;
+const NUM_PLAYERS: u32 = 2;
 
-struct PlayerPositionDisplay;
+struct Player {
+    id: u32,
+}
+
+struct PlayerPositionDisplay {
+    player_id: u32,
+}
 
 // We have multiple cameras, so this one marks the camera that follows the
 // player.
@@ -34,42 +40,42 @@ fn main() {
 
 fn handle_input_system(
     input_actions: Res<InputActionSet>,
-    mut query: Query<(&mut Character, Option<&mut AnimatedSprite>), With<Player>>,
+    mut query: Query<(&mut Character, &Player, Option<&mut AnimatedSprite>)>,
 ) {
-    let mut new_direction = None;
-    let mut new_velocity = Vec2::zero();
-    let mut new_state = CharacterState::Idle;
-    if input_actions.is_active(Action::Up) {
-        new_direction = Some(Direction::North);
-        new_velocity.y = 1.0;
-        new_state = CharacterState::Walking;
-    }
-    if input_actions.is_active(Action::Down) {
-        new_direction = Some(Direction::South);
-        new_velocity.y = -1.0;
-        new_state = CharacterState::Walking;
-    }
+    for (mut character, player, animated_sprite_option) in query.iter_mut() {
+        let mut new_direction = None;
+        let mut new_velocity = Vec2::zero();
+        let mut new_state = CharacterState::Idle;
+        if input_actions.is_active(Action::Up, player.id) {
+            new_direction = Some(Direction::North);
+            new_velocity.y = 1.0;
+            new_state = CharacterState::Walking;
+        }
+        if input_actions.is_active(Action::Down, player.id) {
+            new_direction = Some(Direction::South);
+            new_velocity.y = -1.0;
+            new_state = CharacterState::Walking;
+        }
 
-    // Favor facing left or right when two directions are pressed simultaneously
-    // by checking left/right after up/down.
-    if input_actions.is_active(Action::Left) {
-        new_direction = Some(Direction::West);
-        new_velocity.x = -1.0;
-        new_state = CharacterState::Walking;
-    }
-    if input_actions.is_active(Action::Right) {
-        new_direction = Some(Direction::East);
-        new_velocity.x = 1.0;
-        new_state = CharacterState::Walking;
-    }
+        // Favor facing left or right when two directions are pressed simultaneously
+        // by checking left/right after up/down.
+        if input_actions.is_active(Action::Left, player.id) {
+            new_direction = Some(Direction::West);
+            new_velocity.x = -1.0;
+            new_state = CharacterState::Walking;
+        }
+        if input_actions.is_active(Action::Right, player.id) {
+            new_direction = Some(Direction::East);
+            new_velocity.x = 1.0;
+            new_state = CharacterState::Walking;
+        }
 
-    // If the user is pressing two directions at once, go diagonally with
-    // unit velocity.
-    if !new_velocity.abs_diff_eq(Vec2::zero(), VELOCITY_EPSILON) {
-        new_velocity = new_velocity.normalize();
-    }
+        // If the user is pressing two directions at once, go diagonally with
+        // unit velocity.
+        if !new_velocity.abs_diff_eq(Vec2::zero(), VELOCITY_EPSILON) {
+            new_velocity = new_velocity.normalize();
+        }
 
-    for (mut character, animated_sprite_option) in query.iter_mut() {
         if let Some(direction) = new_direction {
             character.direction = direction;
         }
@@ -110,39 +116,46 @@ fn setup_system(
     asset_server: Res<AssetServer>,
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
 ) {
-    let texture_handle = asset_server.load("sprites/character.png");
-    let texture_atlas = TextureAtlas::from_grid(texture_handle,
-                                                Vec2::new(PLAYER_WIDTH, PLAYER_HEIGHT), 8, 16);
-    let texture_atlas_handle = texture_atlases.add(texture_atlas);
-    commands
-        .spawn(Camera2dBundle::default())
-        .with(PlayerCamera {})
-        .spawn(CameraUiBundle::default())
-        .spawn(SpriteSheetBundle {
-            texture_atlas: texture_atlas_handle,
-            transform: Transform::from_scale(Vec3::splat(4.0))
-                        .mul_transform(Transform::from_translation(Vec3::new(0.0, 0.0, 5.0))),
-            ..Default::default()
-        })
-        .with(AnimatedSprite::with_frame_seconds(0.1))
-        .with(Character::default())
-        .with(Player {});
-    // Non-player character.
-    {
-        let texture_handle = asset_server.load("sprites/character2.png");
+    for i in 0..NUM_PLAYERS {
+        let texture_handle = asset_server.load(format!("sprites/character{}.png", i + 1).as_str());
         let texture_atlas = TextureAtlas::from_grid(texture_handle,
                                                     Vec2::new(PLAYER_WIDTH, PLAYER_HEIGHT), 8, 16);
         let texture_atlas_handle = texture_atlases.add(texture_atlas);
         commands
             .spawn(Camera2dBundle::default())
+            .with(PlayerCamera {})
+            .spawn(CameraUiBundle::default())
             .spawn(SpriteSheetBundle {
                 texture_atlas: texture_atlas_handle,
                 transform: Transform::from_scale(Vec3::splat(4.0))
-                            .mul_transform(Transform::from_translation(Vec3::new(PLAYER_WIDTH + 20.0, 0.0, 5.0))),
+                            .mul_transform(Transform::from_translation(Vec3::new(PLAYER_WIDTH * i as f32 + 20.0, 0.0, 5.0))),
                 ..Default::default()
             })
             .with(AnimatedSprite::with_frame_seconds(0.1))
-            .with(Character::default());
+            .with(Character::default())
+            .with(Player { id: i })
+            .spawn(TextBundle {
+                text: Text {
+                    font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                    value: "Position:".to_string(),
+                    style: TextStyle {
+                        color: Color::rgb(0.7, 0.7, 0.7),
+                        font_size: 24.0,
+                        ..Default::default()
+                    },
+                },
+                style: Style {
+                    position_type: PositionType::Absolute,
+                    position: Rect {
+                        top: Val::Px(5.0 + i as f32 * 20.0),
+                        left: Val::Px(5.0),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                },
+                ..Default::default()
+            })
+            .with(PlayerPositionDisplay { player_id: i});
     }
     // Map
     commands
@@ -152,31 +165,6 @@ fn setup_system(
             origin: Transform::from_scale(Vec3::new(4.0, 4.0, 1.0)),
             ..Default::default()
         });
-
-    commands
-        // HUD
-        .spawn(TextBundle {
-            text: Text {
-                font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-                value: "Position:".to_string(),
-                style: TextStyle {
-                    color: Color::rgb(0.7, 0.7, 0.7),
-                    font_size: 24.0,
-                    ..Default::default()
-                },
-            },
-            style: Style {
-                position_type: PositionType::Absolute,
-                position: Rect {
-                    top: Val::Px(5.0),
-                    left: Val::Px(5.0),
-                    ..Default::default()
-                },
-                ..Default::default()
-            },
-            ..Default::default()
-        })
-        .with(PlayerPositionDisplay {});
 }
 
 fn move_sprite_system(
@@ -276,15 +264,18 @@ fn animate_sprite_system(
 }
 
 fn position_display_system(
-    mut character_query: Query<&Transform, With<Player>>,
-    mut text_query: Query<&mut Text, With<PlayerPositionDisplay>>,
+    mut character_query: Query<(&Transform, &Player)>,
+    mut text_query: Query<(&mut Text, &PlayerPositionDisplay)>,
 ) {
-    for char_transform in character_query.iter_mut() {
-        for mut text in text_query.iter_mut() {
-            text.value = format!("Position: ({:.1}, {:.1}, {:.1})",
-                char_transform.translation.x,
-                char_transform.translation.y,
-                char_transform.translation.z);
+    for (char_transform, player) in character_query.iter_mut() {
+        for (mut text, ppd) in text_query.iter_mut() {
+            if ppd.player_id == player.id {
+                text.value = format!("P{} Position: ({:.1}, {:.1}, {:.1})",
+                    player.id + 1,
+                    char_transform.translation.x,
+                    char_transform.translation.y,
+                    char_transform.translation.z);
+            }
         }
     }
 }
