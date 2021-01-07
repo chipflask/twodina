@@ -5,6 +5,8 @@ use bevy_tiled_prototype::{TiledMapCenter, TiledMapComponents, TiledMapPlugin};
 
 mod character;
 use character::{AnimatedSprite, Character, CharacterState, Direction, VELOCITY_EPSILON};
+mod input;
+use input::{Action, InputActionSet};
 
 struct Player;
 
@@ -18,30 +20,31 @@ fn main() {
     App::build()
         .add_plugins(DefaultPlugins)
         .add_plugin(TiledMapPlugin)
+        .add_plugin(input::InputActionPlugin::default())
         .add_startup_system(setup_system.system())
         .add_system(animate_sprite_system.system())
         .add_system(move_sprite_system.system())
         .add_system(update_camera_system.system())
-        .add_system(keyboard_input_system.system())
+        .add_system(handle_input_system.system())
         .add_system(position_display_system.system())
         .add_system(bevy::input::system::exit_on_esc_system.system())
         .run();
 }
 
 
-fn keyboard_input_system(
-    keyboard_input: Res<Input<KeyCode>>,
+fn handle_input_system(
+    input_actions: Res<InputActionSet>,
     mut query: Query<(&mut Character, Option<&mut AnimatedSprite>), With<Player>>,
 ) {
     let mut new_direction = None;
     let mut new_velocity = Vec2::zero();
     let mut new_state = CharacterState::Idle;
-    if keyboard_input.pressed(KeyCode::W) {
+    if input_actions.is_active(Action::Up) {
         new_direction = Some(Direction::North);
         new_velocity.y = 1.0;
         new_state = CharacterState::Walking;
     }
-    if keyboard_input.pressed(KeyCode::S) {
+    if input_actions.is_active(Action::Down) {
         new_direction = Some(Direction::South);
         new_velocity.y = -1.0;
         new_state = CharacterState::Walking;
@@ -49,12 +52,12 @@ fn keyboard_input_system(
 
     // Favor facing left or right when two directions are pressed simultaneously
     // by checking left/right after up/down.
-    if keyboard_input.pressed(KeyCode::A) {
+    if input_actions.is_active(Action::Left) {
         new_direction = Some(Direction::West);
         new_velocity.x = -1.0;
         new_state = CharacterState::Walking;
     }
-    if keyboard_input.pressed(KeyCode::D) {
+    if input_actions.is_active(Action::Right) {
         new_direction = Some(Direction::East);
         new_velocity.x = 1.0;
         new_state = CharacterState::Walking;
