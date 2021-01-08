@@ -46,7 +46,7 @@ impl Default for Character {
             direction: Direction::South,
             state: CharacterState::Idle,
             velocity: Vec3::zero(),
-            movement_speed: 475.0,
+            movement_speed: 175.0,
         }
     }
 }

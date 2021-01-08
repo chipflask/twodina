@@ -16,6 +16,8 @@ struct PlayerPositionDisplay;
 // player.
 struct PlayerCamera;
 
+const MAP_SKEW: f32 = 1.8;
+
 fn main() {
     App::build()
         .add_plugins(DefaultPlugins)
@@ -149,7 +151,7 @@ fn setup_system(
         .spawn(TiledMapComponents {
             map_asset: asset_server.load("tile_maps/path_map.tmx"),
             center: TiledMapCenter(true),
-            origin: Transform::from_scale(Vec3::new(4.0, 4.0, 1.0)),
+            origin: Transform::from_scale(Vec3::new(2.0, 2.0 / MAP_SKEW, 1.0)),
             ..Default::default()
         });
 
@@ -184,7 +186,9 @@ fn move_sprite_system(
     mut query: Query<(&Character, &mut Transform)>,
 ) {
     for (character, mut transform) in query.iter_mut() {
-        transform.translation = transform.translation + character.velocity * time.delta_seconds() * character.movement_speed;
+        let mut delta: Vec3 = character.velocity * time.delta_seconds() * character.movement_speed;
+        delta.y /= MAP_SKEW;
+        transform.translation = transform.translation + delta;
     }
 }
 
