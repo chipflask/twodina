@@ -147,7 +147,7 @@ fn setup_system(
     // Map
     commands
         .spawn(TiledMapComponents {
-            map_asset: asset_server.load("maps/ortho_map.tmx"),
+            map_asset: asset_server.load("tile_maps/path_map.tmx"),
             center: TiledMapCenter(true),
             origin: Transform::from_scale(Vec3::new(4.0, 4.0, 1.0)),
             ..Default::default()

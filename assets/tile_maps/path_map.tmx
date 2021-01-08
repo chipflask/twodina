@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.4" tiledversion="1.4.3" orientation="orthogonal" renderorder="right-down" width="100" height="20" tilewidth="16" tileheight="16" infinite="0" nextlayerid="8" nextobjectid="37">
+ <tileset firstgid="1" name="trees" tilewidth="64" tileheight="64" tilecount="2" columns="2">
+  <image source="trees.png" width="128" height="64"/>
+ </tileset>
+ <tileset firstgid="3" name="backgrounds" tilewidth="16" tileheight="16" tilecount="156" columns="13">
+  <image source="bg.png" width="208" height="192"/>
+ </tileset>
+ <layer id="6" name="bg" width="100" height="20">
+  <data encoding="base64" compression="zlib">
+   eJztmU1u2zAQRnkH+wAUtLYOYB0ky8ZGlq2M7hIn6C5/6C5N2h63JDoP+ixYhmTZotJ08UCFpMPRfBpyNMqcc7NAFlgGioAPXAj3gSrwHHiy9taub20schdYB1YytpH52j7bvDi+DdxYe9EBbM3M1syYN9pC5pYyt8saqSjMXljY/VwJL4HXwKX5fWWsze/Q7FubRivzP1pVpsud9T8KVx3A54X5ubC/sT/2zaQvsz5067JGKjKzHT3i9dcWrs2nn0ybjeizFhh/cnXcqI7E1sbarfF4YG1F48KbBguzfeHquPCiF+OH7m8KlG73GYq2f2uBOMF3l+ZbjZfo48+BL9LPGDqgD3tU23qHwL/qa2IbCpkzt/Fj1hoTYp799XsHrs3naMI+1KQSok4PpgEtdFmzCTbr2UF8635Vmg7MO2atMSE2ou2/O3Jv/lZNqhY2ro6DB1fH1rbHem3w3ON/7iW23nTwro6doeuNAc9PnxyAfKsSTX64v3vZW+Bn4Jf4/sbtntnoMjQXwXbVwrs6RyHmGUudO3XNHQ+d9/mevhfxO75PmY+wdy2l5VyJejTzxSmTOp84Bfh/JtfEynwC9vVhSC6QD/z9qeFM99amtucYTp0f5Gf4nx+JPmd/3nP+f/qToj5DjSzCu1vqvGYqnDI32JeLAe/Hmg+hy0yuU+c3qel67uc95u6ryVAnw/+8o6lGcWw5YJ1/gTFynuhnnn/qFuhBTda7+p06G8GuqXLOXIHvEPga36MJdQ7vduvm1DxS5zpTz6/65Fv4nhjwrn5n028VfAvT/YqaVDnQvvfIOXKEpg7e1d+J1OfUlYo981Sz1DnPe82vwLu6pqd+1e8U1Daa3/eIC+aUZ7JxqvwBf5tFMg==
+  </data>
+ </layer>
+ <objectgroup id="7" name="water">
+  <object id="36" x="142.667" y="5.33333">
+   <polygon points="0,0 17.3333,18.6667 34.6667,33.3333 70.6667,58.6667 73.3333,109.333 132,106.667 70.6667,41.3333 70.6667,24 90.6667,30.6667 144,94.6667 198.667,94.6667 262.667,86.6667 345.333,68 381.333,38.6667 386.667,-6.66667"/>
+  </object>
+ </objectgroup>
+ <objectgroup id="4" name="trees">
+  <object id="18" gid="1" x="855" y="82" width="64" height="64"/>
+  <object id="19" gid="1" x="862" y="272" width="64" height="64"/>
+  <object id="20" gid="1" x="982" y="149" width="64" height="64"/>
+  <object id="21" gid="2" x="802" y="169" width="64" height="64"/>
+  <object id="22" name="big_pink" gid="2" x="1018.36" y="321.636" width="136.727" height="136.727"/>
+  <object id="29" name="big_green" gid="1" x="383" y="127.667" width="133.333" height="125.333"/>
+  <object id="30" gid="1" x="382" y="263" width="64" height="64"/>
+  <object id="31" gid="1" x="502" y="140" width="64" height="64"/>
+  <object id="32" gid="2" x="322" y="160" width="64" height="64"/>
+  <object id="33" gid="2" x="502" y="249" width="64" height="64"/>
+ </objectgroup>
+</map>
