@@ -199,16 +199,18 @@ fn move_sprite_system(
 }
 
 fn bounding_box(translation: Vec3, size: Vec2) -> Rect<f32> {
+    let half_width = size.x / 2.0;
+    let half_height = size.y / 2.0;
     Rect {
-        left: translation.x,
-        right: translation.x + size.x,
-        top: translation.y,
-        bottom: translation.y + size.y,
+        left: translation.x - half_width,
+        right: translation.x + half_width,
+        top: translation.y + half_height,
+        bottom: translation.y - half_height,
     }
 }
 
-fn viewport(camera_transform: &Transform, projection: &OrthographicProjection) -> Rect<f32> {
-    let translation = camera_transform.translation;
+fn viewport(camera_transform: &GlobalTransform, projection: &OrthographicProjection) -> Rect<f32> {
+    let translation = &camera_transform.translation;
     Rect {
         left: projection.left + translation.x,
         right: projection.right + translation.x,
@@ -224,22 +226,26 @@ fn is_rect_completely_inside(r1: &Rect<f32>, r2: &Rect<f32>) -> bool {
 }
 
 fn update_camera_system(
-    mut player_query: Query<&Transform, With<Player>>,
-    mut camera_query: Query<(&mut Transform, &OrthographicProjection), With<PlayerCamera>>,
+    mut player_query: Query<&GlobalTransform, With<Player>>,
+    mut camera_query: Query<(&mut Transform, &GlobalTransform, &OrthographicProjection), With<PlayerCamera>>,
 ) {
     for player_transform in player_query.iter_mut() {
         // Is sprite in view frame?
-        // println!("player {:?}", player_transform.translation);
+        // println!("player translation {:?}", player_transform.translation);
         let char_translation = player_transform.translation;
-        // TODO: Use player scaling.
-        let char_rect = bounding_box(char_translation, Vec2::new(PLAYER_WIDTH, PLAYER_HEIGHT));
+        let char_size = Vec2::new(PLAYER_WIDTH * player_transform.scale.x, PLAYER_HEIGHT * player_transform.scale.y);
+        let char_rect = bounding_box(char_translation, char_size);
         // println!("char_rect {:?}", char_rect);
-        for (mut camera_transform, projection) in camera_query.iter_mut() {
+        for (mut camera_transform, camera_global, projection) in camera_query.iter_mut() {
             // println!("projection {:?}", projection);
-            let camera_rect = viewport(&camera_transform, projection);
+            // println!("camera_transform {:?}", camera_transform);
+            // println!("camera_global {:?}", camera_global);
+            // Note: We don't support camera rotation or scale.
+            let camera_rect = viewport(&camera_global, projection);
             // println!("camera_rect {:?}", camera_rect);
             let is_player_in_view = is_rect_completely_inside(&char_rect, &camera_rect);
             if !is_player_in_view {
+                // Mutate the transform, never the global transform.
                 camera_transform.translation = player_transform.translation;
             }
         }
