@@ -182,7 +182,11 @@ fn setup_system(
         .spawn(TiledMapComponents {
             map_asset: asset_server.load("tile_maps/path_map.tmx"),
             center: TiledMapCenter(true),
-            origin: Transform::from_scale(Vec3::new(2.0, 2.0 / MAP_SKEW, 1.0)),
+            origin: Transform {
+                translation: Vec3::new(0.0, 0.0, -1000.0),
+                scale: Vec3::new(2.0, 2.0 / MAP_SKEW, 1.0),
+                ..Default::default()
+            },
             ..Default::default()
         });
 }
@@ -195,8 +199,8 @@ fn move_sprite_system(
         let mut delta: Vec3 = character.velocity * time.delta_seconds() * character.movement_speed;
         delta.y /= MAP_SKEW;
         transform.translation = transform.translation + delta;
-        // TODO: This will probably need to change if the map is larger.
-        transform.translation.z = 20.0 - transform.translation.y / 100.0;
+        // should stay between +- 2000.0
+        transform.translation.z = -transform.translation.y / 100.0;
     }
 }
 
@@ -317,6 +321,9 @@ fn update_camera_system(
         let full_bb = rect_expand_by(&full_bb, margin);
 
         for (mut camera_transform, camera_global, mut projection, mut camera) in camera_query.iter_mut() {
+            // this only needs to happen once, so maybe there is a better place to do this?
+            projection.near = -2000.0;
+            projection.far = 2000.0;
             // println!("projection {:?}", projection);
             // println!("camera_transform {:?}", camera_transform);
             // println!("camera_global {:?}", camera_global);
