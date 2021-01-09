@@ -195,6 +195,8 @@ fn move_sprite_system(
         let mut delta: Vec3 = character.velocity * time.delta_seconds() * character.movement_speed;
         delta.y /= MAP_SKEW;
         transform.translation = transform.translation + delta;
+        // TODO: This will probably need to change if the map is larger.
+        transform.translation.z = 20.0 - transform.translation.y / 100.0;
     }
 }
 
