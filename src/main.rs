@@ -22,7 +22,7 @@ struct PlayerPositionDisplay {
 // player.
 struct PlayerCamera;
 
-const MAP_SKEW: f32 = 1.8;
+const MAP_SKEW: f32 = 1.4;
 
 fn main() {
     App::build()
