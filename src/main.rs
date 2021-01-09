@@ -119,15 +119,19 @@ fn setup_system(
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
+    // Cameras.
+    commands
+        .spawn(Camera2dBundle::default())
+        .with(PlayerCamera {})
+        .spawn(CameraUiBundle::default());
+
+    // Players.
     for i in 0..NUM_PLAYERS {
         let texture_handle = asset_server.load(format!("sprites/character{}.png", i + 1).as_str());
         let texture_atlas = TextureAtlas::from_grid(texture_handle,
                                                     Vec2::new(PLAYER_WIDTH, PLAYER_HEIGHT), 8, 16);
         let texture_atlas_handle = texture_atlases.add(texture_atlas);
         commands
-            .spawn(Camera2dBundle::default())
-            .with(PlayerCamera {})
-            .spawn(CameraUiBundle::default())
             .spawn(SpriteSheetBundle {
                 texture_atlas: texture_atlas_handle,
                 transform: Transform::from_scale(Vec3::splat(4.0))
