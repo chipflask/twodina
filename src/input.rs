@@ -102,6 +102,21 @@ fn action_producer_system(
         input_action_set.activate(Action::Right, 0);
     }
 
+
+    if keyboard_input.pressed(KeyCode::Up) {
+        input_action_set.activate(Action::Up, 1);
+    }
+    if keyboard_input.pressed(KeyCode::Left) {
+        input_action_set.activate(Action::Left, 1);
+    }
+    if keyboard_input.pressed(KeyCode::Down) {
+        input_action_set.activate(Action::Down, 1);
+    }
+    if keyboard_input.pressed(KeyCode::Right) {
+        input_action_set.activate(Action::Right, 1);
+    }
+
+
     for (i, gamepad) in gamepad_set.gamepads.iter().cloned().enumerate() {
         let left_stick_x = axes.get(GamepadAxis(gamepad, GamepadAxisType::LeftStickX)).expect("gamepad axis LeftStickX");
         let left_stick_y = axes.get(GamepadAxis(gamepad, GamepadAxisType::LeftStickY)).expect("gamepad axis LeftStickY");
