@@ -117,6 +117,7 @@ fn setup_system(
     commands: &mut Commands,
     asset_server: Res<AssetServer>,
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
     for i in 0..NUM_PLAYERS {
         let texture_handle = asset_server.load(format!("sprites/character{}.png", i + 1).as_str());
@@ -132,6 +133,19 @@ fn setup_system(
                 transform: Transform::from_scale(Vec3::splat(4.0))
                             .mul_transform(Transform::from_translation(Vec3::new(PLAYER_WIDTH * i as f32 + 20.0, 0.0, 5.0))),
                 ..Default::default()
+            })
+            .with_children(|parent| {
+                // add a shadow sprite -- is there a more efficient way where we load this just once??
+                let shadow_handle = asset_server.load("sprites/shadow.png");
+                parent.spawn(SpriteBundle {
+                    transform: Transform {
+                        translation: Vec3::new(0.0, -13.0, -0.01),
+                        scale: Vec3::splat(0.7),
+                        ..Default::default()
+                    },
+                    material: materials.add(shadow_handle.into()),
+                    ..Default::default()
+                });
             })
             .with(AnimatedSprite::with_frame_seconds(0.1))
             .with(Character::default())
