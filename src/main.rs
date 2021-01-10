@@ -2,10 +2,15 @@ use std::convert::TryFrom;
 
 use bevy::{prelude::*, render::camera::{Camera, CameraProjection, OrthographicProjection}};
 use bevy_tiled_prototype::{TiledMapCenter, TiledMapComponents, TiledMapPlugin};
+use bevy::math::Vec3Swizzles;
+use ncollide2d::{bounding_volume::{self, BoundingVolume}, math};
 
 mod character;
-use character::{AnimatedSprite, Character, CharacterState, Direction, VELOCITY_EPSILON};
+mod collider;
 mod input;
+
+use character::{AnimatedSprite, Character, CharacterState, Direction, VELOCITY_EPSILON};
+use collider::Collider;
 use input::{Action, InputActionSet};
 
 const NUM_PLAYERS: u32 = 2;
@@ -160,6 +165,7 @@ fn setup_system(
             .with(AnimatedSprite::with_frame_seconds(0.1))
             .with(Character::default())
             .with(Player { id: i })
+            .with(Collider::new(Vec2::new(20.0, 25.0)))
             .spawn(TextBundle {
                 text: Text {
                     font: asset_server.load("fonts/FiraSans-Bold.ttf"),
@@ -197,16 +203,43 @@ fn setup_system(
         });
 }
 
+fn collider_translation(v: Vec2) -> math::Translation<f32> {
+    math::Translation::new(v.x, v.y)
+}
+
 fn move_sprite_system(
     time: Res<Time>,
-    mut query: Query<(&Character, &mut Transform)>,
+    mut query: Query<(&Character, &mut Transform, &GlobalTransform, &Collider)>,
+    mut collider_query: Query<(&Collider, &GlobalTransform)>,
 ) {
-    for (character, mut transform) in query.iter_mut() {
+    for (character, mut transform, char_global, char_collider) in query.iter_mut() {
         let mut delta: Vec3 = character.velocity * time.delta_seconds() * character.movement_speed;
         delta.y /= MAP_SKEW;
-        transform.translation = transform.translation + delta;
+        let mut maybe_translation = transform.translation + delta;
+        maybe_translation.z = -transform.translation.y / 100.0;
         // should stay between +- 2000.0
-        transform.translation.z = -transform.translation.y / 100.0;
+        let char_isometry = math::Isometry::from_parts(
+            collider_translation(char_global.translation.xy()),
+            math::Rotation::identity());
+        let char_aabb = bounding_volume::aabb(&char_collider.bounding_volume, &char_isometry);
+        let mut does_intersect = false;
+        for (collider, collider_transform) in collider_query.iter_mut() {
+            if char_collider as *const _ == collider as *const _ {
+                continue;
+            }
+            let isometry = math::Isometry::from_parts(
+                collider_translation(collider_transform.translation.xy()),
+                math::Rotation::identity());
+            let collider_aabb = bounding_volume::aabb(&collider.bounding_volume, &isometry);
+            if char_aabb.intersects(&collider_aabb) {
+                does_intersect = true;
+                println!("intersected");
+                break;
+            }
+        }
+        if !does_intersect {
+            transform.translation = maybe_translation;
+        }
     }
 }
 
