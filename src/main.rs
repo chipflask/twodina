@@ -1,3 +1,4 @@
+use std;
 use std::convert::TryFrom;
 
 use bevy::{prelude::*, render::camera::{Camera, CameraProjection, OrthographicProjection}};
@@ -224,7 +225,7 @@ fn move_sprite_system(
         let char_aabb = bounding_volume::aabb(&char_collider.bounding_volume, &char_isometry);
         let mut does_intersect = false;
         for (collider, collider_transform) in collider_query.iter_mut() {
-            if char_collider as *const _ == collider as *const _ {
+            if std::ptr::eq(char_collider, collider) {
                 continue;
             }
             let isometry = math::Isometry::from_parts(
