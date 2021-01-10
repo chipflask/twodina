@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.4" tiledversion="1.4.3" orientation="orthogonal" renderorder="right-down" width="100" height="20" tilewidth="16" tileheight="16" infinite="0" nextlayerid="8" nextobjectid="40">
+ <tileset firstgid="1" name="trees" tilewidth="64" tileheight="64" tilecount="2" columns="2">
+  <image source="trees.png" width="128" height="64"/>
+ </tileset>
+ <tileset firstgid="3" name="backgrounds" tilewidth="16" tileheight="16" tilecount="156" columns="13">
+  <image source="bg.png" width="208" height="192"/>
+ </tileset>
+ <layer id="6" name="bg" width="100" height="20">
+  <data encoding="base64" compression="zlib">
+   eJzdmVlPFEEQxytBjkdlMR6JuLBeUY5EY0wWEo+oCG8mBM+EYQXFrIKamIjg+cDhhSEQvDMfZT6a/5qucpvOwM4AoYWHX2p6eoburf/UMUMLEeVACyiCDlBLFN6AVcpgDMyBWbGTcjwpc8wUKIEha27cut62c3Idz78CE+ClteZqdBJFule2N8EtcBvcAXfF/sZ1v8BP8AN8B3m5pzXFOr7okN/G7AGNoA56DMMqC2ARBOL3IaEkflfccyXRaEj8r1qNiS5Tcv4DWMafn7HWXA3Vo0n2PgIGZW+jwkPwFdfNg/s4BuEnuU/1qLaOLw5jnz2wzCnsG2Oqh30K61IWn+rvH7f0KVno/CxV4sbWUWNrXCyujZiZhDVdWsWv+uw8A4/AY/Bc1l6S9d/j2nfgLXgDOA/kjKZV1/EFa9BjNIlYC81Xr2FdNE44r8zIb56klfEybvlnyJlTHabMvQHiIkSuCgMZLyes6dJrnpmgmeJnieBn0hiA/+kJKIAXRp9Inw3oFrWbe6LeFOv4As9Z1AXL5M2YfzN9XIOy+Fw10TzkonXF9j3bQUPANWPCzIf3qqxp02rtGXmIPoMvYF721S/PA3JXpM/GiMRVZ4Z1fKB1kXW4Jlp8q0JZ/G1rMuYwaAi1XvM108bGeals6kV4HbAdSLGuojHCsYw6TajXhLpNDyiuHdGowHGDOh+h3kd/qBIbadfxAXJwwHmYc1QfpesBtN8aszRZFJaoktNAyOMJ43NSHViXfjOOpsUOOD1dNVSTdqrUkhHRQzUZkZ6qaGnhu3+qRhvFNSSOi6R6X0g4t2D5nVlOuGZAfOwe67hfzrlzWXBrCccK+t2IQb9LHBN5quRg371TGi7LXn33FevFzl058T33io2ihcaF732mZSO9QGGD928Wqgm/kzQbPeJe8X/vpZJYq9b3VZlPorCOezYDjvMr4KrR419v4rtfykoNxT1g0A2w/4DHuyiu7/yezu+G1ECm9hfIf/+x09kN9oMDYK8z1r6Fz2+kZ6ix9LV1rrXQuYYNrrXdYf8fBcfIfNfRMefeNmNTf+9J6sWG5W9ybufelN919F2Oa3CeTB3WY+gfNaRcbydyCJwGZ8i8u/KY46LN2OisnGdfZ+0V4NeAn/lTxs+x39X/OdHH1ojnipYmvnsdH5wE58EF0C1j7ecvgktyPmuf0GDeM8Mm6+/lxfctlh5FsXlB9VFNfPc7W43dl/QaQvg/REyEyFMhakfI57P0WjXGn7EWLZav1feqSRdVYkbzl95jx4nvnmer+yv4PYDfA7adzrH2XUm9wGr9FnJUoL7XGMiLv3Pic53X/4XZ+aqJKjWGv+P47nl89VcHwT5nfIJM/cjSI5xzdMjL2PW5fsvsSLhO5+syftfa7tj91XFwxBlzPef6kaVHqJXvF7bfNVZyli3Syjyl4y7rmvp1ftvarvwFijZ1rg==
+  </data>
+ </layer>
+ <objectgroup id="7" name="water" visible="0">
+  <object id="36" x="142.667" y="5.33333">
+   <polygon points="0,0 17.3333,18.6667 34.6667,33.3333 70.6667,58.6667 73.3333,109.333 132,106.667 70.6667,41.3333 70.6667,24 90.6667,30.6667 144,94.6667 198.667,94.6667 262.667,86.6667 345.333,68 381.333,38.6667 386.667,-6.66667"/>
+  </object>
+  <object id="37" x="779.333" y="10.6667">
+   <polygon points="0,0 -0.666667,45.3333 38.6667,46.6667 39.3333,74 49.3333,101.333 96,103.333 109.333,84.6667 112.667,70.6667 152.667,70 150.667,36.6667 115.333,34.6667 113.333,-1.33333"/>
+  </object>
+ </objectgroup>
+ <objectgroup id="4" name="trees" visible="0">
+  <object id="18" gid="1" x="824.333" y="70.6667" width="64" height="64"/>
+  <object id="19" gid="1" x="754" y="128" width="64" height="64"/>
+  <object id="20" gid="1" x="954.667" y="52.3333" width="64" height="64"/>
+  <object id="21" gid="2" x="854.667" y="196.333" width="64" height="64"/>
+  <object id="22" name="big_pink" gid="2" x="1293.69" y="208.303" width="136.727" height="136.727"/>
+  <object id="29" name="big_green" gid="1" x="499.667" y="53.0003" width="133.333" height="125.333"/>
+  <object id="30" gid="1" x="308" y="330.333" width="64" height="64"/>
+  <object id="31" gid="1" x="502" y="140" width="64" height="64"/>
+  <object id="32" gid="2" x="281.333" y="152.667" width="64" height="64"/>
+  <object id="33" gid="2" x="612.667" y="325.667" width="64" height="64"/>
+  <object id="38" gid="1" x="325.333" y="279.333" width="64" height="64"/>
+  <object id="39" gid="1" x="354" y="234" width="64" height="64"/>
+ </objectgroup>
+</map>

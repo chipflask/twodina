@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
 
-use bevy::{prelude::*, render::camera::OrthographicProjection};
+use bevy::{prelude::*, render::camera::{Camera, CameraProjection, OrthographicProjection}};
 use bevy_tiled_prototype::{TiledMapCenter, TiledMapComponents, TiledMapPlugin};
 
 mod character;
@@ -8,13 +8,21 @@ use character::{AnimatedSprite, Character, CharacterState, Direction, VELOCITY_E
 mod input;
 use input::{Action, InputActionSet};
 
-struct Player;
+const NUM_PLAYERS: u32 = 2;
 
-struct PlayerPositionDisplay;
+struct Player {
+    id: u32,
+}
+
+struct PlayerPositionDisplay {
+    player_id: u32,
+}
 
 // We have multiple cameras, so this one marks the camera that follows the
 // player.
 struct PlayerCamera;
+
+const MAP_SKEW: f32 = 1.4;
 
 fn main() {
     App::build()
@@ -34,42 +42,42 @@ fn main() {
 
 fn handle_input_system(
     input_actions: Res<InputActionSet>,
-    mut query: Query<(&mut Character, Option<&mut AnimatedSprite>), With<Player>>,
+    mut query: Query<(&mut Character, &Player, Option<&mut AnimatedSprite>)>,
 ) {
-    let mut new_direction = None;
-    let mut new_velocity = Vec2::zero();
-    let mut new_state = CharacterState::Idle;
-    if input_actions.is_active(Action::Up) {
-        new_direction = Some(Direction::North);
-        new_velocity.y = 1.0;
-        new_state = CharacterState::Walking;
-    }
-    if input_actions.is_active(Action::Down) {
-        new_direction = Some(Direction::South);
-        new_velocity.y = -1.0;
-        new_state = CharacterState::Walking;
-    }
+    for (mut character, player, animated_sprite_option) in query.iter_mut() {
+        let mut new_direction = None;
+        let mut new_velocity = Vec2::zero();
+        let mut new_state = CharacterState::Idle;
+        if input_actions.is_active(Action::Up, player.id) {
+            new_direction = Some(Direction::North);
+            new_velocity.y = 1.0;
+            new_state = CharacterState::Walking;
+        }
+        if input_actions.is_active(Action::Down, player.id) {
+            new_direction = Some(Direction::South);
+            new_velocity.y = -1.0;
+            new_state = CharacterState::Walking;
+        }
 
-    // Favor facing left or right when two directions are pressed simultaneously
-    // by checking left/right after up/down.
-    if input_actions.is_active(Action::Left) {
-        new_direction = Some(Direction::West);
-        new_velocity.x = -1.0;
-        new_state = CharacterState::Walking;
-    }
-    if input_actions.is_active(Action::Right) {
-        new_direction = Some(Direction::East);
-        new_velocity.x = 1.0;
-        new_state = CharacterState::Walking;
-    }
+        // Favor facing left or right when two directions are pressed simultaneously
+        // by checking left/right after up/down.
+        if input_actions.is_active(Action::Left, player.id) {
+            new_direction = Some(Direction::West);
+            new_velocity.x = -1.0;
+            new_state = CharacterState::Walking;
+        }
+        if input_actions.is_active(Action::Right, player.id) {
+            new_direction = Some(Direction::East);
+            new_velocity.x = 1.0;
+            new_state = CharacterState::Walking;
+        }
 
-    // If the user is pressing two directions at once, go diagonally with
-    // unit velocity.
-    if !new_velocity.abs_diff_eq(Vec2::zero(), VELOCITY_EPSILON) {
-        new_velocity = new_velocity.normalize();
-    }
+        // If the user is pressing two directions at once, go diagonally with
+        // unit velocity.
+        if !new_velocity.abs_diff_eq(Vec2::zero(), VELOCITY_EPSILON) {
+            new_velocity = new_velocity.normalize();
+        }
 
-    for (mut character, animated_sprite_option) in query.iter_mut() {
         if let Some(direction) = new_direction {
             character.direction = direction;
         }
@@ -109,74 +117,78 @@ fn setup_system(
     commands: &mut Commands,
     asset_server: Res<AssetServer>,
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
-    let texture_handle = asset_server.load("sprites/character.png");
-    let texture_atlas = TextureAtlas::from_grid(texture_handle,
-                                                Vec2::new(PLAYER_WIDTH, PLAYER_HEIGHT), 8, 16);
-    let texture_atlas_handle = texture_atlases.add(texture_atlas);
+    // Cameras.
     commands
         .spawn(Camera2dBundle::default())
         .with(PlayerCamera {})
-        .spawn(CameraUiBundle::default())
-        .spawn(SpriteSheetBundle {
-            texture_atlas: texture_atlas_handle,
-            transform: Transform::from_scale(Vec3::splat(4.0))
-                        .mul_transform(Transform::from_translation(Vec3::new(0.0, 0.0, 5.0))),
-            ..Default::default()
-        })
-        .with(AnimatedSprite::with_frame_seconds(0.1))
-        .with(Character::default())
-        .with(Player {});
-    // Non-player character.
-    {
-        let texture_handle = asset_server.load("sprites/character2.png");
+        .spawn(CameraUiBundle::default());
+
+    // Players.
+    for i in 0..NUM_PLAYERS {
+        let texture_handle = asset_server.load(format!("sprites/character{}.png", i + 1).as_str());
         let texture_atlas = TextureAtlas::from_grid(texture_handle,
                                                     Vec2::new(PLAYER_WIDTH, PLAYER_HEIGHT), 8, 16);
         let texture_atlas_handle = texture_atlases.add(texture_atlas);
         commands
-            .spawn(Camera2dBundle::default())
             .spawn(SpriteSheetBundle {
                 texture_atlas: texture_atlas_handle,
                 transform: Transform::from_scale(Vec3::splat(4.0))
-                            .mul_transform(Transform::from_translation(Vec3::new(PLAYER_WIDTH + 20.0, 0.0, 5.0))),
+                            .mul_transform(Transform::from_translation(Vec3::new(PLAYER_WIDTH * i as f32 + 20.0, 0.0, 5.0))),
                 ..Default::default()
             })
+            .with_children(|parent| {
+                // add a shadow sprite -- is there a more efficient way where we load this just once??
+                let shadow_handle = asset_server.load("sprites/shadow.png");
+                parent.spawn(SpriteBundle {
+                    transform: Transform {
+                        translation: Vec3::new(0.0, -13.0, -0.01),
+                        scale: Vec3::splat(0.7),
+                        ..Default::default()
+                    },
+                    material: materials.add(shadow_handle.into()),
+                    ..Default::default()
+                });
+            })
             .with(AnimatedSprite::with_frame_seconds(0.1))
-            .with(Character::default());
+            .with(Character::default())
+            .with(Player { id: i })
+            .spawn(TextBundle {
+                text: Text {
+                    font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                    value: "Position:".to_string(),
+                    style: TextStyle {
+                        color: Color::rgb(0.7, 0.7, 0.7),
+                        font_size: 24.0,
+                        ..Default::default()
+                    },
+                },
+                style: Style {
+                    position_type: PositionType::Absolute,
+                    position: Rect {
+                        top: Val::Px(5.0 + i as f32 * 20.0),
+                        left: Val::Px(5.0),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                },
+                ..Default::default()
+            })
+            .with(PlayerPositionDisplay { player_id: i});
     }
     // Map
     commands
         .spawn(TiledMapComponents {
-            map_asset: asset_server.load("maps/ortho_map.tmx"),
+            map_asset: asset_server.load("tile_maps/path_map.tmx"),
             center: TiledMapCenter(true),
-            origin: Transform::from_scale(Vec3::new(4.0, 4.0, 1.0)),
-            ..Default::default()
-        });
-
-    commands
-        // HUD
-        .spawn(TextBundle {
-            text: Text {
-                font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-                value: "Position:".to_string(),
-                style: TextStyle {
-                    color: Color::rgb(0.7, 0.7, 0.7),
-                    font_size: 24.0,
-                    ..Default::default()
-                },
-            },
-            style: Style {
-                position_type: PositionType::Absolute,
-                position: Rect {
-                    top: Val::Px(5.0),
-                    left: Val::Px(5.0),
-                    ..Default::default()
-                },
+            origin: Transform {
+                translation: Vec3::new(0.0, 0.0, -1000.0),
+                scale: Vec3::new(2.0, 2.0 / MAP_SKEW, 1.0),
                 ..Default::default()
             },
             ..Default::default()
-        })
-        .with(PlayerPositionDisplay {});
+        });
 }
 
 fn move_sprite_system(
@@ -184,21 +196,73 @@ fn move_sprite_system(
     mut query: Query<(&Character, &mut Transform)>,
 ) {
     for (character, mut transform) in query.iter_mut() {
-        transform.translation = transform.translation + character.velocity * time.delta_seconds() * character.movement_speed;
+        let mut delta: Vec3 = character.velocity * time.delta_seconds() * character.movement_speed;
+        delta.y /= MAP_SKEW;
+        transform.translation = transform.translation + delta;
+        // should stay between +- 2000.0
+        transform.translation.z = -transform.translation.y / 100.0;
     }
 }
 
 fn bounding_box(translation: Vec3, size: Vec2) -> Rect<f32> {
+    let half_width = size.x / 2.0;
+    let half_height = size.y / 2.0;
     Rect {
-        left: translation.x,
-        right: translation.x + size.x,
-        top: translation.y,
-        bottom: translation.y + size.y,
+        left: translation.x - half_width,
+        right: translation.x + half_width,
+        top: translation.y + half_height,
+        bottom: translation.y - half_height,
     }
 }
 
-fn viewport(camera_transform: &Transform, projection: &OrthographicProjection) -> Rect<f32> {
-    let translation = camera_transform.translation;
+// Returns the bounding box that includes both the given bounding boxes.
+fn expand_bounding_box(r1: &Rect<f32>, r2: &Rect<f32>) -> Rect<f32> {
+    Rect {
+        left: r1.left.min(r2.left),
+        right: r1.right.max(r2.right),
+        top: r1.top.max(r2.top),
+        bottom: r1.bottom.min(r2.bottom),
+    }
+}
+
+fn rect_center(r: &Rect<f32>) -> Vec2 {
+    // Don't overflow.
+    Vec2::new(r.left + 0.5 * (r.right - r.left), r.bottom + 0.5 * (r.top - r.bottom))
+}
+
+#[allow(dead_code)]
+fn rect_half_width_height(r: &Rect<f32>) -> Vec2 {
+    Vec2::new(0.5 * (r.right - r.left), 0.5 * (r.top - r.bottom))
+}
+
+fn rect_width_height(r: &Rect<f32>) -> Vec2 {
+    Vec2::new(r.right - r.left, r.top - r.bottom)
+}
+
+fn rect_expand_by(r: &Rect<f32>, amount: f32) -> Rect<f32> {
+    Rect {
+        left: r.left - amount,
+        right: r.right + amount,
+        top: r.top + amount,
+        bottom: r.bottom - amount,
+    }
+}
+
+// wh is width and height.
+// aspect_ratio is the desired width / height.
+fn expanded_to_aspect_ratio(wh: &Vec2, aspect_ratio: f32) -> Vec2 {
+    let h_based_on_w = wh.x / aspect_ratio;
+    if h_based_on_w > wh.y {
+        Vec2::new(wh.x, h_based_on_w)
+    } else {
+        let w_based_on_h = wh.y * aspect_ratio;
+
+        Vec2::new(w_based_on_h, wh.y)
+    }
+}
+
+fn viewport(camera_transform: &GlobalTransform, projection: &OrthographicProjection) -> Rect<f32> {
+    let translation = &camera_transform.translation;
     Rect {
         left: projection.left + translation.x,
         right: projection.right + translation.x,
@@ -214,23 +278,81 @@ fn is_rect_completely_inside(r1: &Rect<f32>, r2: &Rect<f32>) -> bool {
 }
 
 fn update_camera_system(
-    mut player_query: Query<&Transform, With<Player>>,
-    mut camera_query: Query<(&mut Transform, &OrthographicProjection), With<PlayerCamera>>,
+    windows: Res<Windows>,
+    mut player_query: Query<&GlobalTransform, With<Player>>,
+    mut camera_query: Query<(&mut Transform,
+                            &GlobalTransform,
+                            &mut OrthographicProjection,
+                            &mut Camera),
+                            With<PlayerCamera>>,
 ) {
+    // Amount of margin between edge of view and character.
+    let margin = 100.0;
+
+    // Get bounding box of all players.
+    let mut full_bb = None;
+    let mut num_players = 0;
+    let mut player_translation = Vec3::zero();
     for player_transform in player_query.iter_mut() {
+        num_players += 1;
         // Is sprite in view frame?
-        // println!("player {:?}", player_transform.translation);
+        // println!("player translation {:?}", player_transform.translation);
         let char_translation = player_transform.translation;
-        // TODO: Use player scaling.
-        let char_rect = bounding_box(char_translation, Vec2::new(PLAYER_WIDTH, PLAYER_HEIGHT));
+        let char_size = Vec2::new(PLAYER_WIDTH * player_transform.scale.x, PLAYER_HEIGHT * player_transform.scale.y);
+        let char_rect = bounding_box(char_translation, char_size);
         // println!("char_rect {:?}", char_rect);
-        for (mut camera_transform, projection) in camera_query.iter_mut() {
+        full_bb = match full_bb {
+            None => {
+                player_translation = player_transform.translation;
+                Some(char_rect)
+            }
+            Some(bb) => Some(expand_bounding_box(&bb, &char_rect)),
+        };
+    }
+
+    if let Some(full_bb) = full_bb {
+        let window = windows.get_primary().expect("should be at least one window so we can compute aspect ratio");
+        let win_width = window.width();
+        let win_height = window.height();
+        let aspect_ratio = win_width / win_height;
+
+        // Add margin.
+        // TODO: Handle case when window is smaller than margin.
+        let full_bb = rect_expand_by(&full_bb, margin);
+
+        for (mut camera_transform, camera_global, mut projection, mut camera) in camera_query.iter_mut() {
+            // TODO: this only needs to happen once, so maybe there is a better place to do this?
+            projection.near = -2000.0;
+            projection.far = 2000.0;
             // println!("projection {:?}", projection);
-            let camera_rect = viewport(&camera_transform, projection);
+            // println!("camera_transform {:?}", camera_transform);
+            // println!("camera_global {:?}", camera_global);
+            // Note: We don't support camera rotation or scale.
+            let camera_rect = viewport(&camera_global, &projection);
             // println!("camera_rect {:?}", camera_rect);
-            let is_player_in_view = is_rect_completely_inside(&char_rect, &camera_rect);
-            if !is_player_in_view {
-                camera_transform.translation = player_transform.translation;
+            if num_players <= 1 {
+                // Center on the player if not in view.
+                let is_player_in_view = is_rect_completely_inside(&full_bb, &camera_rect);
+                if !is_player_in_view {
+                    // Mutate the transform, never the global transform.
+                    camera_transform.translation = player_translation;
+                }
+            } else {
+                // Center on the center of the bounding box of all players.
+                let c = rect_center(&full_bb);
+                camera_transform.translation.x = c.x;
+                camera_transform.translation.y = c.y;
+
+                // Zoom so that all players are in view.
+                let mut wh = rect_width_height(&full_bb);
+                wh = expanded_to_aspect_ratio(&wh, aspect_ratio);
+                // Never zoom in smaller than the window.
+                if wh.x < win_width || wh.y < win_height {
+                    wh = Vec2::new(win_width, win_height);
+                }
+                projection.update(wh.x, wh.y);
+                camera.projection_matrix = projection.get_projection_matrix();
+                camera.depth_calculation = projection.depth_calculation();
             }
         }
     }
@@ -276,15 +398,18 @@ fn animate_sprite_system(
 }
 
 fn position_display_system(
-    mut character_query: Query<&Transform, With<Player>>,
-    mut text_query: Query<&mut Text, With<PlayerPositionDisplay>>,
+    mut character_query: Query<(&Transform, &Player)>,
+    mut text_query: Query<(&mut Text, &PlayerPositionDisplay)>,
 ) {
-    for char_transform in character_query.iter_mut() {
-        for mut text in text_query.iter_mut() {
-            text.value = format!("Position: ({:.1}, {:.1}, {:.1})",
-                char_transform.translation.x,
-                char_transform.translation.y,
-                char_transform.translation.z);
+    for (char_transform, player) in character_query.iter_mut() {
+        for (mut text, ppd) in text_query.iter_mut() {
+            if ppd.player_id == player.id {
+                text.value = format!("P{} Position: ({:.1}, {:.1}, {:.1})",
+                    player.id + 1,
+                    char_transform.translation.x,
+                    char_transform.translation.y,
+                    char_transform.translation.z);
+            }
         }
     }
 }

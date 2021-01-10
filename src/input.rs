@@ -1,6 +1,7 @@
 // use std::collections::HashSet;
 use bevy::prelude::*;
 use bevy::utils::{AHashExt, HashSet};
+use std::convert::TryFrom;
 
 // Add this plugin to your app.
 #[derive(Debug, Default)]
@@ -10,7 +11,7 @@ pub struct InputActionPlugin {}
 // actions.
 #[derive(Debug)]
 pub struct InputActionSet {
-    actions: HashSet<Action>,
+    actions: HashSet<(Action, u32)>,
 }
 
 // The application actions.  Raw input like keyboard key presses are mapped to
@@ -67,12 +68,12 @@ impl Default for InputActionSet {
 }
 
 impl InputActionSet {
-    pub fn is_active(&self, action: Action) -> bool {
-        self.actions.contains(&action)
+    pub fn is_active(&self, action: Action, player: u32) -> bool {
+        self.actions.contains(&(action, player))
     }
 
-    fn activate(&mut self, action: Action) {
-        self.actions.insert(action);
+    fn activate(&mut self, action: Action, player: u32) {
+        self.actions.insert((action, player));
     }
 
     fn clear(&mut self) {
@@ -89,47 +90,65 @@ fn action_producer_system(
     input_action_set.clear();
 
     if keyboard_input.pressed(KeyCode::W) {
-        input_action_set.activate(Action::Up);
+        input_action_set.activate(Action::Up, 0);
     }
     if keyboard_input.pressed(KeyCode::A) {
-        input_action_set.activate(Action::Left);
+        input_action_set.activate(Action::Left, 0);
     }
     if keyboard_input.pressed(KeyCode::S) {
-        input_action_set.activate(Action::Down);
+        input_action_set.activate(Action::Down, 0);
     }
     if keyboard_input.pressed(KeyCode::D) {
-        input_action_set.activate(Action::Right);
+        input_action_set.activate(Action::Right, 0);
     }
 
-    for gamepad in gamepad_set.gamepads.iter().cloned() {
+
+    if keyboard_input.pressed(KeyCode::Up) {
+        input_action_set.activate(Action::Up, 1);
+    }
+    if keyboard_input.pressed(KeyCode::Left) {
+        input_action_set.activate(Action::Left, 1);
+    }
+    if keyboard_input.pressed(KeyCode::Down) {
+        input_action_set.activate(Action::Down, 1);
+    }
+    if keyboard_input.pressed(KeyCode::Right) {
+        input_action_set.activate(Action::Right, 1);
+    }
+
+
+    for (i, gamepad) in gamepad_set.gamepads.iter().cloned().enumerate() {
         let left_stick_x = axes.get(GamepadAxis(gamepad, GamepadAxisType::LeftStickX)).expect("gamepad axis LeftStickX");
         let left_stick_y = axes.get(GamepadAxis(gamepad, GamepadAxisType::LeftStickY)).expect("gamepad axis LeftStickY");
+
+        let player_num = u32::try_from(i).expect("brah how many controllers u got?");
+
         if left_stick_x < -0.5 {
-            input_action_set.activate(Action::Left);
+            input_action_set.activate(Action::Left, player_num);
         }
         if left_stick_x > 0.5 {
-            input_action_set.activate(Action::Right);
+            input_action_set.activate(Action::Right, player_num);
         }
         if left_stick_y < -0.5 {
-            input_action_set.activate(Action::Down);
+            input_action_set.activate(Action::Down, player_num);
         }
         if left_stick_y > 0.5 {
-            input_action_set.activate(Action::Up);
+            input_action_set.activate(Action::Up, player_num);
         }
 
         let dpad_x = axes.get(GamepadAxis(gamepad, GamepadAxisType::DPadX)).expect("gamepad axis DPadX");
         let dpad_y = axes.get(GamepadAxis(gamepad, GamepadAxisType::DPadY)).expect("gamepad axis DPadY");
         if dpad_x < -0.01 {
-            input_action_set.activate(Action::Left);
+            input_action_set.activate(Action::Left, player_num);
         }
         if dpad_x > 0.01 {
-            input_action_set.activate(Action::Right);
+            input_action_set.activate(Action::Right, player_num);
         }
         if dpad_y < -0.01 {
-            input_action_set.activate(Action::Down);
+            input_action_set.activate(Action::Down, player_num);
         }
         if dpad_y > 0.01 {
-            input_action_set.activate(Action::Up);
+            input_action_set.activate(Action::Up, player_num);
         }
     }
 }
