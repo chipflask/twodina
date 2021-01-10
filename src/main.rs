@@ -321,7 +321,7 @@ fn update_camera_system(
         let full_bb = rect_expand_by(&full_bb, margin);
 
         for (mut camera_transform, camera_global, mut projection, mut camera) in camera_query.iter_mut() {
-            // this only needs to happen once, so maybe there is a better place to do this?
+            // TODO: this only needs to happen once, so maybe there is a better place to do this?
             projection.near = -2000.0;
             projection.far = 2000.0;
             // println!("projection {:?}", projection);
