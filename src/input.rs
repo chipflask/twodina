@@ -22,6 +22,8 @@ pub enum Action {
     Down,
     Left,
     Right,
+
+    Run,
 }
 
 // Set of gamepads that are currently connected.
@@ -84,6 +86,7 @@ impl InputActionSet {
 fn action_producer_system(
     keyboard_input: Res<Input<KeyCode>>,
     gamepad_set: Res<GamepadSet>,
+    button_inputs: Res<Input<GamepadButton>>,
     axes: Res<Axis<GamepadAxis>>,
     mut input_action_set: ResMut<InputActionSet>,
 ) {
@@ -101,6 +104,9 @@ fn action_producer_system(
     if keyboard_input.pressed(KeyCode::D) {
         input_action_set.activate(Action::Right, 0);
     }
+    if keyboard_input.pressed(KeyCode::LShift) {
+        input_action_set.activate(Action::Run, 0);
+    }
 
 
     if keyboard_input.pressed(KeyCode::Up) {
@@ -114,6 +120,9 @@ fn action_producer_system(
     }
     if keyboard_input.pressed(KeyCode::Right) {
         input_action_set.activate(Action::Right, 1);
+    }
+    if keyboard_input.pressed(KeyCode::RShift) {
+        input_action_set.activate(Action::Run, 1);
     }
 
 
@@ -149,6 +158,10 @@ fn action_producer_system(
         }
         if dpad_y > 0.01 {
             input_action_set.activate(Action::Up, player_num);
+        }
+
+        if button_inputs.pressed(GamepadButton(gamepad, GamepadButtonType::West)) {
+            input_action_set.activate(Action::Run, player_num);
         }
     }
 }

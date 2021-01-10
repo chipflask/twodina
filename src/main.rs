@@ -78,6 +78,12 @@ fn handle_input_system(
             new_velocity = new_velocity.normalize();
         }
 
+        if input_actions.is_active(Action::Run, player.id) {
+            character.movement_speed = character::RUN_SPEED;
+        } else {
+            character.movement_speed = character::WALK_SPEED;
+        }
+
         if let Some(direction) = new_direction {
             character.direction = direction;
         }

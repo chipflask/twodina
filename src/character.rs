@@ -1,6 +1,9 @@
 use bevy::math::Vec3;
 use bevy::prelude::Timer;
 
+pub const WALK_SPEED: f32 = 175.0;
+pub const RUN_SPEED: f32 = 400.0;
+
 // If two scalars have an absolute value difference less than this, then they're
 // considered equal.
 pub const VELOCITY_EPSILON: f32 = 0.001;
@@ -46,7 +49,7 @@ impl Default for Character {
             direction: Direction::South,
             state: CharacterState::Idle,
             velocity: Vec3::zero(),
-            movement_speed: 175.0,
+            movement_speed: WALK_SPEED,
         }
     }
 }
