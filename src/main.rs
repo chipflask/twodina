@@ -235,6 +235,10 @@ fn move_sprite_system(
     mut collider_query: Query<(&Collider, &GlobalTransform)>,
 ) {
     for (character, mut transform, char_global, char_collider, player_option) in char_query.iter_mut() {
+        if character.velocity.abs_diff_eq(Vec2::zero(), VELOCITY_EPSILON) {
+            // Character has zero velocity.  Nothing to do.
+            continue;
+        }
         let mut delta: Vec2 = character.velocity * time.delta_seconds() * character.movement_speed;
         delta.y /= MAP_SKEW;
         let maybe_translation = transform.translation.xy() + delta;
