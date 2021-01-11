@@ -241,7 +241,6 @@ fn move_sprite_system(
         }
         let mut delta: Vec2 = character.velocity * time.delta_seconds() * character.movement_speed;
         delta.y /= MAP_SKEW;
-        let maybe_translation = transform.translation.xy() + delta;
         // should stay between +- 2000.0
 
         let char_isometry = math::Isometry::translation(
@@ -265,8 +264,8 @@ fn move_sprite_system(
             }
         }
         if !does_intersect {
-            transform.translation.x = maybe_translation.x;
-            transform.translation.y = maybe_translation.y;
+            transform.translation.x += delta.x;
+            transform.translation.y += delta.y;
             transform.translation.z = -transform.translation.y / 100.0;
         }
         if let Some(mut player) = player_option {
