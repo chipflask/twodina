@@ -49,10 +49,10 @@ fn main() {
         .add_plugin(input::InputActionPlugin::default())
         .add_resource(TransientState { debug_mode: true })
         .add_startup_system(setup_system.system())
+        .add_system_to_stage(stage::PRE_UPDATE, handle_input_system.system())
         .add_system(animate_sprite_system.system())
         .add_system(move_sprite_system.system())
         .add_system(update_camera_system.system())
-        .add_system(handle_input_system.system())
         .add_system(position_display_system.system())
         .add_system(bevy::input::system::exit_on_esc_system.system())
         .run();
