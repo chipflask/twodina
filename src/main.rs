@@ -245,8 +245,8 @@ fn move_sprite_system(
         // should stay between +- 2000.0
 
         let char_isometry = math::Isometry::translation(
-            char_global.translation.x,
-            char_global.translation.y);
+            char_global.translation.x + delta.x,
+            char_global.translation.y + delta.y);
         let char_aabb = bounding_volume::aabb(&char_collider.shape, &char_isometry);
 
         let mut does_intersect = false;
@@ -264,9 +264,11 @@ fn move_sprite_system(
                 break;
             }
         }
-        transform.translation.x = maybe_translation.x;
-        transform.translation.y = maybe_translation.y;
-        transform.translation.z = -transform.translation.y / 100.0;
+        if !does_intersect {
+            transform.translation.x = maybe_translation.x;
+            transform.translation.y = maybe_translation.y;
+            transform.translation.z = -transform.translation.y / 100.0;
+        }
         if let Some(mut player) = player_option {
             player.is_colliding = does_intersect;
         }
