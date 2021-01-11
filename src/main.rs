@@ -18,6 +18,7 @@ const NUM_PLAYERS: u32 = 2;
 
 struct Player {
     id: u32,
+    is_colliding: bool,
 }
 
 struct PlayerPositionDisplay {
@@ -143,10 +144,11 @@ fn setup_system(
         let texture_atlas = TextureAtlas::from_grid(texture_handle,
                                                     Vec2::new(PLAYER_WIDTH, PLAYER_HEIGHT), 8, 16);
         let texture_atlas_handle = texture_atlases.add(texture_atlas);
+        let scale = Vec3::splat(4.0);
         commands
             .spawn(SpriteSheetBundle {
                 texture_atlas: texture_atlas_handle,
-                transform: Transform::from_scale(Vec3::splat(4.0))
+                transform: Transform::from_scale(scale)
                             .mul_transform(Transform::from_translation(Vec3::new(PLAYER_WIDTH * i as f32 + 20.0, 0.0, 5.0))),
                 ..Default::default()
             })
@@ -165,8 +167,8 @@ fn setup_system(
             })
             .with(AnimatedSprite::with_frame_seconds(0.1))
             .with(Character::default())
-            .with(Player { id: i })
-            .with(Collider::new(Vec2::new(20.0, 25.0)))
+            .with(Player { id: i, is_colliding: false })
+            .with(Collider::new(Vec2::new(20.0, 25.0) * scale.xy()))
             .spawn(TextBundle {
                 text: Text {
                     font: asset_server.load("fonts/FiraSans-Bold.ttf"),
@@ -204,42 +206,42 @@ fn setup_system(
         });
 }
 
-fn collider_translation(v: Vec2) -> math::Translation<f32> {
-    math::Translation::new(v.x, v.y)
-}
-
 fn move_sprite_system(
     time: Res<Time>,
-    mut query: Query<(&Character, &mut Transform, &GlobalTransform, &Collider)>,
+    mut char_query: Query<(&Character, &mut Transform, &GlobalTransform, &Collider, Option<&mut Player>)>,
     mut collider_query: Query<(&Collider, &GlobalTransform)>,
 ) {
-    for (character, mut transform, char_global, char_collider) in query.iter_mut() {
-        let mut delta: Vec3 = character.velocity * time.delta_seconds() * character.movement_speed;
+    for (character, mut transform, char_global, char_collider, player_option) in char_query.iter_mut() {
+        let mut delta: Vec2 = character.velocity * time.delta_seconds() * character.movement_speed;
         delta.y /= MAP_SKEW;
-        let mut maybe_translation = transform.translation + delta;
-        maybe_translation.z = -transform.translation.y / 100.0;
+        let maybe_translation = transform.translation.xy() + delta;
         // should stay between +- 2000.0
-        let char_isometry = math::Isometry::from_parts(
-            collider_translation(char_global.translation.xy()),
-            math::Rotation::identity());
-        let char_aabb = bounding_volume::aabb(&char_collider.bounding_volume, &char_isometry);
+
+        let char_isometry = math::Isometry::translation(
+            char_global.translation.x,
+            char_global.translation.y);
+        let char_aabb = bounding_volume::aabb(&char_collider.shape, &char_isometry);
+
         let mut does_intersect = false;
-        for (collider, collider_transform) in collider_query.iter_mut() {
+        for (collider, collider_global) in collider_query.iter_mut() {
+            // Shouldn't collide with itself.
             if std::ptr::eq(char_collider, collider) {
                 continue;
             }
-            let isometry = math::Isometry::from_parts(
-                collider_translation(collider_transform.translation.xy()),
-                math::Rotation::identity());
-            let collider_aabb = bounding_volume::aabb(&collider.bounding_volume, &isometry);
+            let collider_isometry = math::Isometry::translation(
+                collider_global.translation.x,
+                collider_global.translation.y);
+            let collider_aabb = bounding_volume::aabb(&collider.shape, &collider_isometry);
             if char_aabb.intersects(&collider_aabb) {
                 does_intersect = true;
-                println!("intersected");
                 break;
             }
         }
-        if !does_intersect {
-            transform.translation = maybe_translation;
+        transform.translation.x = maybe_translation.x;
+        transform.translation.y = maybe_translation.y;
+        transform.translation.z = -transform.translation.y / 100.0;
+        if let Some(mut player) = player_option {
+            player.is_colliding = does_intersect;
         }
     }
 }
@@ -444,11 +446,12 @@ fn position_display_system(
     for (char_transform, player) in character_query.iter_mut() {
         for (mut text, ppd) in text_query.iter_mut() {
             if ppd.player_id == player.id {
-                text.value = format!("P{} Position: ({:.1}, {:.1}, {:.1})",
+                text.value = format!("P{} Position: ({:.1}, {:.1}, {:.1}) colliding={}",
                     player.id + 1,
                     char_transform.translation.x,
                     char_transform.translation.y,
-                    char_transform.translation.z);
+                    char_transform.translation.z,
+                    player.is_colliding);
             }
         }
     }

@@ -1,4 +1,4 @@
-use bevy::math::Vec3;
+use bevy::math::Vec2;
 use bevy::prelude::Timer;
 
 pub const WALK_SPEED: f32 = 175.0;
@@ -12,7 +12,7 @@ pub const VELOCITY_EPSILON: f32 = 0.001;
 pub struct Character {
     pub direction: Direction,
     pub state: CharacterState,
-    pub velocity: Vec3,
+    pub velocity: Vec2,
     pub movement_speed: f32,
 }
 
@@ -48,7 +48,7 @@ impl Default for Character {
         Character {
             direction: Direction::South,
             state: CharacterState::Idle,
-            velocity: Vec3::zero(),
+            velocity: Vec2::zero(),
             movement_speed: WALK_SPEED,
         }
     }
