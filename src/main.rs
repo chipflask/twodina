@@ -16,6 +16,12 @@ use input::{Action, InputActionSet};
 
 const NUM_PLAYERS: u32 = 2;
 
+// Game state that shouldn't be saved.
+#[derive(Clone, Debug)]
+struct TransientState {
+    debug_mode: bool,
+}
+
 struct Player {
     id: u32,
     is_colliding: bool,
@@ -29,6 +35,11 @@ struct PlayerPositionDisplay {
 // player.
 struct PlayerCamera;
 
+// Debug entities will be marked with this so that we can despawn them all when
+// debug mode is turned off.
+#[derive(Debug, Default)]
+struct DebugComponent;
+
 const MAP_SKEW: f32 = 1.4;
 
 fn main() {
@@ -36,6 +47,7 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugin(TiledMapPlugin)
         .add_plugin(input::InputActionPlugin::default())
+        .add_resource(TransientState { debug_mode: true })
         .add_startup_system(setup_system.system())
         .add_system(animate_sprite_system.system())
         .add_system(move_sprite_system.system())
@@ -129,6 +141,7 @@ const PLAYER_HEIGHT: f32 = 32.0;
 fn setup_system(
     commands: &mut Commands,
     asset_server: Res<AssetServer>,
+    transient_state: Res<TransientState>,
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
@@ -145,6 +158,7 @@ fn setup_system(
                                                     Vec2::new(PLAYER_WIDTH, PLAYER_HEIGHT), 8, 16);
         let texture_atlas_handle = texture_atlases.add(texture_atlas);
         let scale = Vec3::splat(4.0);
+        let collider_size = Vec2::new(20.0, 25.0);
         commands
             .spawn(SpriteSheetBundle {
                 texture_atlas: texture_atlas_handle,
@@ -152,6 +166,10 @@ fn setup_system(
                             .mul_transform(Transform::from_translation(Vec3::new(PLAYER_WIDTH * i as f32 + 20.0, 0.0, 5.0))),
                 ..Default::default()
             })
+            .with(AnimatedSprite::with_frame_seconds(0.1))
+            .with(Character::default())
+            .with(Player { id: i, is_colliding: false })
+            .with(Collider::new(collider_size * scale.xy()))
             .with_children(|parent| {
                 // add a shadow sprite -- is there a more efficient way where we load this just once??
                 let shadow_handle = asset_server.load("sprites/shadow.png");
@@ -164,11 +182,16 @@ fn setup_system(
                     material: materials.add(shadow_handle.into()),
                     ..Default::default()
                 });
+                if transient_state.debug_mode {
+                    parent.spawn(SpriteBundle {
+                        material: materials.add(Color::rgba(0.4, 0.4, 0.9, 0.5).into()),
+                        // Don't scale here since the whole character will be scaled.
+                        sprite: Sprite::new(collider_size),
+                        ..Default::default()
+                    })
+                    .with(DebugComponent::default());
+                }
             })
-            .with(AnimatedSprite::with_frame_seconds(0.1))
-            .with(Character::default())
-            .with(Player { id: i, is_colliding: false })
-            .with(Collider::new(Vec2::new(20.0, 25.0) * scale.xy()))
             .spawn(TextBundle {
                 text: Text {
                     font: asset_server.load("fonts/FiraSans-Bold.ttf"),
