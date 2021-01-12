@@ -14,6 +14,7 @@ pub struct Character {
     pub state: CharacterState,
     pub velocity: Vec2,
     pub movement_speed: f32,
+    pub is_colliding: bool,
 }
 
 #[derive(Debug)]
@@ -50,6 +51,7 @@ impl Default for Character {
             state: CharacterState::Idle,
             velocity: Vec2::zero(),
             movement_speed: WALK_SPEED,
+            is_colliding: false,
         }
     }
 }

@@ -24,7 +24,6 @@ struct TransientState {
 
 struct Player {
     id: u32,
-    is_colliding: bool,
 }
 
 struct PlayerPositionDisplay {
@@ -151,7 +150,13 @@ fn handle_input_system(
                     }
                 }
             }
+        } else if character.is_colliding {
+            // stop animation if collision detected for players
+            if let Some(mut animation) = animated_sprite_option {
+                animation.reset_immediately(1);
+            }
         }
+
         character.state = new_state;
     }
 }
@@ -189,7 +194,7 @@ fn setup_system(
             })
             .with(AnimatedSprite::with_frame_seconds(0.1))
             .with(Character::default())
-            .with(Player { id: i, is_colliding: false })
+            .with(Player { id: i })
             .with(Collider::new(collider_size * scale.xy()))
             .with_children(|parent| {
                 // add a shadow sprite -- is there a more efficient way where we load this just once??
@@ -261,10 +266,10 @@ fn setup_system(
 
 fn move_sprite_system(
     time: Res<Time>,
-    mut char_query: Query<(&Character, &mut Transform, &GlobalTransform, &Collider, Option<&mut Player>)>,
+    mut char_query: Query<(&mut Character, &mut Transform, &GlobalTransform, &Collider)>,
     mut collider_query: Query<(&Collider, &GlobalTransform)>,
 ) {
-    for (character, mut transform, char_global, char_collider, player_option) in char_query.iter_mut() {
+    for (mut character, mut transform, char_global, char_collider) in char_query.iter_mut() {
         if character.velocity.abs_diff_eq(Vec2::zero(), VELOCITY_EPSILON) {
             // Character has zero velocity.  Nothing to do.
             continue;
@@ -298,9 +303,7 @@ fn move_sprite_system(
             transform.translation.y += delta.y;
             transform.translation.z = -transform.translation.y / 100.0;
         }
-        if let Some(mut player) = player_option {
-            player.is_colliding = does_intersect;
-        }
+        character.is_colliding = does_intersect;
     }
 }
 
@@ -498,10 +501,10 @@ fn animate_sprite_system(
 }
 
 fn position_display_system(
-    mut character_query: Query<(&Transform, &Player)>,
+    mut character_query: Query<(&Transform, &Player, &Character)>,
     mut text_query: Query<(&mut Text, &PlayerPositionDisplay)>,
 ) {
-    for (char_transform, player) in character_query.iter_mut() {
+    for (char_transform, player, character) in character_query.iter_mut() {
         for (mut text, ppd) in text_query.iter_mut() {
             if ppd.player_id == player.id {
                 text.value = format!("P{} Position: ({:.1}, {:.1}, {:.1}) colliding={}",
@@ -509,7 +512,7 @@ fn position_display_system(
                     char_transform.translation.x,
                     char_transform.translation.y,
                     char_transform.translation.z,
-                    player.is_colliding);
+                    character.is_colliding);
             }
         }
     }
