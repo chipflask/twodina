@@ -12,6 +12,7 @@ pub struct InputActionPlugin {}
 #[derive(Debug)]
 pub struct InputActionSet {
     actions: HashSet<(Action, u32)>,
+    flags: HashSet<Flag>,
 }
 
 // The application actions.  Raw input like keyboard key presses are mapped to
@@ -24,6 +25,13 @@ pub enum Action {
     Right,
 
     Run,
+}
+
+// inputs that toggle values on key/button press map to these
+#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
+pub enum Flag {
+    Debug,
+    // Sneak
 }
 
 // Set of gamepads that are currently connected.
@@ -64,7 +72,8 @@ fn gamepad_connection_system(
 impl Default for InputActionSet {
     fn default() -> Self {
         InputActionSet {
-            actions: HashSet::with_capacity(8)
+            actions: HashSet::with_capacity(8),
+            flags: HashSet::with_capacity(8),
         }
     }
 }
@@ -73,6 +82,9 @@ impl InputActionSet {
     pub fn is_active(&self, action: Action, player: u32) -> bool {
         self.actions.contains(&(action, player))
     }
+    pub fn has_flag(&self, flag: Flag) -> bool {
+        self.flags.contains(&flag)
+    }
 
     fn activate(&mut self, action: Action, player: u32) {
         self.actions.insert((action, player));
@@ -80,6 +92,14 @@ impl InputActionSet {
 
     fn clear(&mut self) {
         self.actions.clear();
+    }
+
+    fn toggle(&mut self, flag: Flag) {
+        if self.flags.contains(&flag) {
+            self.flags.remove(&flag);
+        } else {
+            self.flags.insert(flag);
+        }
     }
 }
 
@@ -91,6 +111,10 @@ fn action_producer_system(
     mut input_action_set: ResMut<InputActionSet>,
 ) {
     input_action_set.clear();
+
+    if keyboard_input.just_released(KeyCode::F3) {
+        input_action_set.toggle(Flag::Debug);
+    }
 
     if keyboard_input.pressed(KeyCode::W) {
         input_action_set.activate(Action::Up, 0);

@@ -12,7 +12,7 @@ mod input;
 
 use character::{AnimatedSprite, Character, CharacterState, Direction, VELOCITY_EPSILON};
 use collider::Collider;
-use input::{Action, InputActionSet};
+use input::{Action, Flag, InputActionSet};
 
 const NUM_PLAYERS: u32 = 2;
 
@@ -38,7 +38,7 @@ struct PlayerCamera;
 // Debug entities will be marked with this so that we can despawn them all when
 // debug mode is turned off.
 #[derive(Debug, Default)]
-struct DebugComponent;
+struct Debuggable;
 
 const MAP_SKEW: f32 = 1.4;
 
@@ -47,7 +47,7 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugin(TiledMapPlugin)
         .add_plugin(input::InputActionPlugin::default())
-        .add_resource(TransientState { debug_mode: true })
+        .add_resource(TransientState { debug_mode: false })
         .add_startup_system(setup_system.system())
         .add_system_to_stage(stage::PRE_UPDATE, handle_input_system.system())
         .add_system(animate_sprite_system.system())
@@ -61,8 +61,29 @@ fn main() {
 
 fn handle_input_system(
     input_actions: Res<InputActionSet>,
+    mut transient_state: ResMut<TransientState>,
     mut query: Query<(&mut Character, &Player, Option<&mut AnimatedSprite>)>,
+    mut debuggable: Query<&mut Visible,  With<Debuggable>>
 ) {
+
+    // check for debug status flag differing from transient_state to determine when to hide/show debug stuff
+    if input_actions.has_flag(Flag::Debug) {
+        if !transient_state.debug_mode {
+            // for now hide, but ideally we spawn debug things here
+            for mut visible in debuggable.iter_mut() {
+                visible.is_visible = true;
+            }
+            transient_state.debug_mode = true;
+        }
+    } else if transient_state.debug_mode {
+        // for now show
+        for mut visible in debuggable.iter_mut() {
+            visible.is_visible = false;
+        }
+        transient_state.debug_mode = false;
+    }
+
+
     for (mut character, player, animated_sprite_option) in query.iter_mut() {
         let mut new_direction = None;
         let mut new_velocity = Vec2::zero();
@@ -182,15 +203,18 @@ fn setup_system(
                     material: materials.add(shadow_handle.into()),
                     ..Default::default()
                 });
-                if transient_state.debug_mode {
-                    parent.spawn(SpriteBundle {
-                        material: materials.add(Color::rgba(0.4, 0.4, 0.9, 0.5).into()),
-                        // Don't scale here since the whole character will be scaled.
-                        sprite: Sprite::new(collider_size),
+                parent.spawn(SpriteBundle {
+                    material: materials.add(Color::rgba(0.4, 0.4, 0.9, 0.5).into()),
+                    // Don't scale here since the whole character will be scaled.
+                    sprite: Sprite::new(collider_size),
+                    visible: Visible {
+                        is_transparent: true,
+                        is_visible: transient_state.debug_mode,
                         ..Default::default()
-                    })
-                    .with(DebugComponent::default());
-                }
+                    },
+                    ..Default::default()
+                })
+                .with(Debuggable::default());
             })
             .spawn(TextBundle {
                 text: Text {
@@ -211,9 +235,15 @@ fn setup_system(
                     },
                     ..Default::default()
                 },
+                visible: Visible {
+                    is_transparent: true,
+                    is_visible: false,
+                    ..Default::default()
+                },
                 ..Default::default()
             })
-            .with(PlayerPositionDisplay { player_id: i});
+            .with(PlayerPositionDisplay { player_id: i})
+            .with(Debuggable::default());
     }
     // Map
     commands
