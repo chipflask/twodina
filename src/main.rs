@@ -184,7 +184,8 @@ fn setup_system(
                                                     Vec2::new(PLAYER_WIDTH, PLAYER_HEIGHT), 8, 16);
         let texture_atlas_handle = texture_atlases.add(texture_atlas);
         let scale = Vec3::splat(4.0);
-        let collider_size = Vec2::new(20.0, 25.0);
+        let collider_size = Vec2::new(20.0, 10.0);
+        let collider_offset = Vec2::new(0.0, -10.0);
         commands
             .spawn(SpriteSheetBundle {
                 texture_atlas: texture_atlas_handle,
@@ -195,7 +196,7 @@ fn setup_system(
             .with(AnimatedSprite::with_frame_seconds(0.1))
             .with(Character::default())
             .with(Player { id: i })
-            .with(Collider::new(collider_size * scale.xy()))
+            .with(Collider::new(collider_size * scale.xy(), collider_offset * scale.xy()))
             .with_children(|parent| {
                 // add a shadow sprite -- is there a more efficient way where we load this just once??
                 let shadow_handle = asset_server.load("sprites/shadow.png");
@@ -212,6 +213,7 @@ fn setup_system(
                     material: materials.add(Color::rgba(0.4, 0.4, 0.9, 0.5).into()),
                     // Don't scale here since the whole character will be scaled.
                     sprite: Sprite::new(collider_size),
+                    transform: Transform::from_translation(Vec3::new(collider_offset.x, collider_offset.y, 0.0)),
                     visible: Visible {
                         is_transparent: true,
                         is_visible: transient_state.debug_mode,
@@ -279,8 +281,8 @@ fn move_sprite_system(
         // should stay between +- 2000.0
 
         let char_isometry = math::Isometry::translation(
-            char_global.translation.x + delta.x,
-            char_global.translation.y + delta.y);
+            char_global.translation.x + delta.x + char_collider.offset.x,
+            char_global.translation.y + delta.y + char_collider.offset.y);
         let char_aabb = bounding_volume::aabb(&char_collider.shape, &char_isometry);
 
         let mut does_intersect = false;
@@ -290,8 +292,8 @@ fn move_sprite_system(
                 continue;
             }
             let collider_isometry = math::Isometry::translation(
-                collider_global.translation.x,
-                collider_global.translation.y);
+                collider_global.translation.x + collider.offset.x,
+                collider_global.translation.y + collider.offset.y);
             let collider_aabb = bounding_volume::aabb(&collider.shape, &collider_isometry);
             if char_aabb.intersects(&collider_aabb) {
                 does_intersect = true;
