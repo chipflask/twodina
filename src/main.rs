@@ -1,14 +1,26 @@
+use std;
 use std::convert::TryFrom;
 
 use bevy::{prelude::*, render::camera::{Camera, CameraProjection, OrthographicProjection}};
 use bevy_tiled_prototype::{TiledMapCenter, TiledMapComponents, TiledMapPlugin};
+use bevy::math::Vec3Swizzles;
+use ncollide2d::{bounding_volume::{self, BoundingVolume}, math};
 
 mod character;
-use character::{AnimatedSprite, Character, CharacterState, Direction, VELOCITY_EPSILON};
+mod collider;
 mod input;
-use input::{Action, InputActionSet};
+
+use character::{AnimatedSprite, Character, CharacterState, Direction, VELOCITY_EPSILON};
+use collider::Collider;
+use input::{Action, Flag, InputActionSet};
 
 const NUM_PLAYERS: u32 = 2;
+
+// Game state that shouldn't be saved.
+#[derive(Clone, Debug)]
+struct TransientState {
+    debug_mode: bool,
+}
 
 struct Player {
     id: u32,
@@ -22,6 +34,11 @@ struct PlayerPositionDisplay {
 // player.
 struct PlayerCamera;
 
+// Debug entities will be marked with this so that we can despawn them all when
+// debug mode is turned off.
+#[derive(Debug, Default)]
+struct Debuggable;
+
 const MAP_SKEW: f32 = 1.4;
 
 fn main() {
@@ -29,11 +46,12 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugin(TiledMapPlugin)
         .add_plugin(input::InputActionPlugin::default())
+        .add_resource(TransientState { debug_mode: false })
         .add_startup_system(setup_system.system())
+        .add_system_to_stage(stage::PRE_UPDATE, handle_input_system.system())
         .add_system(animate_sprite_system.system())
         .add_system(move_sprite_system.system())
         .add_system(update_camera_system.system())
-        .add_system(handle_input_system.system())
         .add_system(position_display_system.system())
         .add_system(bevy::input::system::exit_on_esc_system.system())
         .run();
@@ -42,9 +60,30 @@ fn main() {
 
 fn handle_input_system(
     input_actions: Res<InputActionSet>,
-    mut query: Query<(&mut Character, &Player, Option<&mut AnimatedSprite>)>,
+    mut transient_state: ResMut<TransientState>,
+    mut query: Query<(&mut Character, &Player)>,
+    mut debuggable: Query<&mut Visible,  With<Debuggable>>
 ) {
-    for (mut character, player, animated_sprite_option) in query.iter_mut() {
+
+    // check for debug status flag differing from transient_state to determine when to hide/show debug stuff
+    if input_actions.has_flag(Flag::Debug) {
+        if !transient_state.debug_mode {
+            // for now hide, but ideally we spawn debug things here
+            for mut visible in debuggable.iter_mut() {
+                visible.is_visible = true;
+            }
+            transient_state.debug_mode = true;
+        }
+    } else if transient_state.debug_mode {
+        // for now show
+        for mut visible in debuggable.iter_mut() {
+            visible.is_visible = false;
+        }
+        transient_state.debug_mode = false;
+    }
+
+
+    for (mut character, player) in query.iter_mut() {
         let mut new_direction = None;
         let mut new_velocity = Vec2::zero();
         let mut new_state = CharacterState::Idle;
@@ -91,28 +130,7 @@ fn handle_input_system(
         character.velocity.y = new_velocity.y;
         // Don't modify z if the character has a z velocity for some reason.
 
-        let old_state = character.state;
-        if old_state != new_state {
-            // We're transitioning to a new state.
-            match new_state {
-                CharacterState::Idle => {
-                    character.make_idle();
-                    if let Some(mut animated_sprite) = animated_sprite_option {
-                        animated_sprite.reset();
-                    }
-                }
-                CharacterState::Walking => {
-                    if let Some(mut animated_sprite) = animated_sprite_option {
-                        // Reset immediately to frame 1 so that the character looks like it starts
-                        // walking when you press the key, not sliding until the next animation
-                        // frame.  The fact that it's index 1 is just because of how our sprites
-                        // are made, with the idle frame at index 1.
-                        animated_sprite.reset_immediately(1);
-                    }
-                }
-            }
-        }
-        character.state = new_state;
+        character.set_state(new_state);
     }
 }
 
@@ -122,6 +140,7 @@ const PLAYER_HEIGHT: f32 = 32.0;
 fn setup_system(
     commands: &mut Commands,
     asset_server: Res<AssetServer>,
+    transient_state: Res<TransientState>,
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
@@ -137,13 +156,20 @@ fn setup_system(
         let texture_atlas = TextureAtlas::from_grid(texture_handle,
                                                     Vec2::new(PLAYER_WIDTH, PLAYER_HEIGHT), 8, 16);
         let texture_atlas_handle = texture_atlases.add(texture_atlas);
+        let scale = Vec3::splat(4.0);
+        let collider_size = Vec2::new(13.0, 4.5);
+        let collider_offset = Vec2::new(0.0, -12.5);
         commands
             .spawn(SpriteSheetBundle {
                 texture_atlas: texture_atlas_handle,
-                transform: Transform::from_scale(Vec3::splat(4.0))
-                            .mul_transform(Transform::from_translation(Vec3::new(PLAYER_WIDTH * i as f32 + 20.0, 0.0, 5.0))),
+                transform: Transform::from_scale(scale)
+                            .mul_transform(Transform::from_translation(Vec3::new(PLAYER_WIDTH * i as f32 + 20.0, 0.0, 0.0))),
                 ..Default::default()
             })
+            .with(AnimatedSprite::with_frame_seconds(0.1))
+            .with(Character::default())
+            .with(Player { id: i })
+            .with(Collider::new(collider_size * scale.xy(), collider_offset * scale.xy()))
             .with_children(|parent| {
                 // add a shadow sprite -- is there a more efficient way where we load this just once??
                 let shadow_handle = asset_server.load("sprites/shadow.png");
@@ -156,10 +182,20 @@ fn setup_system(
                     material: materials.add(shadow_handle.into()),
                     ..Default::default()
                 });
+                parent.spawn(SpriteBundle {
+                    material: materials.add(Color::rgba(0.4, 0.4, 0.9, 0.5).into()),
+                    // Don't scale here since the whole character will be scaled.
+                    sprite: Sprite::new(collider_size),
+                    transform: Transform::from_translation(Vec3::new(collider_offset.x, collider_offset.y, 0.0)),
+                    visible: Visible {
+                        is_transparent: true,
+                        is_visible: transient_state.debug_mode,
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                })
+                .with(Debuggable::default());
             })
-            .with(AnimatedSprite::with_frame_seconds(0.1))
-            .with(Character::default())
-            .with(Player { id: i })
             .spawn(TextBundle {
                 text: Text {
                     font: asset_server.load("fonts/FiraSans-Bold.ttf"),
@@ -179,9 +215,15 @@ fn setup_system(
                     },
                     ..Default::default()
                 },
+                visible: Visible {
+                    is_transparent: true,
+                    is_visible: false,
+                    ..Default::default()
+                },
                 ..Default::default()
             })
-            .with(PlayerPositionDisplay { player_id: i});
+            .with(PlayerPositionDisplay { player_id: i})
+            .with(Debuggable::default());
     }
     // Map
     commands
@@ -199,14 +241,44 @@ fn setup_system(
 
 fn move_sprite_system(
     time: Res<Time>,
-    mut query: Query<(&Character, &mut Transform)>,
+    mut char_query: Query<(&mut Character, &mut Transform, &GlobalTransform, &Collider)>,
+    mut collider_query: Query<(&Collider, &GlobalTransform)>,
 ) {
-    for (character, mut transform) in query.iter_mut() {
-        let mut delta: Vec3 = character.velocity * time.delta_seconds() * character.movement_speed;
+    for (mut character, mut transform, char_global, char_collider) in char_query.iter_mut() {
+        if character.velocity.abs_diff_eq(Vec2::zero(), VELOCITY_EPSILON) {
+            // Character has zero velocity.  Nothing to do.
+            continue;
+        }
+        let mut delta: Vec2 = character.velocity * time.delta_seconds() * character.movement_speed;
         delta.y /= MAP_SKEW;
-        transform.translation = transform.translation + delta;
         // should stay between +- 2000.0
-        transform.translation.z = -transform.translation.y / 100.0;
+
+        let char_isometry = math::Isometry::translation(
+            char_global.translation.x + delta.x + char_collider.offset.x,
+            char_global.translation.y + delta.y + char_collider.offset.y);
+        let char_aabb = bounding_volume::aabb(&char_collider.shape, &char_isometry);
+
+        let mut does_intersect = false;
+        for (collider, collider_global) in collider_query.iter_mut() {
+            // Shouldn't collide with itself.
+            if std::ptr::eq(char_collider, collider) {
+                continue;
+            }
+            let collider_isometry = math::Isometry::translation(
+                collider_global.translation.x + collider.offset.x,
+                collider_global.translation.y + collider.offset.y);
+            let collider_aabb = bounding_volume::aabb(&collider.shape, &collider_isometry);
+            if char_aabb.intersects(&collider_aabb) {
+                does_intersect = true;
+                break;
+            }
+        }
+        if !does_intersect {
+            transform.translation.x += delta.x;
+            transform.translation.y += delta.y;
+            transform.translation.z = -transform.translation.y / 100.0;
+        }
+        character.is_colliding = does_intersect;
     }
 }
 
@@ -370,8 +442,26 @@ fn animate_sprite_system(
     mut query: Query<(&mut TextureAtlasSprite, &Handle<TextureAtlas>, &mut AnimatedSprite, Option<&Character>)>
 ) {
     for (mut sprite, texture_atlas_handle, mut animated_sprite, character_option) in query.iter_mut() {
+        // If character just started walking or is colliding, always show
+        // stepping frame, and do it immediately.  Don't wait for the timer's
+        // next tick.
+        let is_stepping = character_option.map_or(false, |ch| {
+            let state = ch.state();
+
+            state == CharacterState::Walking
+                && (ch.is_colliding || state != ch.previous_state())
+        });
+
+        // Reset to the beginning of the animation when the character becomes
+        // idle.
+        if let Some(character) = character_option {
+            if character.did_just_become_idle() {
+                animated_sprite.reset();
+            }
+        }
+
         animated_sprite.timer.tick(time.delta_seconds());
-        if animated_sprite.needs_paint || animated_sprite.timer.finished() {
+        if is_stepping || animated_sprite.timer.finished() {
             let texture_atlas = texture_atlases.get(texture_atlas_handle).expect("should have found texture atlas handle");
             let total_num_cells = texture_atlas.textures.len();
             let (num_cells_in_animation, start_index) = match character_option {
@@ -389,32 +479,38 @@ fn animate_sprite_system(
                     };
                     let num_cells_per_row = 8;
 
-                    match character.state {
+                    match character.state() {
                         CharacterState::Idle    => (1, row * num_cells_per_row + 1),
                         CharacterState::Walking => (3, row * num_cells_per_row),
                     }
                 }
             };
-            let index_in_animation = (animated_sprite.animation_index + 1) % num_cells_in_animation;
-            animated_sprite.animation_index = index_in_animation;
-            sprite.index = ((start_index + index_in_animation as usize) % total_num_cells) as u32;
-            animated_sprite.done_painting();
+            let mut new_anim_index = if is_stepping {
+                // Index of taking a step.
+                2
+            } else {
+                animated_sprite.animation_index + 1
+            };
+            new_anim_index = new_anim_index % num_cells_in_animation;
+            animated_sprite.animation_index = new_anim_index;
+            sprite.index = ((start_index + new_anim_index as usize) % total_num_cells) as u32;
         }
     }
 }
 
 fn position_display_system(
-    mut character_query: Query<(&Transform, &Player)>,
+    mut character_query: Query<(&Transform, &Player, &Character)>,
     mut text_query: Query<(&mut Text, &PlayerPositionDisplay)>,
 ) {
-    for (char_transform, player) in character_query.iter_mut() {
+    for (char_transform, player, character) in character_query.iter_mut() {
         for (mut text, ppd) in text_query.iter_mut() {
             if ppd.player_id == player.id {
-                text.value = format!("P{} Position: ({:.1}, {:.1}, {:.1})",
+                text.value = format!("P{} Position: ({:.1}, {:.1}, {:.1}) colliding={}",
                     player.id + 1,
                     char_transform.translation.x,
                     char_transform.translation.y,
-                    char_transform.translation.z);
+                    char_transform.translation.z,
+                    character.is_colliding);
             }
         }
     }
