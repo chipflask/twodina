@@ -11,7 +11,8 @@ pub const VELOCITY_EPSILON: f32 = 0.001;
 #[derive(Debug)]
 pub struct Character {
     pub direction: Direction,
-    pub state: CharacterState,
+    state: CharacterState,
+    previous_state: CharacterState,
     pub velocity: Vec2,
     pub movement_speed: f32,
     pub is_colliding: bool,
@@ -21,7 +22,6 @@ pub struct Character {
 pub struct AnimatedSprite {
     pub animation_index: u32,
     pub timer: Timer,
-    pub needs_paint: bool,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -39,8 +39,21 @@ pub enum CharacterState {
 }
 
 impl Character {
-    pub fn make_idle(&mut self) {
-        self.state = CharacterState::Idle;
+    pub fn state(&self) -> CharacterState {
+        self.state
+    }
+
+    pub fn set_state(&mut self, state: CharacterState) {
+        self.previous_state = self.state;
+        self.state = state;
+    }
+
+    pub fn previous_state(&self) -> CharacterState {
+        self.previous_state
+    }
+
+    pub fn did_just_become_idle(&self) -> bool {
+        self.previous_state != self.state && self.state == CharacterState::Idle
     }
 }
 
@@ -49,6 +62,7 @@ impl Default for Character {
         Character {
             direction: Direction::South,
             state: CharacterState::Idle,
+            previous_state: CharacterState::Idle,
             velocity: Vec2::zero(),
             movement_speed: WALK_SPEED,
             is_colliding: false,
@@ -62,20 +76,10 @@ impl AnimatedSprite {
         AnimatedSprite {
             animation_index: 0,
             timer: Timer::from_seconds(seconds, true),
-            needs_paint: false,
         }
     }
 
     pub fn reset(&mut self) {
         self.animation_index = 0;
-    }
-
-    pub fn reset_immediately(&mut self, animation_index: u32) {
-        self.animation_index = animation_index;
-        self.needs_paint = true;
-    }
-
-    pub fn done_painting(&mut self) {
-        self.needs_paint = false;
     }
 }

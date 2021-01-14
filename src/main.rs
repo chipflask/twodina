@@ -61,7 +61,7 @@ fn main() {
 fn handle_input_system(
     input_actions: Res<InputActionSet>,
     mut transient_state: ResMut<TransientState>,
-    mut query: Query<(&mut Character, &Player, Option<&mut AnimatedSprite>)>,
+    mut query: Query<(&mut Character, &Player)>,
     mut debuggable: Query<&mut Visible,  With<Debuggable>>
 ) {
 
@@ -83,7 +83,7 @@ fn handle_input_system(
     }
 
 
-    for (mut character, player, animated_sprite_option) in query.iter_mut() {
+    for (mut character, player) in query.iter_mut() {
         let mut new_direction = None;
         let mut new_velocity = Vec2::zero();
         let mut new_state = CharacterState::Idle;
@@ -130,34 +130,7 @@ fn handle_input_system(
         character.velocity.y = new_velocity.y;
         // Don't modify z if the character has a z velocity for some reason.
 
-        let old_state = character.state;
-        if old_state != new_state {
-            // We're transitioning to a new state.
-            match new_state {
-                CharacterState::Idle => {
-                    character.make_idle();
-                    if let Some(mut animated_sprite) = animated_sprite_option {
-                        animated_sprite.reset();
-                    }
-                }
-                CharacterState::Walking => {
-                    if let Some(mut animated_sprite) = animated_sprite_option {
-                        // Reset immediately to frame 1 so that the character looks like it starts
-                        // walking when you press the key, not sliding until the next animation
-                        // frame.  The fact that it's index 1 is just because of how our sprites
-                        // are made, with the idle frame at index 1.
-                        animated_sprite.reset_immediately(1);
-                    }
-                }
-            }
-        } else if character.is_colliding {
-            // stop animation if collision detected for players
-            if let Some(mut animation) = animated_sprite_option {
-                animation.reset_immediately(1);
-            }
-        }
-
-        character.state = new_state;
+        character.set_state(new_state);
     }
 }
 
@@ -469,8 +442,26 @@ fn animate_sprite_system(
     mut query: Query<(&mut TextureAtlasSprite, &Handle<TextureAtlas>, &mut AnimatedSprite, Option<&Character>)>
 ) {
     for (mut sprite, texture_atlas_handle, mut animated_sprite, character_option) in query.iter_mut() {
+        // If character just started walking or is colliding, always show
+        // stepping frame, and do it immediately.  Don't wait for the timer's
+        // next tick.
+        let is_stepping = character_option.map_or(false, |ch| {
+            let state = ch.state();
+
+            state == CharacterState::Walking
+                && (ch.is_colliding || state != ch.previous_state())
+        });
+
+        // Reset to the beginning of the animation when the character becomes
+        // idle.
+        if let Some(character) = character_option {
+            if character.did_just_become_idle() {
+                animated_sprite.reset();
+            }
+        }
+
         animated_sprite.timer.tick(time.delta_seconds());
-        if animated_sprite.needs_paint || animated_sprite.timer.finished() {
+        if is_stepping || animated_sprite.timer.finished() {
             let texture_atlas = texture_atlases.get(texture_atlas_handle).expect("should have found texture atlas handle");
             let total_num_cells = texture_atlas.textures.len();
             let (num_cells_in_animation, start_index) = match character_option {
@@ -488,16 +479,21 @@ fn animate_sprite_system(
                     };
                     let num_cells_per_row = 8;
 
-                    match character.state {
+                    match character.state() {
                         CharacterState::Idle    => (1, row * num_cells_per_row + 1),
                         CharacterState::Walking => (3, row * num_cells_per_row),
                     }
                 }
             };
-            let index_in_animation = (animated_sprite.animation_index + 1) % num_cells_in_animation;
-            animated_sprite.animation_index = index_in_animation;
-            sprite.index = ((start_index + index_in_animation as usize) % total_num_cells) as u32;
-            animated_sprite.done_painting();
+            let mut new_anim_index = if is_stepping {
+                // Index of taking a step.
+                2
+            } else {
+                animated_sprite.animation_index + 1
+            };
+            new_anim_index = new_anim_index % num_cells_in_animation;
+            animated_sprite.animation_index = new_anim_index;
+            sprite.index = ((start_index + new_anim_index as usize) % total_num_cells) as u32;
         }
     }
 }
