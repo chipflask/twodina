@@ -157,8 +157,8 @@ fn setup_system(
                                                     Vec2::new(PLAYER_WIDTH, PLAYER_HEIGHT), 8, 16);
         let texture_atlas_handle = texture_atlases.add(texture_atlas);
         let scale = Vec3::splat(4.0);
-        let collider_size = Vec2::new(15.0, 8.0);
-        let collider_offset = Vec2::new(0.0, -10.0);
+        let collider_size = Vec2::new(13.0, 4.5);
+        let collider_offset = Vec2::new(0.0, -12.5);
         commands
             .spawn(SpriteSheetBundle {
                 texture_atlas: texture_atlas_handle,
