@@ -119,6 +119,9 @@ fn handle_input_system(
 
         if input_actions.is_active(Action::Run, player.id) {
             character.movement_speed = character::RUN_SPEED;
+            if new_state == CharacterState::Walking {
+                new_state = CharacterState::Running;
+            }
         } else {
             character.movement_speed = character::WALK_SPEED;
         }
@@ -482,6 +485,7 @@ fn animate_sprite_system(
                     match character.state() {
                         CharacterState::Idle    => (1, row * num_cells_per_row + 1),
                         CharacterState::Walking => (4, row * num_cells_per_row),
+                        CharacterState::Running => (4, (row + 4) * num_cells_per_row),
                     }
                 }
             };

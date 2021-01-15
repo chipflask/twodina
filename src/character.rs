@@ -36,6 +36,7 @@ pub enum Direction {
 pub enum CharacterState {
     Idle,
     Walking,
+    Running,
 }
 
 impl Character {
