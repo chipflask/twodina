@@ -481,7 +481,7 @@ fn animate_sprite_system(
 
                     match character.state() {
                         CharacterState::Idle    => (1, row * num_cells_per_row + 1),
-                        CharacterState::Walking => (3, row * num_cells_per_row),
+                        CharacterState::Walking => (4, row * num_cells_per_row),
                     }
                 }
             };
