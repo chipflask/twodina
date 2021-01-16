@@ -56,6 +56,10 @@ impl Character {
     pub fn did_just_become_idle(&self) -> bool {
         self.previous_state != self.state && self.state == CharacterState::Idle
     }
+
+    pub fn is_stepping(&self) -> bool {
+        self.state.is_stepping()
+    }
 }
 
 impl Default for Character {
@@ -67,6 +71,15 @@ impl Default for Character {
             velocity: Vec2::zero(),
             movement_speed: WALK_SPEED,
             is_colliding: false,
+        }
+    }
+}
+
+impl CharacterState {
+    pub fn is_stepping(&self) -> bool {
+        match self {
+            CharacterState::Walking | CharacterState::Running => true,
+            CharacterState::Idle => false,
         }
     }
 }
