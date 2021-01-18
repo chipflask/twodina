@@ -261,26 +261,27 @@ fn move_sprite_system(
 
         let char_aabb = char_collider.bounding_volume_with_translation(char_global, delta);
 
-        let mut does_intersect = false;
+        let mut does_intersect = Collision::NoCollision;
         for (collider, collider_global) in collider_query.iter_mut() {
             // Shouldn't collide with itself.
             if std::ptr::eq(char_collider, collider) {
                 continue;
             }
-            match collider.intersect(collider_global, &char_aabb) {
-                Some(Collision::Solid) => {
-                    does_intersect = true;
+            let collision = collider.intersect(collider_global, &char_aabb);
+            match collision {
+                Collision::Solid => {
+                    does_intersect = collision;
                     break;
                 }
-                None => (),
+                Collision::NoCollision => (),
             }
         }
-        if !does_intersect {
+        if !does_intersect.is_solid() {
             transform.translation.x += delta.x;
             transform.translation.y += delta.y;
             transform.translation.z = -transform.translation.y / 100.0;
         }
-        character.is_colliding = does_intersect;
+        character.collision = does_intersect;
     }
 }
 
@@ -450,7 +451,7 @@ fn animate_sprite_system(
         let is_stepping = character_option.map_or(false, |ch| {
             let state = ch.state();
 
-            ch.is_stepping() && (ch.is_colliding || state != ch.previous_state())
+            ch.is_stepping() && (ch.collision.is_solid() || state != ch.previous_state())
         });
 
         // Reset to the beginning of the animation when the character becomes
@@ -507,12 +508,12 @@ fn position_display_system(
     for (char_transform, player, character) in character_query.iter_mut() {
         for (mut text, ppd) in text_query.iter_mut() {
             if ppd.player_id == player.id {
-                text.value = format!("P{} Position: ({:.1}, {:.1}, {:.1}) colliding={}",
+                text.value = format!("P{} Position: ({:.1}, {:.1}, {:.1}) collision={:?}",
                     player.id + 1,
                     char_transform.translation.x,
                     char_transform.translation.y,
                     char_transform.translation.z,
-                    character.is_colliding);
+                    character.collision);
             }
         }
     }

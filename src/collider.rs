@@ -7,8 +7,9 @@ pub struct Collider {
     pub offset: Vec2,
 }
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum Collision {
+    NoCollision,
     Solid,
 }
 
@@ -39,13 +40,22 @@ impl Collider {
         nc::bounding_volume::aabb(&self.shape, &isometry)
     }
 
-    pub fn intersect(&self, global_transform: &GlobalTransform, other: &nc::bounding_volume::AABB<f32>) -> Option<Collision> {
+    pub fn intersect(&self, global_transform: &GlobalTransform, other: &nc::bounding_volume::AABB<f32>) -> Collision {
         let aabb = self.bounding_volume(global_transform);
 
         if !aabb.intersects(other) {
-            return None;
+            return Collision::NoCollision;
         }
 
-        Some(Collision::Solid)
+        Collision::Solid
+    }
+}
+
+impl Collision {
+    pub fn is_solid(&self) -> bool {
+        match self {
+            Collision::Solid => true,
+            Collision::NoCollision => false,
+        }
     }
 }
