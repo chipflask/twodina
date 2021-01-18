@@ -4,14 +4,13 @@ use std::convert::TryFrom;
 use bevy::{prelude::*, render::camera::{Camera, CameraProjection, OrthographicProjection}};
 use bevy_tiled_prototype::{TiledMapCenter, TiledMapComponents, TiledMapPlugin};
 use bevy::math::Vec3Swizzles;
-use ncollide2d::{bounding_volume::{self, BoundingVolume}, math};
 
 mod character;
 mod collider;
 mod input;
 
 use character::{AnimatedSprite, Character, CharacterState, Direction, VELOCITY_EPSILON};
-use collider::Collider;
+use collider::{Collider, Collision};
 use input::{Action, Flag, InputActionSet};
 
 const NUM_PLAYERS: u32 = 2;
@@ -260,10 +259,7 @@ fn move_sprite_system(
         delta.y /= MAP_SKEW;
         // should stay between +- 2000.0
 
-        let char_isometry = math::Isometry::translation(
-            char_global.translation.x + delta.x + char_collider.offset.x,
-            char_global.translation.y + delta.y + char_collider.offset.y);
-        let char_aabb = bounding_volume::aabb(&char_collider.shape, &char_isometry);
+        let char_aabb = char_collider.bounding_volume_with_translation(char_global, delta);
 
         let mut does_intersect = false;
         for (collider, collider_global) in collider_query.iter_mut() {
@@ -271,13 +267,12 @@ fn move_sprite_system(
             if std::ptr::eq(char_collider, collider) {
                 continue;
             }
-            let collider_isometry = math::Isometry::translation(
-                collider_global.translation.x + collider.offset.x,
-                collider_global.translation.y + collider.offset.y);
-            let collider_aabb = bounding_volume::aabb(&collider.shape, &collider_isometry);
-            if char_aabb.intersects(&collider_aabb) {
-                does_intersect = true;
-                break;
+            match collider.intersect(collider_global, &char_aabb) {
+                Some(Collision::Solid) => {
+                    does_intersect = true;
+                    break;
+                }
+                None => (),
             }
         }
         if !does_intersect {
