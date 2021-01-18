@@ -10,7 +10,7 @@ mod collider;
 mod input;
 
 use character::{AnimatedSprite, Character, CharacterState, Direction, VELOCITY_EPSILON};
-use collider::{Collider, Collision};
+use collider::{Collider, ColliderType, Collision};
 use input::{Action, Flag, InputActionSet};
 
 const NUM_PLAYERS: u32 = 2;
@@ -38,6 +38,12 @@ struct PlayerCamera;
 #[derive(Debug, Default)]
 struct Debuggable;
 
+#[derive(Debug)]
+struct PickUpEvent {
+    actor: Entity,
+    object: Entity,
+}
+
 const MAP_SKEW: f32 = 1.0; // We liked ~1.4, but this should be done with the camera
 
 fn main() {
@@ -45,11 +51,13 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugin(TiledMapPlugin)
         .add_plugin(input::InputActionPlugin::default())
+        .add_event::<PickUpEvent>()
         .add_resource(TransientState { debug_mode: false })
         .add_startup_system(setup_system.system())
         .add_system_to_stage(stage::PRE_UPDATE, handle_input_system.system())
         .add_system(animate_sprite_system.system())
         .add_system(move_sprite_system.system())
+        .add_system(pick_up_system.system())
         .add_system(update_camera_system.system())
         .add_system(position_display_system.system())
         .add_system(bevy::input::system::exit_on_esc_system.system())
@@ -175,7 +183,7 @@ fn setup_system(
             .with(AnimatedSprite::with_frame_seconds(0.1))
             .with(Character::default())
             .with(Player { id: i })
-            .with(Collider::new(collider_size * scale.xy(), collider_offset * scale.xy()))
+            .with(Collider::new(ColliderType::Solid, collider_size * scale.xy(), collider_offset * scale.xy()))
             .with_children(|parent| {
                 // add a shadow sprite -- is there a more efficient way where we load this just once??
                 let shadow_handle = asset_server.load("sprites/shadow.png");
@@ -243,14 +251,62 @@ fn setup_system(
             },
             ..Default::default()
         });
+
+    // Items
+    {
+        let texture_handle = asset_server.load("sprites/items.png");
+        let items = vec![
+            // Shield.
+            bevy::sprite::Rect {
+                min: Vec2::new(194.0, 18.0),
+                max: Vec2::new(206.0, 31.0),
+            }
+        ];
+        let texture_atlas = TextureAtlas {
+            texture: texture_handle,
+            size: Vec2::new(432.0, 176.0),
+            textures: items,
+            texture_handles: None,
+        };
+        let texture_atlas_handle = texture_atlases.add(texture_atlas);
+
+        let scale = Vec3::splat(3.0);
+        let collider_size = Vec2::new(12.0, 13.0);
+        let collider_offset = Vec2::new(0.0, 0.0);
+        commands
+            .spawn(SpriteSheetBundle {
+                texture_atlas: texture_atlas_handle,
+                transform: Transform::from_scale(scale)
+                            .mul_transform(Transform::from_translation(Vec3::new(-50.0, 0.0, 0.0))),
+                ..Default::default()
+            })
+            .with(Collider::new(ColliderType::PickUp, collider_size * scale.xy(), collider_offset * scale.xy()))
+            .with_children(|parent| {
+                parent
+                    .spawn(SpriteBundle {
+                        material: materials.add(Color::rgba(0.4, 0.4, 0.9, 0.5).into()),
+                        // Don't scale here since the whole character will be scaled.
+                        sprite: Sprite::new(collider_size),
+                        transform: Transform::from_translation(Vec3::new(collider_offset.x, collider_offset.y, 0.0)),
+                        visible: Visible {
+                            is_transparent: true,
+                            is_visible: transient_state.debug_mode,
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    })
+                    .with(Debuggable::default());
+            });
+    }
 }
 
 fn move_sprite_system(
     time: Res<Time>,
-    mut char_query: Query<(&mut Character, &mut Transform, &GlobalTransform, &Collider)>,
-    mut collider_query: Query<(&Collider, &GlobalTransform)>,
+    mut pick_up_events: ResMut<Events<PickUpEvent>>,
+    mut char_query: Query<(Entity, &mut Character, &mut Transform, &GlobalTransform, &Collider)>,
+    mut collider_query: Query<(Entity, &Collider, &GlobalTransform)>,
 ) {
-    for (mut character, mut transform, char_global, char_collider) in char_query.iter_mut() {
+    for (char_entity, mut character, mut transform, char_global, char_collider) in char_query.iter_mut() {
         if character.velocity.abs_diff_eq(Vec2::zero(), VELOCITY_EPSILON) {
             // Character has zero velocity.  Nothing to do.
             continue;
@@ -261,8 +317,8 @@ fn move_sprite_system(
 
         let char_aabb = char_collider.bounding_volume_with_translation(char_global, delta);
 
-        let mut does_intersect = Collision::NoCollision;
-        for (collider, collider_global) in collider_query.iter_mut() {
+        let mut char_collision = Collision::NoCollision;
+        for (collider_entity, collider, collider_global) in collider_query.iter_mut() {
             // Shouldn't collide with itself.
             if std::ptr::eq(char_collider, collider) {
                 continue;
@@ -270,18 +326,48 @@ fn move_sprite_system(
             let collision = collider.intersect(collider_global, &char_aabb);
             match collision {
                 Collision::Solid => {
-                    does_intersect = collision;
+                    char_collision = collision;
                     break;
+                }
+                Collision::PickUp => {
+                    pick_up_events.send(PickUpEvent {
+                        actor: char_entity,
+                        object: collider_entity,
+                    });
+
+                    // Upgrade NoCollision; don't downgrade Solid.
+                    match char_collision {
+                        Collision::NoCollision => {
+                            char_collision = collision;
+                        }
+                        Collision::Solid | Collision::PickUp => (),
+                    }
                 }
                 Collision::NoCollision => (),
             }
         }
-        if !does_intersect.is_solid() {
+        if !char_collision.is_solid() {
             transform.translation.x += delta.x;
             transform.translation.y += delta.y;
             transform.translation.z = -transform.translation.y / 100.0;
         }
-        character.collision = does_intersect;
+        character.collision = char_collision;
+    }
+}
+
+fn pick_up_system(
+    commands: &mut Commands,
+    mut pick_up_event_reader: Local<EventReader<PickUpEvent>>,
+    pick_up_events: Res<Events<PickUpEvent>>,
+    mut query: Query<&mut Transform>,
+) {
+    for pick_up_event in pick_up_event_reader.iter(&pick_up_events) {
+        if let Ok(mut transform) = query.get_mut(pick_up_event.object) {
+            // TODO: These values are hardcoded for the shield.
+            transform.translation = Vec3::new(0.0, -10.0, 1.0);
+            transform.scale = Vec3::splat(0.667);
+            commands.push_children(pick_up_event.actor, &[pick_up_event.object]);
+        }
     }
 }
 

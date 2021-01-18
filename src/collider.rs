@@ -3,21 +3,30 @@ use ncollide2d::{self as nc, bounding_volume::BoundingVolume, shape::Cuboid};
 
 #[derive(Debug)]
 pub struct Collider {
+    pub collider_type: ColliderType,
     pub shape: Cuboid<f32>,
     pub offset: Vec2,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum ColliderType {
+    Solid,
+    PickUp,
 }
 
 #[derive(Copy, Clone, Debug)]
 pub enum Collision {
     NoCollision,
     Solid,
+    PickUp,
 }
 
 impl Collider {
-    pub fn new(width_height: Vec2, offset: Vec2) -> Collider {
+    pub fn new(collider_type: ColliderType, width_height: Vec2, offset: Vec2) -> Collider {
         let half_extent = width_height / 2.0;
         let v2 = nc::math::Vector::new(half_extent.x, half_extent.y);
         Collider {
+            collider_type,
             shape: Cuboid::new(v2),
             offset: offset
         }
@@ -47,7 +56,10 @@ impl Collider {
             return Collision::NoCollision;
         }
 
-        Collision::Solid
+        match self.collider_type {
+            ColliderType::Solid => Collision::Solid,
+            ColliderType::PickUp => Collision::PickUp,
+        }
     }
 }
 
@@ -55,7 +67,7 @@ impl Collision {
     pub fn is_solid(&self) -> bool {
         match self {
             Collision::Solid => true,
-            Collision::NoCollision => false,
+            Collision::NoCollision | Collision::PickUp => false,
         }
     }
 }
