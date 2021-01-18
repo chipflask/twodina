@@ -119,6 +119,10 @@ fn handle_input_system(
 
         if input_actions.is_active(Action::Run, player.id) {
             character.movement_speed = character::RUN_SPEED;
+            new_state = match new_state {
+                CharacterState::Walking => CharacterState::Running,
+                CharacterState::Idle | CharacterState::Running => new_state,
+            }
         } else {
             character.movement_speed = character::WALK_SPEED;
         }
@@ -448,8 +452,7 @@ fn animate_sprite_system(
         let is_stepping = character_option.map_or(false, |ch| {
             let state = ch.state();
 
-            state == CharacterState::Walking
-                && (ch.is_colliding || state != ch.previous_state())
+            ch.is_stepping() && (ch.is_colliding || state != ch.previous_state())
         });
 
         // Reset to the beginning of the animation when the character becomes
@@ -482,6 +485,7 @@ fn animate_sprite_system(
                     match character.state() {
                         CharacterState::Idle    => (1, row * num_cells_per_row + 1),
                         CharacterState::Walking => (4, row * num_cells_per_row),
+                        CharacterState::Running => (4, (row + 4) * num_cells_per_row),
                     }
                 }
             };
