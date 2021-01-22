@@ -154,6 +154,9 @@ fn setup_system(
         .with(PlayerCamera {})
         .spawn(CameraUiBundle::default());
 
+    // Watch for asset changes.
+    asset_server.watch_for_changes().expect("watch for changes");
+
     // Players.
     for i in 0..NUM_PLAYERS {
         let texture_handle = asset_server.load(format!("sprites/character{}.png", i + 1).as_str());
