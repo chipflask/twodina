@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -u
+set -e
+
+NAME="game_2021"
+
+cargo build --release
+rm -rf "$NAME" "$NAME.zip"
+mkdir -p "$NAME"
+# TODO: Only copy files committed in git.
+cp -r assets "target/release/$NAME" "$NAME/"
+find $NAME -name .DS_Store -delete
+# Add the commit hash.
+git show -q --format=format:%H > "$NAME/commit.txt"
+zip -r "$NAME.zip" "$NAME/"

@@ -18,3 +18,13 @@ cargo run --features bevy/dynamic
 
 - WASD keys to move
 - Escape to exit
+
+### Building
+
+Build a release:
+
+```shell
+./build_release
+```
+
+Output will be `game_2021.zip`.
