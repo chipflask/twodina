@@ -39,7 +39,7 @@ struct PlayerCamera;
 #[derive(Debug, Default)]
 struct Debuggable;
 
-const MAP_SKEW: f32 = 1.4;
+const MAP_SKEW: f32 = 1.0; // We liked ~1.4, but this should be done with the camera
 
 fn main() {
     App::build()

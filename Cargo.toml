@@ -8,8 +8,11 @@ edition = "2018"
 
 [dependencies]
 bevy = "0.4.0"
-bevy_tiled_prototype = { git = "https://github.com/framp/bevy_tiled", branch = "master" }
+bevy_tiled_prototype = { git = "https://github.com/dmtaub/bevy_tiled", branch = "main" }
 ncollide2d = "0.27.0"
+
+# [patch.'https://github.com/dmtaub/bevy_tiled']
+# bevy_tiled_prototype = { path = "../bevy_tiled" }
 
 [profile.dev.package."*"]
 # Optimize dependencies.

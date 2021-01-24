@@ -19,7 +19,7 @@
    <polygon points="0,0 -0.666667,45.3333 38.6667,46.6667 39.3333,74 49.3333,101.333 96,103.333 109.333,84.6667 112.667,70.6667 152.667,70 150.667,36.6667 115.333,34.6667 113.333,-1.33333"/>
   </object>
  </objectgroup>
- <objectgroup id="4" name="trees" visible="0">
+ <objectgroup id="4" name="trees">
   <object id="18" gid="1" x="824.333" y="70.6667" width="64" height="64"/>
   <object id="19" gid="1" x="754" y="128" width="64" height="64"/>
   <object id="20" gid="1" x="954.667" y="52.3333" width="64" height="64"/>

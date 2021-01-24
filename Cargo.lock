@@ -660,7 +660,7 @@ dependencies = [
 [[package]]
 name = "bevy_tiled_prototype"
 version = "0.1.0"
-source = "git+https://github.com/framp/bevy_tiled?branch=master#8fab9d037a454690221011a70ab57bb7a6eb5403"
+source = "git+https://github.com/dmtaub/bevy_tiled?branch=main#9b27735a0a4619fabcfc0cd3533afc1142ecb7ee"
 dependencies = [
  "anyhow",
  "bevy",
