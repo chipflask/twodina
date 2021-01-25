@@ -2,14 +2,24 @@
 set -u
 set -e
 
+# This must be run from the repo root directory
+cd "$(dirname "$0")"
+
 NAME="game_2021"
 
 cargo build --release
-rm -rf "$NAME" "$NAME.zip"
+rm -rf "${NAME:-/tmp/foo}" "${NAME:-/tmp/foo}.zip"
 mkdir -p "$NAME"
-# TODO: Only copy files committed in git.
-cp -r assets "target/release/$NAME" "$NAME/"
-find $NAME -name .DS_Store -delete
+cp "target/release/$NAME" "$NAME/"
+# Copy assets.
+for asset in $(git ls-files assets)
+do
+    asset_dir="$(dirname "$asset")"
+    mkdir -p "$NAME/$asset_dir"
+    cp "$asset" "$NAME/$asset_dir/"
+done
+
 # Add the commit hash.
 git show -q --format=format:%H > "$NAME/commit.txt"
+
 zip -r "$NAME.zip" "$NAME/"
