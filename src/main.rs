@@ -258,6 +258,12 @@ fn setup_system(
                 max: Vec2::new(206.0, 31.0),
             }
         ];
+        // Shield.
+        let scale = Vec3::splat(3.0);
+        let unequipped_transform = Transform::from_scale(scale);
+        let mut equipped_transform = unequipped_transform.clone();
+        equipped_transform.translation = Vec3::new(0.0, -10.0, 0.0);
+
         let texture_atlas = TextureAtlas {
             texture: texture_handle,
             size: Vec2::new(432.0, 176.0),
@@ -266,17 +272,17 @@ fn setup_system(
         };
         let texture_atlas_handle = texture_atlases.add(texture_atlas);
 
-        let scale = Vec3::splat(3.0);
         let collider_size = Vec2::new(12.0, 13.0);
         let collider_offset = Vec2::new(0.0, 0.0);
         commands
             .spawn(SpriteSheetBundle {
                 texture_atlas: texture_atlas_handle,
-                transform: Transform::from_scale(scale)
-                            .mul_transform(Transform::from_translation(Vec3::new(-50.0, 0.0, 0.0))),
+                transform: unequipped_transform.mul_transform(
+                    Transform::from_translation(Vec3::new(-50.0, 0.0, 0.0))),
                 ..Default::default()
             })
             .with(Collider::new(ColliderType::PickUp, collider_size * scale.xy(), collider_offset * scale.xy()))
+            .with(items::EquippedTransform { transform: equipped_transform })
             .with_children(|parent| {
                 parent
                     .spawn(SpriteBundle {
