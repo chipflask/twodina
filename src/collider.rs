@@ -10,8 +10,12 @@ pub struct Collider {
 
 #[derive(Copy, Clone, Debug)]
 pub enum ColliderType {
+    // Block movement.
     Solid,
+    // Picked up by character.
     PickUp,
+    // Hit test is skipped.
+    Ignore,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -50,6 +54,12 @@ impl Collider {
     }
 
     pub fn intersect(&self, global_transform: &GlobalTransform, other: &nc::bounding_volume::AABB<f32>) -> Collision {
+        match self.collider_type {
+            ColliderType::Solid => (),
+            ColliderType::PickUp => (),
+            ColliderType::Ignore => return Collision::NoCollision,
+        }
+
         let aabb = self.bounding_volume(global_transform);
 
         if !aabb.intersects(other) {
@@ -59,6 +69,7 @@ impl Collider {
         match self.collider_type {
             ColliderType::Solid => Collision::Solid,
             ColliderType::PickUp => Collision::PickUp,
+            ColliderType::Ignore => panic!("Should never reach here"),
         }
     }
 }
