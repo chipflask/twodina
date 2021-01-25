@@ -8,10 +8,12 @@ use bevy::math::Vec3Swizzles;
 mod character;
 mod collider;
 mod input;
+mod items;
 
 use character::{AnimatedSprite, Character, CharacterState, Direction, VELOCITY_EPSILON};
 use collider::{Collider, ColliderType, Collision};
 use input::{Action, Flag, InputActionSet};
+use items::PickUpEvent;
 
 const NUM_PLAYERS: u32 = 2;
 
@@ -38,24 +40,6 @@ struct PlayerCamera;
 #[derive(Debug, Default)]
 struct Debuggable;
 
-#[derive(Debug)]
-struct PickUpEvent {
-    actor: Entity,
-    object: Entity,
-}
-
-impl PickUpEvent {
-    pub fn new(actor: Entity, object: Entity) -> PickUpEvent {
-        // An entity can't pick up itself.
-        assert!(actor != object);
-
-        PickUpEvent {
-            actor,
-            object,
-        }
-    }
-}
-
 const MAP_SKEW: f32 = 1.0; // We liked ~1.4, but this should be done with the camera
 
 fn main() {
@@ -69,7 +53,7 @@ fn main() {
         .add_system_to_stage(stage::PRE_UPDATE, handle_input_system.system())
         .add_system(animate_sprite_system.system())
         .add_system(move_sprite_system.system())
-        .add_system(pick_up_system.system())
+        .add_system(items::pick_up_system.system())
         .add_system(update_camera_system.system())
         .add_system(position_display_system.system())
         .add_system(bevy::input::system::exit_on_esc_system.system())
@@ -364,31 +348,6 @@ fn move_sprite_system(
             transform.translation.z = -transform.translation.y / 100.0;
         }
         character.collision = char_collision;
-    }
-}
-
-fn pick_up_system(
-    commands: &mut Commands,
-    mut pick_up_event_reader: Local<EventReader<PickUpEvent>>,
-    pick_up_events: Res<Events<PickUpEvent>>,
-    mut query: Query<(&mut Transform, Option<&mut Collider>)>,
-) {
-    for pick_up_event in pick_up_event_reader.iter(&pick_up_events) {
-        let actor_scale = match query.get_mut(pick_up_event.actor) {
-            Ok((actor_transform, _)) => actor_transform.scale.clone(),
-            Err(_) => continue,
-        };
-        if let Ok((mut object_transform, object_collider_option)) = query.get_mut(pick_up_event.object) {
-            // TODO: This value is hardcoded for the shield.
-            object_transform.translation = Vec3::new(0.0, -10.0, 0.0);
-            object_transform.scale /= actor_scale;
-            // If the object has a Collider component, stop colliding so that it
-            // doesn't get picked up again.
-            if let Some(mut object_collider) = object_collider_option {
-                object_collider.collider_type = ColliderType::Ignore;
-            }
-            commands.push_children(pick_up_event.actor, &[pick_up_event.object]);
-        }
     }
 }
 
