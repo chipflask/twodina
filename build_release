@@ -2,6 +2,12 @@
 set -u
 set -e
 
+if ! git diff --cached --exit-code --quiet
+then
+    >&2 echo "Can't release when there are staged changes"
+    exit 1
+fi
+
 # This must be run from the repo root directory
 cd "$(dirname "$0")"
 
@@ -22,4 +28,13 @@ done
 # Add the commit hash.
 git show -q --format=format:%H > "$NAME/commit.txt"
 
-zip -r "$NAME.zip" "$NAME/"
+# Create a branch and commit the release.
+branch="release-$(date '+%Y-%m-%d-%H%M%S')"
+git checkout -b "$branch"
+git add -f "$NAME"
+git commit -m "Release"
+# Use git to zip since we can't rely on external dependencies.
+git archive --format=zip -o "$NAME.zip" HEAD "$NAME"
+# Restore state and clean up.
+git checkout -
+git branch -D "$branch"
