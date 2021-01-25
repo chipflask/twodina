@@ -2,6 +2,17 @@ use bevy::prelude::*;
 
 use crate::collider::{Collider, ColliderType};
 
+#[derive(Debug, Default)]
+pub struct ItemsPlugin;
+
+impl Plugin for ItemsPlugin {
+    fn build(&self, app: &mut AppBuilder) {
+        app
+            .add_event::<PickUpEvent>()
+            .add_system(pick_up_system.system());
+    }
+}
+
 // Event to specify that an actor should pick up an item and equip it.
 #[derive(Debug)]
 pub struct PickUpEvent {
