@@ -273,31 +273,34 @@ fn setup_system(
 
         let collider_size = Vec2::new(12.0, 13.0);
         let collider_offset = Vec2::new(0.0, 0.0);
-        commands
-            .spawn(SpriteSheetBundle {
-                texture_atlas: texture_atlas_handle,
-                transform: unequipped_transform.mul_transform(
-                    Transform::from_translation(Vec3::new(-50.0, 0.0, 0.0))),
-                ..Default::default()
-            })
-            .with(Collider::new(ColliderType::PickUp, collider_size * scale.xy(), collider_offset * scale.xy()))
-            .with(items::EquippedTransform { transform: equipped_transform })
-            .with_children(|parent| {
-                parent
-                    .spawn(SpriteBundle {
-                        material: materials.add(Color::rgba(0.4, 0.4, 0.9, 0.5).into()),
-                        // Don't scale here since the whole character will be scaled.
-                        sprite: Sprite::new(collider_size),
-                        transform: Transform::from_translation(Vec3::new(collider_offset.x, collider_offset.y, 0.0)),
-                        visible: Visible {
-                            is_transparent: true,
-                            is_visible: transient_state.debug_mode,
+
+        for x_position in vec![-50.0, 140.0] {
+            commands
+                .spawn(SpriteSheetBundle {
+                    texture_atlas: texture_atlas_handle.clone(),
+                    transform: unequipped_transform.mul_transform(
+                        Transform::from_translation(Vec3::new(x_position, 0.0, 0.0))),
+                    ..Default::default()
+                })
+                .with(Collider::new(ColliderType::PickUp, collider_size * scale.xy(), collider_offset * scale.xy()))
+                .with(items::EquippedTransform { transform: equipped_transform })
+                .with_children(|parent| {
+                    parent
+                        .spawn(SpriteBundle {
+                            material: materials.add(Color::rgba(0.4, 0.4, 0.9, 0.5).into()),
+                            // Don't scale here since the whole character will be scaled.
+                            sprite: Sprite::new(collider_size),
+                            transform: Transform::from_translation(Vec3::new(collider_offset.x, collider_offset.y, 0.0)),
+                            visible: Visible {
+                                is_transparent: true,
+                                is_visible: transient_state.debug_mode,
+                                ..Default::default()
+                            },
                             ..Default::default()
-                        },
-                        ..Default::default()
-                    })
-                    .with(Debuggable::default());
-            });
+                        })
+                        .with(Debuggable::default());
+                });
+        }
     }
 }
 
