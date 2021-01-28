@@ -285,6 +285,17 @@ fn setup_system(
                 .with(Collider::new(ColliderType::PickUp, collider_size * scale.xy(), collider_offset * scale.xy()))
                 .with(items::EquippedTransform { transform: equipped_transform })
                 .with_children(|parent| {
+                    // Add a shadow sprite.
+                    let shadow_handle = asset_server.load("sprites/shadow.png");
+                    parent.spawn(SpriteBundle {
+                        transform: Transform {
+                            translation: Vec3::new(0.0, -5.0, -0.01),
+                            scale: Vec3::splat(0.5),
+                            ..Default::default()
+                        },
+                        material: materials.add(shadow_handle.into()),
+                        ..Default::default()
+                    });
                     parent
                         .spawn(SpriteBundle {
                             material: materials.add(Color::rgba(0.4, 0.4, 0.9, 0.5).into()),
