@@ -204,6 +204,20 @@ fn setup_system(
                     ..Default::default()
                 })
                 .with(Debuggable::default());
+                // Center debug indicator.
+                parent.spawn(SpriteBundle {
+                    material: materials.add(Color::rgba(1.0, 0.4, 0.9, 0.8).into()),
+                    // Don't scale here since the whole character will be scaled.
+                    sprite: Sprite::new(Vec2::new(5.0, 5.0)),
+                    transform: Transform::from_translation(Vec3::new(0.0, 0.0, 100.0)),
+                    visible: Visible {
+                        is_transparent: true,
+                        is_visible: transient_state.debug_mode,
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                })
+                .with(Debuggable::default());
             })
             .spawn(TextBundle {
                 text: Text {
