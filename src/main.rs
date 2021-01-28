@@ -52,7 +52,7 @@ fn main() {
         .add_startup_system(setup_system.system())
         .add_system_to_stage(stage::PRE_UPDATE, handle_input_system.system())
         .add_system(animate_sprite_system.system())
-        .add_system(move_sprite_system.system())
+        .add_system(move_character_system.system())
         .add_system(update_camera_system.system())
         .add_system(position_display_system.system())
         .add_system(bevy::input::system::exit_on_esc_system.system())
@@ -329,7 +329,7 @@ fn setup_system(
     }
 }
 
-fn move_sprite_system(
+fn move_character_system(
     time: Res<Time>,
     mut pick_up_events: ResMut<Events<PickUpEvent>>,
     mut char_query: Query<(Entity, &mut Character, &mut Transform, &GlobalTransform, &Collider)>,
