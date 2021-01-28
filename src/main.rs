@@ -168,11 +168,13 @@ fn setup_system(
         let scale = Vec3::splat(4.0);
         let collider_size = Vec2::new(13.0, 4.5);
         let collider_offset = Vec2::new(0.0, -12.5);
+        // This should match the move_character_system.
+        let initial_z = z_from_y(collider_offset.y);
         commands
             .spawn(SpriteSheetBundle {
                 texture_atlas: texture_atlas_handle,
                 transform: Transform::from_scale(scale)
-                            .mul_transform(Transform::from_translation(Vec3::new(PLAYER_WIDTH * i as f32 + 20.0, 0.0, 0.0))),
+                            .mul_transform(Transform::from_translation(Vec3::new(PLAYER_WIDTH * i as f32 + 20.0, 0.0, initial_z))),
                 ..Default::default()
             })
             .with(AnimatedSprite::with_frame_seconds(0.1))
@@ -293,7 +295,7 @@ fn setup_system(
                 .spawn(SpriteSheetBundle {
                     texture_atlas: texture_atlas_handle.clone(),
                     transform: unequipped_transform.mul_transform(
-                        Transform::from_translation(Vec3::new(x_position, 0.0, 0.0))),
+                        Transform::from_translation(Vec3::new(x_position, 0.0, z_from_y(0.0)))),
                     ..Default::default()
                 })
                 .with(Collider::new(ColliderType::PickUp, collider_size * scale.xy(), collider_offset * scale.xy()))
@@ -327,6 +329,12 @@ fn setup_system(
                 });
         }
     }
+}
+
+// Return the Z translation for a given Y translation.  Z determines occlusion.
+#[inline]
+fn z_from_y(y: f32) -> f32 {
+    -y / 100.0
 }
 
 fn move_character_system(
@@ -378,7 +386,10 @@ fn move_character_system(
         if !char_collision.is_solid() {
             transform.translation.x += delta.x;
             transform.translation.y += delta.y;
-            transform.translation.z = -transform.translation.y / 100.0;
+            // Z needs to reflect where the character is on the ground, and
+            // presumably, that's where the character collides.  So we add the
+            // collider's Z offset to the translation.
+            transform.translation.z = z_from_y(transform.translation.y + char_collider.offset.y);
         }
         character.collision = char_collision;
     }
