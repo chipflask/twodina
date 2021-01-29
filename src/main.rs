@@ -4,15 +4,16 @@ use std::convert::TryFrom;
 use bevy::{prelude::*, render::camera::{Camera, CameraProjection, OrthographicProjection}};
 use bevy_tiled_prototype::{TiledMapCenter, TiledMapComponents, TiledMapPlugin};
 use bevy::math::Vec3Swizzles;
-use ncollide2d::{bounding_volume::{self, BoundingVolume}, math};
 
 mod character;
 mod collider;
 mod input;
+mod items;
 
 use character::{AnimatedSprite, Character, CharacterState, Direction, VELOCITY_EPSILON};
-use collider::Collider;
+use collider::{Collider, ColliderType, Collision};
 use input::{Action, Flag, InputActionSet};
+use items::PickUpEvent;
 
 const NUM_PLAYERS: u32 = 2;
 
@@ -46,11 +47,12 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugin(TiledMapPlugin)
         .add_plugin(input::InputActionPlugin::default())
+        .add_plugin(items::ItemsPlugin::default())
         .add_resource(TransientState { debug_mode: false })
         .add_startup_system(setup_system.system())
         .add_system_to_stage(stage::PRE_UPDATE, handle_input_system.system())
         .add_system(animate_sprite_system.system())
-        .add_system(move_sprite_system.system())
+        .add_system(move_character_system.system())
         .add_system(update_camera_system.system())
         .add_system(position_display_system.system())
         .add_system(bevy::input::system::exit_on_esc_system.system())
@@ -166,17 +168,19 @@ fn setup_system(
         let scale = Vec3::splat(4.0);
         let collider_size = Vec2::new(13.0, 4.5);
         let collider_offset = Vec2::new(0.0, -12.5);
+        // This should match the move_character_system.
+        let initial_z = z_from_y(collider_offset.y);
         commands
             .spawn(SpriteSheetBundle {
                 texture_atlas: texture_atlas_handle,
                 transform: Transform::from_scale(scale)
-                            .mul_transform(Transform::from_translation(Vec3::new(PLAYER_WIDTH * i as f32 + 20.0, 0.0, 0.0))),
+                            .mul_transform(Transform::from_translation(Vec3::new(PLAYER_WIDTH * i as f32 + 20.0, 0.0, initial_z))),
                 ..Default::default()
             })
             .with(AnimatedSprite::with_frame_seconds(0.1))
             .with(Character::default())
             .with(Player { id: i })
-            .with(Collider::new(collider_size * scale.xy(), collider_offset * scale.xy()))
+            .with(Collider::new(ColliderType::Solid, collider_size * scale.xy(), collider_offset * scale.xy()))
             .with_children(|parent| {
                 // add a shadow sprite -- is there a more efficient way where we load this just once??
                 let shadow_handle = asset_server.load("sprites/shadow.png");
@@ -194,6 +198,20 @@ fn setup_system(
                     // Don't scale here since the whole character will be scaled.
                     sprite: Sprite::new(collider_size),
                     transform: Transform::from_translation(Vec3::new(collider_offset.x, collider_offset.y, 0.0)),
+                    visible: Visible {
+                        is_transparent: true,
+                        is_visible: transient_state.debug_mode,
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                })
+                .with(Debuggable::default());
+                // Center debug indicator.
+                parent.spawn(SpriteBundle {
+                    material: materials.add(Color::rgba(1.0, 0.4, 0.9, 0.8).into()),
+                    // Don't scale here since the whole character will be scaled.
+                    sprite: Sprite::new(Vec2::new(5.0, 5.0)),
+                    transform: Transform::from_translation(Vec3::new(0.0, 0.0, 100.0)),
                     visible: Visible {
                         is_transparent: true,
                         is_visible: transient_state.debug_mode,
@@ -244,14 +262,88 @@ fn setup_system(
             },
             ..Default::default()
         });
+
+    // Items
+    {
+        let texture_handle = asset_server.load("sprites/items.png");
+        let items = vec![
+            // Shield.
+            bevy::sprite::Rect {
+                min: Vec2::new(194.0, 18.0),
+                max: Vec2::new(206.0, 31.0),
+            }
+        ];
+        // Shield.
+        let scale = Vec3::splat(3.0);
+        let unequipped_transform = Transform::from_scale(scale);
+        let mut equipped_transform = unequipped_transform.clone();
+        equipped_transform.translation = Vec3::new(0.0, -10.0, 0.0);
+
+        let texture_atlas = TextureAtlas {
+            texture: texture_handle,
+            size: Vec2::new(432.0, 176.0),
+            textures: items,
+            texture_handles: None,
+        };
+        let texture_atlas_handle = texture_atlases.add(texture_atlas);
+
+        let collider_size = Vec2::new(12.0, 13.0);
+        let collider_offset = Vec2::new(0.0, 0.0);
+
+        for x_position in vec![-50.0, 140.0] {
+            commands
+                .spawn(SpriteSheetBundle {
+                    texture_atlas: texture_atlas_handle.clone(),
+                    transform: unequipped_transform.mul_transform(
+                        Transform::from_translation(Vec3::new(x_position, 0.0, z_from_y(0.0)))),
+                    ..Default::default()
+                })
+                .with(Collider::new(ColliderType::PickUp, collider_size * scale.xy(), collider_offset * scale.xy()))
+                .with(items::EquippedTransform { transform: equipped_transform })
+                .with_children(|parent| {
+                    // Add a shadow sprite.
+                    let shadow_handle = asset_server.load("sprites/shadow.png");
+                    parent.spawn(SpriteBundle {
+                        transform: Transform {
+                            translation: Vec3::new(0.0, -5.0, -0.01),
+                            scale: Vec3::splat(0.5),
+                            ..Default::default()
+                        },
+                        material: materials.add(shadow_handle.into()),
+                        ..Default::default()
+                    });
+                    parent
+                        .spawn(SpriteBundle {
+                            material: materials.add(Color::rgba(0.4, 0.4, 0.9, 0.5).into()),
+                            // Don't scale here since the whole character will be scaled.
+                            sprite: Sprite::new(collider_size),
+                            transform: Transform::from_translation(Vec3::new(collider_offset.x, collider_offset.y, 0.0)),
+                            visible: Visible {
+                                is_transparent: true,
+                                is_visible: transient_state.debug_mode,
+                                ..Default::default()
+                            },
+                            ..Default::default()
+                        })
+                        .with(Debuggable::default());
+                });
+        }
+    }
 }
 
-fn move_sprite_system(
+// Return the Z translation for a given Y translation.  Z determines occlusion.
+#[inline]
+fn z_from_y(y: f32) -> f32 {
+    -y / 100.0
+}
+
+fn move_character_system(
     time: Res<Time>,
-    mut char_query: Query<(&mut Character, &mut Transform, &GlobalTransform, &Collider)>,
-    mut collider_query: Query<(&Collider, &GlobalTransform)>,
+    mut pick_up_events: ResMut<Events<PickUpEvent>>,
+    mut char_query: Query<(Entity, &mut Character, &mut Transform, &GlobalTransform, &Collider)>,
+    mut collider_query: Query<(Entity, &Collider, &GlobalTransform)>,
 ) {
-    for (mut character, mut transform, char_global, char_collider) in char_query.iter_mut() {
+    for (char_entity, mut character, mut transform, char_global, char_collider) in char_query.iter_mut() {
         if character.velocity.abs_diff_eq(Vec2::zero(), VELOCITY_EPSILON) {
             // Character has zero velocity.  Nothing to do.
             continue;
@@ -260,32 +352,46 @@ fn move_sprite_system(
         delta.y /= MAP_SKEW;
         // should stay between +- 2000.0
 
-        let char_isometry = math::Isometry::translation(
-            char_global.translation.x + delta.x + char_collider.offset.x,
-            char_global.translation.y + delta.y + char_collider.offset.y);
-        let char_aabb = bounding_volume::aabb(&char_collider.shape, &char_isometry);
+        let char_aabb = char_collider.bounding_volume_with_translation(char_global, delta);
 
-        let mut does_intersect = false;
-        for (collider, collider_global) in collider_query.iter_mut() {
+        let mut char_collision = Collision::NoCollision;
+        for (collider_entity, collider, collider_global) in collider_query.iter_mut() {
             // Shouldn't collide with itself.
             if std::ptr::eq(char_collider, collider) {
                 continue;
             }
-            let collider_isometry = math::Isometry::translation(
-                collider_global.translation.x + collider.offset.x,
-                collider_global.translation.y + collider.offset.y);
-            let collider_aabb = bounding_volume::aabb(&collider.shape, &collider_isometry);
-            if char_aabb.intersects(&collider_aabb) {
-                does_intersect = true;
-                break;
+            let collision = collider.intersect(collider_global, &char_aabb);
+            match collision {
+                Collision::Solid => {
+                    char_collision = collision;
+                    break;
+                }
+                Collision::PickUp => {
+                    pick_up_events.send(PickUpEvent::new(
+                        char_entity,
+                        collider_entity,
+                    ));
+
+                    // Upgrade NoCollision; don't downgrade Solid.
+                    match char_collision {
+                        Collision::NoCollision => {
+                            char_collision = collision;
+                        }
+                        Collision::Solid | Collision::PickUp => (),
+                    }
+                }
+                Collision::NoCollision => (),
             }
         }
-        if !does_intersect {
+        if !char_collision.is_solid() {
             transform.translation.x += delta.x;
             transform.translation.y += delta.y;
-            transform.translation.z = -transform.translation.y / 100.0;
+            // Z needs to reflect where the character is on the ground, and
+            // presumably, that's where the character collides.  So we add the
+            // collider's Z offset to the translation.
+            transform.translation.z = z_from_y(transform.translation.y + char_collider.offset.y);
         }
-        character.is_colliding = does_intersect;
+        character.collision = char_collision;
     }
 }
 
@@ -455,7 +561,7 @@ fn animate_sprite_system(
         let is_stepping = character_option.map_or(false, |ch| {
             let state = ch.state();
 
-            ch.is_stepping() && (ch.is_colliding || state != ch.previous_state())
+            ch.is_stepping() && (ch.collision.is_solid() || state != ch.previous_state())
         });
 
         // Reset to the beginning of the animation when the character becomes
@@ -512,12 +618,12 @@ fn position_display_system(
     for (char_transform, player, character) in character_query.iter_mut() {
         for (mut text, ppd) in text_query.iter_mut() {
             if ppd.player_id == player.id {
-                text.value = format!("P{} Position: ({:.1}, {:.1}, {:.1}) colliding={}",
+                text.value = format!("P{} Position: ({:.1}, {:.1}, {:.1}) collision={:?}",
                     player.id + 1,
                     char_transform.translation.x,
                     char_transform.translation.y,
                     char_transform.translation.z,
-                    character.is_colliding);
+                    character.collision);
             }
         }
     }
