@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::collider::{Collider, ColliderType};
+use crate::{AppState, LATER, collider::{Collider, ColliderBehavior}};
 
 #[derive(Debug, Default)]
 pub struct ItemsPlugin;
@@ -8,16 +8,22 @@ pub struct ItemsPlugin;
 impl Plugin for ItemsPlugin {
     fn build(&self, app: &mut AppBuilder) {
         app
-            .add_event::<PickUpEvent>()
-            .add_system(pick_up_system.system());
+            .add_event::<Interaction>()
+            .on_state_update(LATER, AppState::InGame, items_system.system());
     }
+}
+
+#[derive(Debug, Default)]
+pub struct Inventory {
+    pub num_gems: u32,
 }
 
 // Event to specify that an actor should pick up an item and equip it.
 #[derive(Debug)]
-pub struct PickUpEvent {
+pub struct Interaction {
     actor: Entity,
     object: Entity,
+    behavior: ColliderBehavior,
 }
 
 // Transform to apply to an item when it's equipped.
@@ -26,30 +32,48 @@ pub struct EquippedTransform {
     pub transform: Transform,
 }
 
-impl PickUpEvent {
-    pub fn new(actor: Entity, object: Entity) -> PickUpEvent {
+impl Interaction {
+    pub fn new(actor: Entity, object: Entity, behavior: ColliderBehavior) -> Interaction {
         // An entity can't pick up itself.
         assert!(actor != object);
 
-        PickUpEvent {
+        Interaction {
             actor,
             object,
+            behavior,
         }
     }
 }
 
-pub fn pick_up_system(
+// handles consume and equip
+pub fn items_system(
     commands: &mut Commands,
-    mut pick_up_event_reader: Local<EventReader<PickUpEvent>>,
-    pick_up_events: Res<Events<PickUpEvent>>,
+    mut interaction_reader: Local<EventReader<Interaction>>,
+    interactions: Res<Events<Interaction>>,
     mut query: Query<(&mut Transform, Option<&EquippedTransform>, Option<&mut Collider>)>,
+    mut inventory_query: Query<&mut Inventory>,
+    asset_server: Res<AssetServer>,
+    audio: Res<Audio>,
 ) {
-    for pick_up_event in pick_up_event_reader.iter(&pick_up_events) {
-        let actor_scale = match query.get_mut(pick_up_event.actor) {
+    for interaction in interaction_reader.iter(&interactions) {
+        match interaction.behavior {
+            ColliderBehavior::Collect => {
+                commands.despawn_recursive(interaction.object);
+                if let Ok(mut inventory) = inventory_query.get_mut(interaction.actor) {
+                    inventory.num_gems += 1;
+                    // should be more parametric
+                    let music = asset_server.load("sfx/gem_small.ogg");
+                    audio.play(music);
+                }
+                continue;
+            }
+            _ => (),
+        }
+        let actor_scale = match query.get_mut(interaction.actor) {
             Ok((actor_transform, _, _)) => actor_transform.scale.clone(),
             Err(_) => continue,
         };
-        if let Ok((mut object_transform, equipped_transform_option, object_collider_option)) = query.get_mut(pick_up_event.object) {
+        if let Ok((mut object_transform, equipped_transform_option, object_collider_option)) = query.get_mut(interaction.object) {
             // An object can have a special transform applied when equipped.
             if let Some(equipped) = equipped_transform_option {
                 object_transform.translation = equipped.transform.translation;
@@ -60,9 +84,9 @@ pub fn pick_up_system(
             // If the object has a Collider component, stop colliding so that it
             // doesn't get picked up again.
             if let Some(mut object_collider) = object_collider_option {
-                object_collider.collider_type = ColliderType::Ignore;
+                object_collider.behavior = ColliderBehavior::Ignore;
             }
-            commands.push_children(pick_up_event.actor, &[pick_up_event.object]);
+            commands.push_children(interaction.actor, &[interaction.object]);
         }
     }
 }

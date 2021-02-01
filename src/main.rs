@@ -1,8 +1,8 @@
 use std;
 use std::convert::TryFrom;
 
-use bevy::{prelude::*, render::camera::{Camera, CameraProjection, OrthographicProjection}};
-use bevy_tiled_prototype::{TiledMapCenter, TiledMapComponents, TiledMapPlugin};
+use bevy::{prelude::*, render::camera::{Camera, CameraProjection, OrthographicProjection}, utils::HashSet};
+use bevy_tiled_prototype::{DebugConfig, Map, Object, ObjectReadyEvent, ObjectShape, TiledMapCenter, TiledMapComponents, TiledMapPlugin};
 use bevy::math::Vec3Swizzles;
 
 mod character;
@@ -11,16 +11,20 @@ mod input;
 mod items;
 
 use character::{AnimatedSprite, Character, CharacterState, Direction, VELOCITY_EPSILON};
-use collider::{Collider, ColliderType, Collision};
+use collider::{Collider, ColliderBehavior, Collision};
 use input::{Action, Flag, InputActionSet};
-use items::PickUpEvent;
+use items::{Interaction, Inventory};
+use stage::UPDATE;
 
 const NUM_PLAYERS: u32 = 2;
+const DEBUG_MODE_DEFAULT: bool = false;
+const TILED_MAP_SCALE: f32 = 2.0;
 
 // Game state that shouldn't be saved.
 #[derive(Clone, Debug)]
 struct TransientState {
     debug_mode: bool,
+    current_map: Handle<Map>
 }
 
 struct Player {
@@ -42,23 +46,49 @@ struct Debuggable;
 
 const MAP_SKEW: f32 = 1.0; // We liked ~1.4, but this should be done with the camera
 
+#[derive(Clone)]
+pub enum AppState {
+    Loading,
+    // Menu,
+    InGame
+}
+
+// run loop stages
+pub const EARLY: &str = "EARLY";
+pub const LATER: &str = "LATER";
+
 fn main() {
     App::build()
+        .add_resource(State::new(AppState::Loading))
+        // add stages to run loop
+        .add_stage_after(UPDATE, EARLY, StateStage::<AppState>::default())
+        .add_stage_after(EARLY, LATER, StateStage::<AppState>::default())
+        // add plugins
         .add_plugins(DefaultPlugins)
         .add_plugin(TiledMapPlugin)
         .add_plugin(input::InputActionPlugin::default())
         .add_plugin(items::ItemsPlugin::default())
-        .add_resource(TransientState { debug_mode: false })
+        // init
         .add_startup_system(setup_system.system())
-        .add_system_to_stage(stage::PRE_UPDATE, handle_input_system.system())
-        .add_system(animate_sprite_system.system())
-        .add_system(move_character_system.system())
-        .add_system(update_camera_system.system())
-        .add_system(position_display_system.system())
-        .add_system(bevy::input::system::exit_on_esc_system.system())
+        //
+        // updates
+        .on_state_update(LATER, AppState::Loading, menu_system.system())
+        // ingame:
+        .on_state_update(EARLY,AppState::InGame, handle_input_system.system())
+        .on_state_update(LATER,AppState::InGame, animate_sprite_system.system())
+        .on_state_update(LATER,AppState::InGame, move_character_system.system())
+        .on_state_update(LATER,AppState::InGame, update_camera_system.system())
+        .on_state_update(LATER,AppState::InGame, position_display_system.system())
+        .on_state_update(LATER,AppState::InGame, map_item_system.system())
+        .on_state_update(LATER,AppState::InGame, bevy::input::system::exit_on_esc_system.system())
         .run();
 }
 
+fn menu_system(
+    mut state: ResMut<State<AppState>>,
+) {
+    state.set_next(AppState::InGame).expect("Set Next failed");
+}
 
 fn handle_input_system(
     input_actions: Res<InputActionSet>,
@@ -66,7 +96,6 @@ fn handle_input_system(
     mut query: Query<(&mut Character, &Player)>,
     mut debuggable: Query<&mut Visible,  With<Debuggable>>
 ) {
-
     // check for debug status flag differing from transient_state to determine when to hide/show debug stuff
     if input_actions.has_flag(Flag::Debug) {
         if !transient_state.debug_mode {
@@ -83,7 +112,6 @@ fn handle_input_system(
         }
         transient_state.debug_mode = false;
     }
-
 
     for (mut character, player) in query.iter_mut() {
         let mut new_direction = None;
@@ -146,10 +174,12 @@ const PLAYER_HEIGHT: f32 = 32.0;
 fn setup_system(
     commands: &mut Commands,
     asset_server: Res<AssetServer>,
-    transient_state: Res<TransientState>,
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
+    // Default materials
+    let default_blue = materials.add(Color::rgba(0.4, 0.4, 0.9, 0.5).into());
+    let default_red = materials.add(Color::rgba(1.0, 0.4, 0.9, 0.8).into());
     // Cameras.
     commands
         .spawn(Camera2dBundle::default())
@@ -162,8 +192,11 @@ fn setup_system(
     // Players.
     for i in 0..NUM_PLAYERS {
         let texture_handle = asset_server.load(format!("sprites/character{}.png", i + 1).as_str());
-        let texture_atlas = TextureAtlas::from_grid(texture_handle,
-                                                    Vec2::new(PLAYER_WIDTH, PLAYER_HEIGHT), 8, 16);
+        let texture_atlas = TextureAtlas::from_grid(
+            texture_handle,
+            Vec2::new(PLAYER_WIDTH, PLAYER_HEIGHT),
+            8, 16
+        );
         let texture_atlas_handle = texture_atlases.add(texture_atlas);
         let scale = Vec3::splat(4.0);
         let collider_size = Vec2::new(13.0, 4.5);
@@ -174,13 +207,17 @@ fn setup_system(
             .spawn(SpriteSheetBundle {
                 texture_atlas: texture_atlas_handle,
                 transform: Transform::from_scale(scale)
-                            .mul_transform(Transform::from_translation(Vec3::new(PLAYER_WIDTH * i as f32 + 20.0, 0.0, initial_z))),
+                    .mul_transform(Transform::from_translation(
+                        Vec3::new(PLAYER_WIDTH * i as f32 + 20.0, 0.0, initial_z))),
                 ..Default::default()
             })
             .with(AnimatedSprite::with_frame_seconds(0.1))
             .with(Character::default())
             .with(Player { id: i })
-            .with(Collider::new(ColliderType::Solid, collider_size * scale.xy(), collider_offset * scale.xy()))
+            .with(items::Inventory::default())
+            .with(Collider::new(ColliderBehavior::Obstruct,
+                collider_size * scale.xy(),
+                collider_offset * scale.xy()))
             .with_children(|parent| {
                 // add a shadow sprite -- is there a more efficient way where we load this just once??
                 let shadow_handle = asset_server.load("sprites/shadow.png");
@@ -193,14 +230,15 @@ fn setup_system(
                     material: materials.add(shadow_handle.into()),
                     ..Default::default()
                 });
+                // collider debug indicator - TODO: refactor into Collider::new_with_debug(parent, collider_size, scale)
                 parent.spawn(SpriteBundle {
-                    material: materials.add(Color::rgba(0.4, 0.4, 0.9, 0.5).into()),
+                    material: default_blue.clone(),
                     // Don't scale here since the whole character will be scaled.
                     sprite: Sprite::new(collider_size),
                     transform: Transform::from_translation(Vec3::new(collider_offset.x, collider_offset.y, 0.0)),
                     visible: Visible {
                         is_transparent: true,
-                        is_visible: transient_state.debug_mode,
+                        is_visible: DEBUG_MODE_DEFAULT,
                         ..Default::default()
                     },
                     ..Default::default()
@@ -208,13 +246,13 @@ fn setup_system(
                 .with(Debuggable::default());
                 // Center debug indicator.
                 parent.spawn(SpriteBundle {
-                    material: materials.add(Color::rgba(1.0, 0.4, 0.9, 0.8).into()),
+                    material: default_red.clone(),
                     // Don't scale here since the whole character will be scaled.
                     sprite: Sprite::new(Vec2::new(5.0, 5.0)),
                     transform: Transform::from_translation(Vec3::new(0.0, 0.0, 100.0)),
                     visible: Visible {
                         is_transparent: true,
-                        is_visible: transient_state.debug_mode,
+                        is_visible: DEBUG_MODE_DEFAULT,
                         ..Default::default()
                     },
                     ..Default::default()
@@ -250,18 +288,29 @@ fn setup_system(
             .with(PlayerPositionDisplay { player_id: i})
             .with(Debuggable::default());
     }
-    // Map
+    // Map - has some objects
+    // transient_state: Res<TransientState>,
+    let transient_state = TransientState {
+        debug_mode: DEBUG_MODE_DEFAULT,
+        current_map: asset_server.load("maps/melle/sandyrocks.tmx")
+    };
     commands
         .spawn(TiledMapComponents {
-            map_asset: asset_server.load("tile_maps/path_map.tmx"),
+            map_asset: transient_state.current_map.clone(),
             center: TiledMapCenter(true),
             origin: Transform {
-                translation: Vec3::new(0.0, 0.0, -1000.0),
-                scale: Vec3::new(2.0, 2.0 / MAP_SKEW, 1.0),
+                translation: Vec3::new(0.0, 0.0, -100.0),
+                scale: Vec3::new(TILED_MAP_SCALE, TILED_MAP_SCALE / MAP_SKEW, 1.0),
                 ..Default::default()
+            },
+            debug_config: DebugConfig {
+                enabled: DEBUG_MODE_DEFAULT,
+                material: Some(default_blue.clone()),
             },
             ..Default::default()
         });
+
+    commands.insert_resource(transient_state);
 
     // Items
     {
@@ -298,7 +347,7 @@ fn setup_system(
                         Transform::from_translation(Vec3::new(x_position, 0.0, z_from_y(0.0)))),
                     ..Default::default()
                 })
-                .with(Collider::new(ColliderType::PickUp, collider_size * scale.xy(), collider_offset * scale.xy()))
+                .with(Collider::new(ColliderBehavior::PickUp, collider_size * scale.xy(), collider_offset * scale.xy()))
                 .with(items::EquippedTransform { transform: equipped_transform })
                 .with_children(|parent| {
                     // Add a shadow sprite.
@@ -314,13 +363,13 @@ fn setup_system(
                     });
                     parent
                         .spawn(SpriteBundle {
-                            material: materials.add(Color::rgba(0.4, 0.4, 0.9, 0.5).into()),
+                            material: default_blue.clone(),
                             // Don't scale here since the whole character will be scaled.
                             sprite: Sprite::new(collider_size),
                             transform: Transform::from_translation(Vec3::new(collider_offset.x, collider_offset.y, 0.0)),
                             visible: Visible {
                                 is_transparent: true,
-                                is_visible: transient_state.debug_mode,
+                                is_visible: DEBUG_MODE_DEFAULT,
                                 ..Default::default()
                             },
                             ..Default::default()
@@ -339,11 +388,13 @@ fn z_from_y(y: f32) -> f32 {
 
 fn move_character_system(
     time: Res<Time>,
-    mut pick_up_events: ResMut<Events<PickUpEvent>>,
-    mut char_query: Query<(Entity, &mut Character, &mut Transform, &GlobalTransform, &Collider)>,
-    mut collider_query: Query<(Entity, &Collider, &GlobalTransform)>,
+    mut interaction_event: ResMut<Events<Interaction>>,
+    mut char_query: Query<(Entity, &mut Character, &mut Transform, &GlobalTransform)>,
+    mut collider_query: Query<(Entity, &mut Collider, &GlobalTransform)>,
 ) {
-    for (char_entity, mut character, mut transform, char_global, char_collider) in char_query.iter_mut() {
+    let mut interaction_colliders: HashSet<Entity> = Default::default();
+    for (char_entity, mut character, mut transform, char_global) in char_query.iter_mut() {
+        let char_collider = collider_query.get_component::<Collider>(char_entity).unwrap().clone();
         if character.velocity.abs_diff_eq(Vec2::zero(), VELOCITY_EPSILON) {
             // Character has zero velocity.  Nothing to do.
             continue;
@@ -354,33 +405,35 @@ fn move_character_system(
 
         let char_aabb = char_collider.bounding_volume_with_translation(char_global, delta);
 
-        let mut char_collision = Collision::NoCollision;
+        let mut char_collision = Collision::Nil;
         for (collider_entity, collider, collider_global) in collider_query.iter_mut() {
             // Shouldn't collide with itself.
-            if std::ptr::eq(char_collider, collider) {
+            if collider_entity == char_entity {
                 continue;
             }
             let collision = collider.intersect(collider_global, &char_aabb);
             match collision {
-                Collision::Solid => {
+                Collision::Obstruction => {
                     char_collision = collision;
                     break;
                 }
-                Collision::PickUp => {
-                    pick_up_events.send(PickUpEvent::new(
+                Collision::Interaction(behavior) => {
+                    interaction_colliders.insert(collider_entity);
+                    interaction_event.send(Interaction::new(
                         char_entity,
                         collider_entity,
+                        behavior,
                     ));
 
-                    // Upgrade NoCollision; don't downgrade Solid.
+                    // Upgrade Collision::Nil; don't downgrade Obstruction.
                     match char_collision {
-                        Collision::NoCollision => {
+                        Collision::Nil => {
                             char_collision = collision;
                         }
-                        Collision::Solid | Collision::PickUp => (),
+                        Collision::Obstruction | Collision::Interaction(_) => (),
                     }
                 }
-                Collision::NoCollision => (),
+                Collision::Nil => (),
             }
         }
         if !char_collision.is_solid() {
@@ -392,6 +445,11 @@ fn move_character_system(
             transform.translation.z = z_from_y(transform.translation.y + char_collider.offset.y);
         }
         character.collision = char_collision;
+    }
+    for entity in interaction_colliders.iter() {
+        if let Ok(mut collider) = collider_query.get_component_mut::<Collider>(*entity) {
+            collider.behavior = ColliderBehavior::Ignore;
+        }
     }
 }
 
@@ -611,19 +669,61 @@ fn animate_sprite_system(
     }
 }
 
+fn map_item_system(
+    commands: &mut Commands,
+    new_item_query: Query<&Object>,
+    transient_state: Res<TransientState>,
+    mut event_reader: Local<EventReader<ObjectReadyEvent>>,
+    map_ready_events: Res<Events<ObjectReadyEvent>>,
+    // maps: Res<Assets<Map>>,
+) {
+    for event in event_reader.iter(&map_ready_events) {
+        if transient_state.current_map != event.map_handle {
+            continue;
+        }
+        // let map = maps.get(event.map_handle).expect("Expected to find map from ObjectReadyEvent");
+        if let Ok(object) = new_item_query.get(event.entity) {
+            let collider_size = TILED_MAP_SCALE * match object.shape {
+                ObjectShape::Rect { width, height } | ObjectShape::Ellipse { width, height } =>
+                    Vec2::new(width, height),
+                ObjectShape::Polyline { points: _ } | ObjectShape::Polygon { points: _ } | ObjectShape::Point(_, _) =>
+                    Vec2::new(40.0, 40.0),
+            };
+            
+            // we should have actual types based on object name
+            // and add components based on that
+            let collider_type = match object.name.as_ref() {
+                "gem" => {
+                    ColliderBehavior::Collect
+                }
+                _ => {
+                    if object.is_shape() { // allow hide/show objects without images
+                        commands.insert_one(event.entity, Debuggable::default());
+                    }
+                    ColliderBehavior::Obstruct
+                }
+            };
+
+            let collider_component = Collider::new(collider_type, collider_size, Vec2::new(0.0, 0.0));
+            commands.insert_one(event.entity, collider_component);
+        }
+    }
+}
+
 fn position_display_system(
-    mut character_query: Query<(&Transform, &Player, &Character)>,
+    mut character_query: Query<(&Transform, &Player, &Character, &Inventory)>,
     mut text_query: Query<(&mut Text, &PlayerPositionDisplay)>,
 ) {
-    for (char_transform, player, character) in character_query.iter_mut() {
+    for (char_transform, player, character, inventory) in character_query.iter_mut() {
         for (mut text, ppd) in text_query.iter_mut() {
             if ppd.player_id == player.id {
-                text.value = format!("P{} Position: ({:.1}, {:.1}, {:.1}) collision={:?}",
+                text.value = format!("P{} Position: ({:.1}, {:.1}, {:.1}) collision={:?} gems={:?}",
                     player.id + 1,
                     char_transform.translation.x,
                     char_transform.translation.y,
                     char_transform.translation.z,
-                    character.collision);
+                    character.collision,
+                    inventory.num_gems);
             }
         }
     }

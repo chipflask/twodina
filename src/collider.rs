@@ -1,36 +1,38 @@
 use bevy::prelude::*;
 use ncollide2d::{self as nc, bounding_volume::BoundingVolume, shape::Cuboid};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Collider {
-    pub collider_type: ColliderType,
+    pub behavior: ColliderBehavior,
     pub shape: Cuboid<f32>,
     pub offset: Vec2,
 }
 
 #[derive(Copy, Clone, Debug)]
-pub enum ColliderType {
+pub enum ColliderBehavior {
     // Block movement.
-    Solid,
+    Obstruct,
     // Picked up by character.
     PickUp,
+    // Collected by character.
+    Collect,
     // Hit test is skipped.
     Ignore,
 }
 
 #[derive(Copy, Clone, Debug)]
 pub enum Collision {
-    NoCollision,
-    Solid,
-    PickUp,
+    Nil,
+    Obstruction,
+    Interaction(ColliderBehavior),
 }
 
 impl Collider {
-    pub fn new(collider_type: ColliderType, width_height: Vec2, offset: Vec2) -> Collider {
+    pub fn new(collider_type: ColliderBehavior, width_height: Vec2, offset: Vec2) -> Collider {
         let half_extent = width_height / 2.0;
         let v2 = nc::math::Vector::new(half_extent.x, half_extent.y);
         Collider {
-            collider_type,
+            behavior: collider_type,
             shape: Cuboid::new(v2),
             offset: offset
         }
@@ -54,22 +56,21 @@ impl Collider {
     }
 
     pub fn intersect(&self, global_transform: &GlobalTransform, other: &nc::bounding_volume::AABB<f32>) -> Collision {
-        match self.collider_type {
-            ColliderType::Solid => (),
-            ColliderType::PickUp => (),
-            ColliderType::Ignore => return Collision::NoCollision,
+        match self.behavior {
+            ColliderBehavior::Obstruct | ColliderBehavior::PickUp | ColliderBehavior::Collect => (),
+            ColliderBehavior::Ignore => return Collision::Nil,
         }
 
         let aabb = self.bounding_volume(global_transform);
 
         if !aabb.intersects(other) {
-            return Collision::NoCollision;
+            return Collision::Nil;
         }
 
-        match self.collider_type {
-            ColliderType::Solid => Collision::Solid,
-            ColliderType::PickUp => Collision::PickUp,
-            ColliderType::Ignore => panic!("Should never reach here"),
+        match self.behavior {
+            ColliderBehavior::Obstruct => Collision::Obstruction,
+            ColliderBehavior::PickUp | ColliderBehavior::Collect => Collision::Interaction(self.behavior),
+            ColliderBehavior::Ignore => panic!("Should never reach here"),
         }
     }
 }
@@ -77,8 +78,8 @@ impl Collider {
 impl Collision {
     pub fn is_solid(&self) -> bool {
         match self {
-            Collision::Solid => true,
-            Collision::NoCollision | Collision::PickUp => false,
+            Collision::Obstruction => true,
+            Collision::Nil | Collision::Interaction(_) => false,
         }
     }
 }

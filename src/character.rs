@@ -72,7 +72,7 @@ impl Default for Character {
             previous_state: CharacterState::Idle,
             velocity: Vec2::zero(),
             movement_speed: WALK_SPEED,
-            collision: Collision::NoCollision,
+            collision: Collision::Nil,
         }
     }
 }

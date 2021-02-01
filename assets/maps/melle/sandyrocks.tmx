@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.4" tiledversion="1.4.3" orientation="orthogonal" renderorder="right-down" width="10" height="10" tilewidth="64" tileheight="64" infinite="0" nextlayerid="9" nextobjectid="37">
+ <tileset firstgid="1" name="melle_bg_remix_64" tilewidth="64" tileheight="64" tilecount="24" columns="6">
+  <image source="melle_bg_remix_64.png" width="384" height="256"/>
+ </tileset>
+ <tileset firstgid="25" name="crystal_set" tilewidth="100" tileheight="100" tilecount="5" columns="5">
+  <image source="crystal_set.png" width="500" height="100"/>
+ </tileset>
+ <tileset firstgid="30" name="trees" tilewidth="64" tileheight="64" tilecount="2" columns="2">
+  <image source="../../tile_maps/trees.png" width="128" height="64"/>
+ </tileset>
+ <layer id="1" name="background" width="10" height="10" tintcolor="#ffd8bd">
+  <data encoding="base64" compression="zlib">
+   eJxdj1ESgCAIRPnOUSvNuv9JOFpLwAzx8QaFdRcHEQ3QwA5KYhIx5lxNd+PcUXvSN9WIljZQzTNrD3Aqn+e0WaRoDj0KS6b0VyB6Srb4wZtldhkr1PiPFvqd/jvGf8yg25Nv9vP3jt9dl/1W2s9zX4JYFn4=
+  </data>
+ </layer>
+ <objectgroup id="2" name="items">
+  <object id="1" name="gem" gid="25" x="568.047" y="313.694" width="32" height="32"/>
+  <object id="2" name="gem" gid="28" x="104" y="313" width="32" height="32"/>
+  <object id="3" name="gem" gid="26" x="123" y="605" width="32" height="32"/>
+  <object id="4" name="gem" gid="27" x="523" y="37" width="32" height="32"/>
+  <object id="5" name="gem" gid="29" x="596" y="620" width="32" height="32"/>
+ </objectgroup>
+ <objectgroup id="5" name="trees">
+  <object id="19" gid="30" x="35" y="275" width="126" height="126"/>
+  <object id="20" gid="30" x="533" y="274" width="89" height="89"/>
+  <object id="21" gid="30" x="532" y="411" width="96" height="96"/>
+  <object id="22" gid="31" x="14" y="116" width="165" height="165"/>
+  <object id="23" gid="31" x="492" y="594" width="108" height="108"/>
+  <object id="24" gid="31" x="536" y="159" width="100" height="100"/>
+ </objectgroup>
+ <objectgroup id="4" name="walls">
+  <object id="9" x="-104" y="-54" width="120" height="718"/>
+  <object id="10" x="628" y="-82" width="118" height="750"/>
+  <object id="11" x="-230" y="-170" width="1044" height="182"/>
+  <object id="12" x="-222" y="622" width="1040" height="96"/>
+ </objectgroup>
+</map>
