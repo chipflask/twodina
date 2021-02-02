@@ -132,7 +132,6 @@ fn action_producer_system(
         input_action_set.activate(Action::Run, 0);
     }
 
-
     if keyboard_input.pressed(KeyCode::Up) {
         input_action_set.activate(Action::Up, 1);
     }
@@ -149,10 +148,13 @@ fn action_producer_system(
         input_action_set.activate(Action::Run, 1);
     }
 
-
     for (i, gamepad) in gamepad_set.gamepads.iter().cloned().enumerate() {
-        let left_stick_x = axes.get(GamepadAxis(gamepad, GamepadAxisType::LeftStickX)).expect("gamepad axis LeftStickX");
-        let left_stick_y = axes.get(GamepadAxis(gamepad, GamepadAxisType::LeftStickY)).expect("gamepad axis LeftStickY");
+        let left_stick_x = axes
+            .get(GamepadAxis(gamepad, GamepadAxisType::LeftStickX))
+            .expect("gamepad axis LeftStickX");
+        let left_stick_y = axes
+            .get(GamepadAxis(gamepad, GamepadAxisType::LeftStickY))
+            .expect("gamepad axis LeftStickY");
 
         let player_num = u32::try_from(i).expect("brah how many controllers u got?");
 
@@ -169,8 +171,12 @@ fn action_producer_system(
             input_action_set.activate(Action::Up, player_num);
         }
 
-        let dpad_x = axes.get(GamepadAxis(gamepad, GamepadAxisType::DPadX)).expect("gamepad axis DPadX");
-        let dpad_y = axes.get(GamepadAxis(gamepad, GamepadAxisType::DPadY)).expect("gamepad axis DPadY");
+        let dpad_x = axes
+            .get(GamepadAxis(gamepad, GamepadAxisType::DPadX))
+            .expect("gamepad axis DPadX");
+        let dpad_y = axes
+            .get(GamepadAxis(gamepad, GamepadAxisType::DPadY))
+            .expect("gamepad axis DPadY");
         if dpad_x < -0.01 {
             input_action_set.activate(Action::Left, player_num);
         }

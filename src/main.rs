@@ -24,7 +24,7 @@ const TILED_MAP_SCALE: f32 = 2.0;
 #[derive(Clone, Debug)]
 struct TransientState {
     debug_mode: bool,
-    current_map: Handle<Map>
+    current_map: Handle<Map>,
 }
 
 struct Player {
@@ -50,7 +50,7 @@ const MAP_SKEW: f32 = 1.0; // We liked ~1.4, but this should be done with the ca
 pub enum AppState {
     Loading,
     // Menu,
-    InGame
+    InGame,
 }
 
 // run loop stages
@@ -74,13 +74,13 @@ fn main() {
         // updates
         .on_state_update(LATER, AppState::Loading, menu_system.system())
         // ingame:
-        .on_state_update(EARLY,AppState::InGame, handle_input_system.system())
-        .on_state_update(LATER,AppState::InGame, animate_sprite_system.system())
-        .on_state_update(LATER,AppState::InGame, move_character_system.system())
-        .on_state_update(LATER,AppState::InGame, update_camera_system.system())
-        .on_state_update(LATER,AppState::InGame, position_display_system.system())
-        .on_state_update(LATER,AppState::InGame, map_item_system.system())
-        .on_state_update(LATER,AppState::InGame, bevy::input::system::exit_on_esc_system.system())
+        .on_state_update(EARLY, AppState::InGame, handle_input_system.system())
+        .on_state_update(LATER, AppState::InGame, animate_sprite_system.system())
+        .on_state_update(LATER, AppState::InGame, move_character_system.system())
+        .on_state_update(LATER, AppState::InGame, update_camera_system.system())
+        .on_state_update(LATER, AppState::InGame, position_display_system.system())
+        .on_state_update(LATER, AppState::InGame, map_item_system.system())
+        .on_state_update(LATER, AppState::InGame, bevy::input::system::exit_on_esc_system.system())
         .run();
 }
 
@@ -94,7 +94,7 @@ fn handle_input_system(
     input_actions: Res<InputActionSet>,
     mut transient_state: ResMut<TransientState>,
     mut query: Query<(&mut Character, &Player)>,
-    mut debuggable: Query<&mut Visible,  With<Debuggable>>
+    mut debuggable: Query<&mut Visible, With<Debuggable>>,
 ) {
     // check for debug status flag differing from transient_state to determine when to hide/show debug stuff
     if input_actions.has_flag(Flag::Debug) {
@@ -195,7 +195,8 @@ fn setup_system(
         let texture_atlas = TextureAtlas::from_grid(
             texture_handle,
             Vec2::new(PLAYER_WIDTH, PLAYER_HEIGHT),
-            8, 16
+            8,
+            16,
         );
         let texture_atlas_handle = texture_atlases.add(texture_atlas);
         let scale = Vec3::splat(4.0);
@@ -215,9 +216,11 @@ fn setup_system(
             .with(Character::default())
             .with(Player { id: i })
             .with(items::Inventory::default())
-            .with(Collider::new(ColliderBehavior::Obstruct,
+            .with(Collider::new(
+                ColliderBehavior::Obstruct,
                 collider_size * scale.xy(),
-                collider_offset * scale.xy()))
+                collider_offset * scale.xy(),
+            ))
             .with_children(|parent| {
                 // add a shadow sprite -- is there a more efficient way where we load this just once??
                 let shadow_handle = asset_server.load("sprites/shadow.png");
@@ -285,14 +288,14 @@ fn setup_system(
                 },
                 ..Default::default()
             })
-            .with(PlayerPositionDisplay { player_id: i})
+            .with(PlayerPositionDisplay { player_id: i })
             .with(Debuggable::default());
     }
     // Map - has some objects
     // transient_state: Res<TransientState>,
     let transient_state = TransientState {
         debug_mode: DEBUG_MODE_DEFAULT,
-        current_map: asset_server.load("maps/melle/sandyrocks.tmx")
+        current_map: asset_server.load("maps/melle/sandyrocks.tmx"),
     };
     commands
         .spawn(TiledMapComponents {
@@ -320,7 +323,7 @@ fn setup_system(
             bevy::sprite::Rect {
                 min: Vec2::new(194.0, 18.0),
                 max: Vec2::new(206.0, 31.0),
-            }
+            },
         ];
         // Shield.
         let scale = Vec3::splat(3.0);
@@ -366,7 +369,11 @@ fn setup_system(
                             material: default_blue.clone(),
                             // Don't scale here since the whole character will be scaled.
                             sprite: Sprite::new(collider_size),
-                            transform: Transform::from_translation(Vec3::new(collider_offset.x, collider_offset.y, 0.0)),
+                            transform: Transform::from_translation(Vec3::new(
+                                collider_offset.x,
+                                collider_offset.y,
+                                0.0,
+                            )),
                             visible: Visible {
                                 is_transparent: true,
                                 is_visible: DEBUG_MODE_DEFAULT,
@@ -717,13 +724,15 @@ fn position_display_system(
     for (char_transform, player, character, inventory) in character_query.iter_mut() {
         for (mut text, ppd) in text_query.iter_mut() {
             if ppd.player_id == player.id {
-                text.value = format!("P{} Position: ({:.1}, {:.1}, {:.1}) collision={:?} gems={:?}",
+                text.value = format!(
+                    "P{} Position: ({:.1}, {:.1}, {:.1}) collision={:?} gems={:?}",
                     player.id + 1,
                     char_transform.translation.x,
                     char_transform.translation.y,
                     char_transform.translation.z,
                     character.collision,
-                    inventory.num_gems);
+                    inventory.num_gems
+                );
             }
         }
     }
