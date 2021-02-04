@@ -16,7 +16,6 @@ use input::{Action, Flag, InputActionSet};
 use items::Inventory;
 use stage::UPDATE;
 
-const NUM_PLAYERS: u32 = 2;
 const DEBUG_MODE_DEFAULT: bool = false;
 const TILED_MAP_SCALE: f32 = 2.0;
 
@@ -24,6 +23,7 @@ const TILED_MAP_SCALE: f32 = 2.0;
 #[derive(Clone, Debug)]
 struct TransientState {
     debug_mode: bool,
+    num_players: u8,
     current_map: Handle<Map>,
     default_blue: Handle<ColorMaterial>,
     button_color: Handle<ColorMaterial>,
@@ -33,6 +33,11 @@ struct TransientState {
 
 // Tag for the menu system UI.
 struct MenuUi;
+
+enum MenuButton {
+    OnePlayer,
+    TwoPlayers,
+}
 
 struct Player {
     id: u32,
@@ -200,6 +205,7 @@ fn setup_system(
     // transient_state: Res<TransientState>,
     let transient_state = TransientState {
         debug_mode: DEBUG_MODE_DEFAULT,
+        num_players: 0,
         current_map: asset_server.load("maps/melle/sandyrocks.tmx"),
         default_blue: default_blue.clone(),
         button_color: materials.add(Color::rgb(0.4, 0.4, 0.9).into()),
@@ -266,10 +272,10 @@ fn setup_menu_system(
                 ..Default::default()
             });
 
-            // Start button.
+            // Start button 1 player.
             parent.spawn(ButtonBundle {
                 style: Style {
-                    size: Size::new(Val::Px(150.0), Val::Px(65.0)),
+                    size: Size::new(Val::Px(170.0), Val::Px(65.0)),
                     margin: Rect::all(Val::Px(5.0)),
                     // Horizontally center child text
                     justify_content: JustifyContent::Center,
@@ -280,10 +286,41 @@ fn setup_menu_system(
                 material: transient_state.button_color.clone(),
                 ..Default::default()
             })
+            .with(MenuButton::OnePlayer)
             .with_children(|parent| {
                 parent.spawn(TextBundle {
                     text: Text {
-                        value: "Start".to_string(),
+                        value: "1 Player".to_string(),
+                        font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                        style: TextStyle {
+                            font_size: 40.0,
+                            color: Color::rgb(0.9, 0.9, 0.9),
+                            ..Default::default()
+                        },
+                    },
+                    ..Default::default()
+                });
+            });
+
+            // Start button 2 players.
+            parent.spawn(ButtonBundle {
+                style: Style {
+                    size: Size::new(Val::Px(170.0), Val::Px(65.0)),
+                    margin: Rect::all(Val::Px(5.0)),
+                    // Horizontally center child text
+                    justify_content: JustifyContent::Center,
+                    // Vertically center child text
+                    align_items: AlignItems::Center,
+                    ..Default::default()
+                },
+                material: transient_state.button_color.clone(),
+                ..Default::default()
+            })
+            .with(MenuButton::TwoPlayers)
+            .with_children(|parent| {
+                parent.spawn(TextBundle {
+                    text: Text {
+                        value: "2 Players".to_string(),
                         font: asset_server.load("fonts/FiraSans-Bold.ttf"),
                         style: TextStyle {
                             font_size: 40.0,
@@ -307,16 +344,24 @@ fn cleanup_menu_system(
 }
 
 fn menu_system(
-    transient_state: ResMut<TransientState>,
+    mut transient_state: ResMut<TransientState>,
     mut state: ResMut<State<AppState>>,
     mut interaction_query: Query<
-        (&Interaction, &mut Handle<ColorMaterial>),
+        (&Interaction, &mut Handle<ColorMaterial>, &MenuButton),
         (Mutated<Interaction>, With<Button>),
     >,
 ) {
-    for (interaction, mut material) in interaction_query.iter_mut() {
+    for (interaction, mut material, button_choice) in interaction_query.iter_mut() {
         match *interaction {
             Interaction::Clicked => {
+                match button_choice {
+                    MenuButton::OnePlayer => {
+                        transient_state.num_players = 1;
+                    }
+                    MenuButton::TwoPlayers => {
+                        transient_state.num_players = 2;
+                    }
+                }
                 state.set_next(AppState::InGame).expect("Set Next failed");
             }
             Interaction::Hovered => {
@@ -341,7 +386,7 @@ fn setup_players_system(
 ) {
     let default_red = materials.add(Color::rgba(1.0, 0.4, 0.9, 0.8).into());
     // Players.
-    for i in 0..NUM_PLAYERS {
+    for i in 0..transient_state.num_players {
         let texture_handle = asset_server.load(format!("sprites/character{}.png", i + 1).as_str());
         let texture_atlas = TextureAtlas::from_grid(
             texture_handle,
@@ -365,7 +410,7 @@ fn setup_players_system(
             })
             .with(AnimatedSprite::with_frame_seconds(0.1))
             .with(Character::default())
-            .with(Player { id: i })
+            .with(Player { id: u32::from(i) })
             .with(items::Inventory::default())
             .with(Collider::new(
                 ColliderBehavior::Obstruct,
@@ -439,7 +484,7 @@ fn setup_players_system(
                 },
                 ..Default::default()
             })
-            .with(PlayerPositionDisplay { player_id: i })
+            .with(PlayerPositionDisplay { player_id: u32::from(i) })
             .with(Debuggable::default());
     }
 
