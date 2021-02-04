@@ -13,7 +13,7 @@ mod items;
 use character::{AnimatedSprite, Character, CharacterState, Direction, VELOCITY_EPSILON};
 use collider::{Collider, ColliderBehavior, Collision};
 use input::{Action, Flag, InputActionSet};
-use items::{Interaction, Inventory};
+use items::Inventory;
 use stage::UPDATE;
 
 const NUM_PLAYERS: u32 = 2;
@@ -25,7 +25,14 @@ const TILED_MAP_SCALE: f32 = 2.0;
 struct TransientState {
     debug_mode: bool,
     current_map: Handle<Map>,
+    default_blue: Handle<ColorMaterial>,
+    button_color: Handle<ColorMaterial>,
+    button_hovered_color: Handle<ColorMaterial>,
+    button_pressed_color: Handle<ColorMaterial>,
 }
+
+// Tag for the menu system UI.
+struct MenuUi;
 
 struct Player {
     id: u32,
@@ -48,8 +55,7 @@ const MAP_SKEW: f32 = 1.0; // We liked ~1.4, but this should be done with the ca
 
 #[derive(Clone)]
 pub enum AppState {
-    Loading,
-    // Menu,
+    Menu,
     InGame,
 }
 
@@ -59,7 +65,7 @@ pub const LATER: &str = "LATER";
 
 fn main() {
     App::build()
-        .add_resource(State::new(AppState::Loading))
+        .add_resource(State::new(AppState::Menu))
         // add stages to run loop
         .add_stage_after(UPDATE, EARLY, StateStage::<AppState>::default())
         .add_stage_after(EARLY, LATER, StateStage::<AppState>::default())
@@ -71,9 +77,14 @@ fn main() {
         // init
         .add_startup_system(setup_system.system())
         //
-        // updates
-        .on_state_update(LATER, AppState::Loading, menu_system.system())
-        // ingame:
+        // menu
+        .on_state_enter(EARLY, AppState::Menu, setup_menu_system.system())
+        .on_state_update(LATER, AppState::Menu, menu_system.system())
+        .on_state_update(LATER, AppState::Menu, bevy::input::system::exit_on_esc_system.system())
+        .on_state_update(LATER, AppState::Menu, map_item_system.system())
+        .on_state_exit(EARLY, AppState::Menu, cleanup_menu_system.system())
+        // in-game:
+        .on_state_enter(EARLY, AppState::InGame, setup_players_system.system())
         .on_state_update(EARLY, AppState::InGame, handle_input_system.system())
         .on_state_update(LATER, AppState::InGame, animate_sprite_system.system())
         .on_state_update(LATER, AppState::InGame, move_character_system.system())
@@ -82,12 +93,6 @@ fn main() {
         .on_state_update(LATER, AppState::InGame, map_item_system.system())
         .on_state_update(LATER, AppState::InGame, bevy::input::system::exit_on_esc_system.system())
         .run();
-}
-
-fn menu_system(
-    mut state: ResMut<State<AppState>>,
-) {
-    state.set_next(AppState::InGame).expect("Set Next failed");
 }
 
 fn handle_input_system(
@@ -168,27 +173,173 @@ fn handle_input_system(
     }
 }
 
-const PLAYER_WIDTH: f32 = 31.0;
-const PLAYER_HEIGHT: f32 = 32.0;
-
 fn setup_system(
     commands: &mut Commands,
     asset_server: Res<AssetServer>,
-    mut texture_atlases: ResMut<Assets<TextureAtlas>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
     // Default materials
     let default_blue = materials.add(Color::rgba(0.4, 0.4, 0.9, 0.5).into());
-    let default_red = materials.add(Color::rgba(1.0, 0.4, 0.9, 0.8).into());
     // Cameras.
     commands
-        .spawn(Camera2dBundle::default())
+        .spawn(Camera2dBundle {
+            orthographic_projection: OrthographicProjection {
+                near: -2000.0,
+                far: 2000.0,
+                ..Default::default()
+            },
+            ..Default::default()
+        })
         .with(PlayerCamera {})
         .spawn(CameraUiBundle::default());
 
     // Watch for asset changes.
     asset_server.watch_for_changes().expect("watch for changes");
 
+    // Map - has some objects
+    // transient_state: Res<TransientState>,
+    let transient_state = TransientState {
+        debug_mode: DEBUG_MODE_DEFAULT,
+        current_map: asset_server.load("maps/melle/sandyrocks.tmx"),
+        default_blue: default_blue.clone(),
+        button_color: materials.add(Color::rgb(0.4, 0.4, 0.9).into()),
+        button_hovered_color: materials.add(Color::rgb(0.5, 0.5, 1.0).into()),
+        button_pressed_color: materials.add(Color::rgb(0.3, 0.3, 0.8).into()),
+    };
+    commands
+        .spawn(TiledMapComponents {
+            map_asset: transient_state.current_map.clone(),
+            center: TiledMapCenter(true),
+            origin: Transform {
+                translation: Vec3::new(0.0, 0.0, -100.0),
+                scale: Vec3::new(TILED_MAP_SCALE, TILED_MAP_SCALE / MAP_SKEW, 1.0),
+                ..Default::default()
+            },
+            debug_config: DebugConfig {
+                enabled: DEBUG_MODE_DEFAULT,
+                material: Some(default_blue.clone()),
+            },
+            ..Default::default()
+        });
+
+    commands.insert_resource(transient_state);
+}
+
+fn setup_menu_system(
+    commands: &mut Commands,
+    asset_server: Res<AssetServer>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+    transient_state: Res<TransientState>,
+) {
+    commands
+        // Root
+        .spawn(NodeBundle {
+            style: Style {
+                size: Size::new(Val::Percent(100.0), Val::Percent(100.0)),
+                flex_direction: FlexDirection::ColumnReverse,
+                // Horizontally center child text
+                justify_content: JustifyContent::Center,
+                // Vertically center child text
+                align_items: AlignItems::Center,
+                ..Default::default()
+            },
+            material: materials.add(Color::NONE.into()),
+            ..Default::default()
+        })
+        .with(MenuUi {})
+        .with_children(|parent| {
+            // Title
+            parent.spawn(TextBundle {
+                style: Style {
+                    margin: Rect::all(Val::Px(5.0)),
+                    ..Default::default()
+                },
+                text: Text {
+                    value: "Celebration 2021".to_string(),
+                    font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                    style: TextStyle {
+                        font_size: 60.0,
+                        color: Color::BLACK,
+                        ..Default::default()
+                    },
+                },
+                ..Default::default()
+            });
+
+            // Start button.
+            parent.spawn(ButtonBundle {
+                style: Style {
+                    size: Size::new(Val::Px(150.0), Val::Px(65.0)),
+                    margin: Rect::all(Val::Px(5.0)),
+                    // Horizontally center child text
+                    justify_content: JustifyContent::Center,
+                    // Vertically center child text
+                    align_items: AlignItems::Center,
+                    ..Default::default()
+                },
+                material: transient_state.button_color.clone(),
+                ..Default::default()
+            })
+            .with_children(|parent| {
+                parent.spawn(TextBundle {
+                    text: Text {
+                        value: "Start".to_string(),
+                        font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                        style: TextStyle {
+                            font_size: 40.0,
+                            color: Color::rgb(0.9, 0.9, 0.9),
+                            ..Default::default()
+                        },
+                    },
+                    ..Default::default()
+                });
+            });
+        });
+}
+
+fn cleanup_menu_system(
+    commands: &mut Commands,
+    query: Query<Entity, With<MenuUi>>,
+) {
+    for entity in query.iter() {
+        commands.despawn_recursive(entity);
+    }
+}
+
+fn menu_system(
+    transient_state: ResMut<TransientState>,
+    mut state: ResMut<State<AppState>>,
+    mut interaction_query: Query<
+        (&Interaction, &mut Handle<ColorMaterial>),
+        (Mutated<Interaction>, With<Button>),
+    >,
+) {
+    for (interaction, mut material) in interaction_query.iter_mut() {
+        match *interaction {
+            Interaction::Clicked => {
+                state.set_next(AppState::InGame).expect("Set Next failed");
+            }
+            Interaction::Hovered => {
+                *material = transient_state.button_hovered_color.clone();
+            }
+            Interaction::None => {
+                *material = transient_state.button_pressed_color.clone();
+            }
+        }
+    }
+}
+
+const PLAYER_WIDTH: f32 = 31.0;
+const PLAYER_HEIGHT: f32 = 32.0;
+
+fn setup_players_system(
+    commands: &mut Commands,
+    asset_server: Res<AssetServer>,
+    mut texture_atlases: ResMut<Assets<TextureAtlas>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+    transient_state: Res<TransientState>,
+) {
+    let default_red = materials.add(Color::rgba(1.0, 0.4, 0.9, 0.8).into());
     // Players.
     for i in 0..NUM_PLAYERS {
         let texture_handle = asset_server.load(format!("sprites/character{}.png", i + 1).as_str());
@@ -235,7 +386,7 @@ fn setup_system(
                 });
                 // collider debug indicator - TODO: refactor into Collider::new_with_debug(parent, collider_size, scale)
                 parent.spawn(SpriteBundle {
-                    material: default_blue.clone(),
+                    material: transient_state.default_blue.clone(),
                     // Don't scale here since the whole character will be scaled.
                     sprite: Sprite::new(collider_size),
                     transform: Transform::from_translation(Vec3::new(collider_offset.x, collider_offset.y, 0.0)),
@@ -291,29 +442,6 @@ fn setup_system(
             .with(PlayerPositionDisplay { player_id: i })
             .with(Debuggable::default());
     }
-    // Map - has some objects
-    // transient_state: Res<TransientState>,
-    let transient_state = TransientState {
-        debug_mode: DEBUG_MODE_DEFAULT,
-        current_map: asset_server.load("maps/melle/sandyrocks.tmx"),
-    };
-    commands
-        .spawn(TiledMapComponents {
-            map_asset: transient_state.current_map.clone(),
-            center: TiledMapCenter(true),
-            origin: Transform {
-                translation: Vec3::new(0.0, 0.0, -100.0),
-                scale: Vec3::new(TILED_MAP_SCALE, TILED_MAP_SCALE / MAP_SKEW, 1.0),
-                ..Default::default()
-            },
-            debug_config: DebugConfig {
-                enabled: DEBUG_MODE_DEFAULT,
-                material: Some(default_blue.clone()),
-            },
-            ..Default::default()
-        });
-
-    commands.insert_resource(transient_state);
 
     // Items
     {
@@ -366,7 +494,7 @@ fn setup_system(
                     });
                     parent
                         .spawn(SpriteBundle {
-                            material: default_blue.clone(),
+                            material: transient_state.default_blue.clone(),
                             // Don't scale here since the whole character will be scaled.
                             sprite: Sprite::new(collider_size),
                             transform: Transform::from_translation(Vec3::new(
@@ -395,7 +523,7 @@ fn z_from_y(y: f32) -> f32 {
 
 fn move_character_system(
     time: Res<Time>,
-    mut interaction_event: ResMut<Events<Interaction>>,
+    mut interaction_event: ResMut<Events<items::Interaction>>,
     mut char_query: Query<(Entity, &mut Character, &mut Transform, &GlobalTransform)>,
     mut collider_query: Query<(Entity, &mut Collider, &GlobalTransform)>,
 ) {
@@ -426,7 +554,7 @@ fn move_character_system(
                 }
                 Collision::Interaction(behavior) => {
                     interaction_colliders.insert(collider_entity);
-                    interaction_event.send(Interaction::new(
+                    interaction_event.send(items::Interaction::new(
                         char_entity,
                         collider_entity,
                         behavior,
@@ -577,9 +705,6 @@ fn update_camera_system(
         let full_bb = rect_expand_by(&full_bb, margin);
 
         for (mut camera_transform, camera_global, mut projection, mut camera) in camera_query.iter_mut() {
-            // TODO: this only needs to happen once, so maybe there is a better place to do this?
-            projection.near = -2000.0;
-            projection.far = 2000.0;
             // println!("projection {:?}", projection);
             // println!("camera_transform {:?}", camera_transform);
             // println!("camera_global {:?}", camera_global);
