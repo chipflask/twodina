@@ -660,7 +660,7 @@ dependencies = [
 [[package]]
 name = "bevy_tiled_prototype"
 version = "0.1.0"
-source = "git+https://github.com/dmtaub/bevy_tiled?branch=items#50b90c65e77ff12180614ee4cdef236f75238d14"
+source = "git+https://github.com/dmtaub/bevy_tiled?branch=items#139353ce5d621c4620967d65f42eea3de5069aaf"
 dependencies = [
  "anyhow",
  "bevy",
@@ -1594,6 +1594,7 @@ dependencies = [
  "bevy",
  "bevy_tiled_prototype",
  "ncollide2d",
+ "tiled",
 ]
 
 [[package]]
@@ -3486,8 +3487,7 @@ checksum = "7572415bd688d401c52f6e36f4c8e805b9ae1622619303b9fa835d531db0acae"
 [[package]]
 name = "tiled"
 version = "0.9.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "162eb47ee963888a04affec76e698b93e30dd782f983c21be42423ff3aaccefe"
+source = "git+https://github.com/dmtaub/rs-tiled?branch=patch-1#4db567b6af28fe6d75366580ad74bea1059c031e"
 dependencies = [
  "base64 0.10.1",
  "libflate 0.1.27",

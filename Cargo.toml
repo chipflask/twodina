@@ -10,6 +10,7 @@ edition = "2018"
 bevy = { version = "0.4.0", features = ["vorbis"] }
 bevy_tiled_prototype = { git = "https://github.com/dmtaub/bevy_tiled", branch = "items" }
 ncollide2d = "0.27.0"
+tiled = { git = "https://github.com/dmtaub/rs-tiled", branch = "patch-1" }
 
 # [patch.'https://github.com/dmtaub/bevy_tiled']
 # bevy_tiled_prototype = { path = "../bevy_tiled" }

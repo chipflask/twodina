@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy_tiled_prototype::Object;
 
 use crate::{AppState, LATER, collider::{Collider, ColliderBehavior}};
 
@@ -9,7 +10,8 @@ impl Plugin for ItemsPlugin {
     fn build(&self, app: &mut AppBuilder) {
         app
             .add_event::<Interaction>()
-            .on_state_update(LATER, AppState::InGame, items_system.system());
+            .on_state_update(LATER, AppState::InGame, items_system.system())
+            .on_state_update(LATER,AppState::InGame, inventory_item_reveal_system.system());
     }
 }
 
@@ -52,6 +54,7 @@ pub fn items_system(
     interactions: Res<Events<Interaction>>,
     mut query: Query<(&mut Transform, Option<&EquippedTransform>, Option<&mut Collider>)>,
     mut inventory_query: Query<&mut Inventory>,
+    object_query: Query<&Object>,
     asset_server: Res<AssetServer>,
     audio: Res<Audio>,
 ) {
@@ -61,9 +64,17 @@ pub fn items_system(
                 commands.despawn_recursive(interaction.object);
                 if let Ok(mut inventory) = inventory_query.get_mut(interaction.actor) {
                     inventory.num_gems += 1;
-                    // should be more parametric
-                    let music = asset_server.load("sfx/gem_small.ogg");
-                    audio.play(music);
+                    // might wish to use type AND name eventually
+                    if let Ok(obj) = object_query.get(interaction.object) {
+                        let sfx_path = match obj.name.as_str() {
+                            "biggem" => {
+                                inventory.num_gems += 4; // big gems worth 5 - should be param..
+                                "sfx/gem_big.ogg"
+                            },
+                            _ => "sfx/gem_small.ogg"
+                        };
+                        audio.play(asset_server.load(sfx_path));
+                    }
                 }
                 continue;
             }
@@ -87,6 +98,24 @@ pub fn items_system(
                 object_collider.behavior = ColliderBehavior::Ignore;
             }
             commands.push_children(interaction.actor, &[interaction.object]);
+        }
+    }
+}
+
+// ideally this returns early if this level has no items that need monitoring
+pub fn inventory_item_reveal_system(
+    inventory_query: Query<&Inventory>,
+    mut object_query: Query<(&Object, &mut Visible, &mut Collider)>,
+) {
+    for inventory in inventory_query.iter() {
+        // if any one character has at least 3 gems, make the big one appear
+        if inventory.num_gems >= 3 {
+            for (object, mut visible, mut collider) in object_query.iter_mut() {
+                if object.name == "biggem" {
+                    visible.is_visible = true;
+                    collider.behavior = ColliderBehavior::Collect;
+                }
+            }
         }
     }
 }
