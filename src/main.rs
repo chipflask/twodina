@@ -716,6 +716,7 @@ fn update_camera_system(
                             With<PlayerCamera>>,
 ) {
     // Amount of margin between edge of view and character.
+    let margin_1p = 75.0;
     let margin = 100.0;
 
     // Get bounding box of all players.
@@ -744,10 +745,13 @@ fn update_camera_system(
         let win_width = window.width();
         let win_height = window.height();
         let aspect_ratio = win_width / win_height;
-
+        let margin_amount = if num_players <= 1 { margin_1p } else { margin };
         // Add margin.
         // TODO: Handle case when window is smaller than margin.
-        let full_bb = rect_expand_by(&full_bb, margin);
+        let full_bb = rect_expand_by(&full_bb, margin_amount);
+        let margin_vec =  Vec3::new(
+            (win_width - margin_amount * 1.1) / win_width,
+            (win_height - margin_amount * 1.1) / win_height, 1.0);
 
         for (mut camera_transform, camera_global, mut projection, mut camera) in camera_query.iter_mut() {
             // println!("projection {:?}", projection);
@@ -761,7 +765,17 @@ fn update_camera_system(
                 let is_player_in_view = is_rect_completely_inside(&full_bb, &camera_rect);
                 if !is_player_in_view {
                     // Mutate the transform, never the global transform.
-                    camera_transform.translation = player_translation;
+                    let mut new_cam_translation = camera_transform.translation.clone();
+                    let mut v1 = camera_transform.translation.clone() - player_translation;
+
+                    v1.x = margin_vec.x.min((v1.x.abs() / win_width).abs()) * v1.x.signum() * win_width;
+                    v1.y = margin_vec.y.min((v1.y.abs() / win_height).abs()) * v1.y.signum() * win_height;
+                    // println!("{:?} - {:?}", v1, margin_vec);
+
+                    new_cam_translation = new_cam_translation - v1 * 2.0;
+                    new_cam_translation.z = camera_transform.translation.z;
+                    camera_transform.translation = new_cam_translation;
+
                 }
             } else {
                 // Center on the center of the bounding box of all players.
@@ -866,7 +880,7 @@ fn map_item_system(
                 ObjectShape::Polyline { points: _ } | ObjectShape::Polygon { points: _ } | ObjectShape::Point(_, _) =>
                     Vec2::new(40.0, 40.0),
             };
-            
+
             // we should have actual types based on object name
             // and add components based on that
             let collider_type = match object.name.as_ref() {
