@@ -75,7 +75,7 @@ pub fn trigger_level_load_system(
                     to_load.next_state = AppState::InGame;
                     to_load.next_dialogue = Some(path.clone());
                 } else {
-                    println!("couldn't load level {}", level);
+                    println!("couldn't load level '{}' at 'assets/{}'", path, level);
                 };
             }
 

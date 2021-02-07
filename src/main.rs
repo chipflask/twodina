@@ -285,7 +285,7 @@ fn setup_system(
     let mut transient_state = TransientState {
         debug_mode: DEBUG_MODE_DEFAULT,
         start_dialogue_shown: false,
-        current_map: to_load.add(asset_server.load("maps/melle/sandyrocks.tmx")),
+        current_map: to_load.add(asset_server.load("maps/sandyrocks.tmx")),
         current_dialogue: None,
         next_map: None,
         loaded_maps: HashSet::default(),

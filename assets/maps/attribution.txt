@@ -1,0 +1,10 @@
+All assets in this subdirectory either custom-made or derived from CC0/public domain works.
+
+Thanks to:
+
+https://opengameart.org/users/melle
+Artwork by Melissa Krautheim
+
+https://bakudas.itch.io/generic-rpg-pack
+Artwork by Bakudas and Gabe Fern
+Version ALPHA release v0.4

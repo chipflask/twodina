@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <map version="1.4" tiledversion="1.4.3" orientation="orthogonal" renderorder="right-down" width="10" height="10" tilewidth="64" tileheight="64" infinite="0" nextlayerid="9" nextobjectid="38">
  <tileset firstgid="1" name="melle_bg_remix_64" tilewidth="64" tileheight="64" tilecount="24" columns="6">
-  <image source="melle_bg_remix_64.png" width="384" height="256"/>
+  <image source="melle/melle_bg_remix_64.png" width="384" height="256"/>
  </tileset>
  <tileset firstgid="25" name="crystal_set" tilewidth="100" tileheight="100" tilecount="5" columns="5">
-  <image source="crystal_set.png" width="500" height="100"/>
+  <image source="melle/crystal_set.png" width="500" height="100"/>
  </tileset>
- <tileset firstgid="30" name="trees" tilewidth="64" tileheight="64" tilecount="2" columns="2">
-  <image source="../../tile_maps/trees.png" width="128" height="64"/>
+ <tileset firstgid="30" name="trees" tilewidth="54" tileheight="72" tilecount="2" columns="2">
+  <image source="trees.png" width="108" height="72"/>
  </tileset>
  <layer id="1" name="background" width="10" height="10" tintcolor="#ffd8bd">
   <data encoding="base64" compression="zlib">
@@ -23,17 +23,17 @@
   <object id="37" name="biggem" gid="25" x="313" y="341" width="100" height="100" visible="0"/>
  </objectgroup>
  <objectgroup id="5" name="trees">
-  <object id="19" gid="30" x="35" y="275" width="126" height="126"/>
-  <object id="20" gid="30" x="533" y="274" width="89" height="89"/>
-  <object id="21" gid="30" x="532" y="411" width="96" height="96"/>
-  <object id="22" name="load:maps/melle/ritualspace" gid="31" x="14" y="116" width="165" height="165"/>
-  <object id="23" gid="31" x="492" y="594" width="108" height="108"/>
-  <object id="24" gid="31" x="536" y="159" width="100" height="100"/>
+  <object id="19" gid="30" x="-18.5502" y="265.741" width="105.049" height="140.066"/>
+  <object id="20" gid="30" x="551.474" y="264.696" width="81.7993" height="109.066"/>
+  <object id="21" gid="30" x="550.428" y="438.892" width="78.7993" height="105.066"/>
+  <object id="22" name="load:maps/ritualspace" gid="31" x="-17" y="102.55" width="106.549" height="142.066"/>
+  <object id="23" gid="31" x="508.619" y="599.169" width="83.5493" height="111.399"/>
+  <object id="24" gid="31" x="554.609" y="144.494" width="75.0493" height="100.066"/>
  </objectgroup>
  <objectgroup id="4" name="walls">
-  <object id="9" x="-104" y="-54" width="120" height="718"/>
-  <object id="10" x="628" y="-82" width="118" height="750"/>
-  <object id="11" x="-230" y="-170" width="1044" height="182"/>
-  <object id="12" x="-222" y="622" width="1040" height="96"/>
+  <object id="9" x="-117" y="-57" width="120" height="718"/>
+  <object id="10" x="638" y="-80" width="118" height="750"/>
+  <object id="11" x="-226" y="-184" width="1044" height="182"/>
+  <object id="12" x="-220" y="643" width="1040" height="96"/>
  </objectgroup>
 </map>
