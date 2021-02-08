@@ -25,6 +25,8 @@ pub enum Action {
     Right,
 
     Run,
+
+    Accept,
 }
 
 // inputs that toggle values on key/button press map to these
@@ -111,6 +113,10 @@ fn action_producer_system(
     mut input_action_set: ResMut<InputActionSet>,
 ) {
     input_action_set.clear();
+
+    if keyboard_input.just_pressed(KeyCode::Space) {
+        input_action_set.activate(Action::Accept, 0);
+    }
 
     if keyboard_input.just_released(KeyCode::F3) {
         input_action_set.toggle(Flag::Debug);

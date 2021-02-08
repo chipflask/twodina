@@ -7,11 +7,13 @@ use bevy::math::Vec3Swizzles;
 
 mod character;
 mod collider;
+mod dialogue;
 mod input;
 mod items;
 
 use character::{AnimatedSprite, Character, CharacterState, Direction, VELOCITY_EPSILON};
 use collider::{Collider, ColliderBehavior, Collision};
+use dialogue::Dialogue;
 use input::{Action, Flag, InputActionSet};
 use items::Inventory;
 use stage::UPDATE;
@@ -25,6 +27,7 @@ struct TransientState {
     debug_mode: bool,
     num_players: u8,
     current_map: Handle<Map>,
+    current_dialogue: Option<Entity>,
     default_blue: Handle<ColorMaterial>,
     button_color: Handle<ColorMaterial>,
     button_hovered_color: Handle<ColorMaterial>,
@@ -77,6 +80,7 @@ fn main() {
         // add plugins
         .add_plugins(DefaultPlugins)
         .add_plugin(TiledMapPlugin)
+        .add_plugin(dialogue::DialoguePlugin::default())
         .add_plugin(input::InputActionPlugin::default())
         .add_plugin(items::ItemsPlugin::default())
         // init
@@ -105,6 +109,7 @@ fn handle_input_system(
     mut transient_state: ResMut<TransientState>,
     mut query: Query<(&mut Character, &Player)>,
     mut debuggable: Query<&mut Visible, With<Debuggable>>,
+    mut dialogue_query: Query<&mut Dialogue>,
 ) {
     // check for debug status flag differing from transient_state to determine when to hide/show debug stuff
     if input_actions.has_flag(Flag::Debug) {
@@ -175,6 +180,13 @@ fn handle_input_system(
         // Don't modify z if the character has a z velocity for some reason.
 
         character.set_state(new_state);
+
+        if let Some(entity) = transient_state.current_dialogue {
+            if input_actions.is_active(Action::Accept, player.id) {
+                let mut dialogue = dialogue_query.get_mut(entity).expect("Couldn't find current dialogue entity");
+                dialogue.advance();
+            }
+        }
     }
 }
 
@@ -207,6 +219,7 @@ fn setup_system(
         debug_mode: DEBUG_MODE_DEFAULT,
         num_players: 0,
         current_map: asset_server.load("maps/melle/sandyrocks.tmx"),
+        current_dialogue: None,
         default_blue: default_blue.clone(),
         button_color: materials.add(Color::rgb(0.4, 0.4, 0.9).into()),
         button_hovered_color: materials.add(Color::rgb(0.5, 0.5, 1.0).into()),
@@ -382,8 +395,40 @@ fn setup_players_system(
     asset_server: Res<AssetServer>,
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
-    transient_state: Res<TransientState>,
+    mut transient_state: ResMut<TransientState>,
 ) {
+    // Load dialog.
+    let level_dialogue = asset_server.load("dialogue/level1.dialogue");
+    commands
+        .spawn(TextBundle {
+            text: Text {
+                font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                value: "".to_string(),
+                style: TextStyle {
+                    color: Color::rgb(0.2, 0.2, 0.2),
+                    font_size: 24.0,
+                    ..Default::default()
+                },
+            },
+            style: Style {
+                position_type: PositionType::Absolute,
+                position: Rect {
+                    left: Val::Px(20.0),
+                    right: Val::Px(20.0),
+                    bottom: Val::Px(20.0),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+        .with(Dialogue {
+            handle: level_dialogue,
+            ..Default::default()
+        })
+        .current_entity()
+        .map(|entity| transient_state.current_dialogue = Some(entity));
+
     let default_red = materials.add(Color::rgba(1.0, 0.4, 0.9, 0.8).into());
     // Players.
     for i in 0..transient_state.num_players {
