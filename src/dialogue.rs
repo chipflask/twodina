@@ -46,6 +46,7 @@ pub struct DialogueAsset {
 #[derive(Debug, serde::Deserialize, TypeUuid)]
 #[uuid = "df970dd5-6e00-43c3-b85e-f6aa1eab5b26"]
 pub struct DialogueNode {
+    #[serde(default)]
     pub name: String,
     pub body: NodeBody,
     #[serde(default)]
@@ -97,6 +98,10 @@ fn asset_load_system(
                 let mut dialogue_asset = dialogue_assets.get_mut(handle).expect("Couldn't find dialogue asset from event handle");
                 let mut map: HashMap<String, usize> = Default::default();
                 for (i, node) in dialogue_asset.nodes.iter().enumerate() {
+                    // If it has no name, don't add it to the map.
+                    if node.name.is_empty() {
+                        continue;
+                    }
                     map.insert(node.name.clone(), i);
                 }
                 dialogue_asset.nodes_by_name = map;

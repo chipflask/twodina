@@ -8,11 +8,9 @@
             body: Text("Welcome to the game!"),
         ),
         (
-            name: "Made It",
             body: Text("You made it to the second node!"),
         ),
         (
-            name: "Go back",
             body: GoTo("Start"),
         ),
     ],
