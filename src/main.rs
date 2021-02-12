@@ -1,7 +1,7 @@
 use std;
 use std::convert::TryFrom;
 
-use bevy::{prelude::*, render::camera::{Camera, CameraProjection, OrthographicProjection}, utils::HashSet};
+use bevy::{asset::Asset, prelude::*, render::camera::{Camera, CameraProjection, OrthographicProjection}, utils::HashSet};
 use bevy_tiled_prototype::{DebugConfig, Map, Object, ObjectReadyEvent, ObjectShape, TiledMapCenter, TiledMapComponents, TiledMapPlugin};
 use bevy::math::Vec3Swizzles;
 
@@ -61,11 +61,36 @@ struct Debuggable;
 
 const MAP_SKEW: f32 = 1.0; // We liked ~1.4, but this should be done with the camera
 
-#[derive(Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum AppState {
     Menu,
     Loading,
     InGame,
+}
+
+impl Default for AppState {
+    fn default() -> Self {
+        AppState::Loading
+    }
+}
+
+#[derive(Debug, Default)]
+struct LoadProgress {
+    handles: HashSet<HandleUntyped>,
+    next_state: AppState,
+    // progress: f32,
+}
+
+impl LoadProgress {
+    pub fn is_complete(&self) -> bool {
+        self.handles.is_empty()
+    }
+
+    pub fn add<T: Asset>(&mut self, handle: Handle<T>) -> Handle<T> {
+        self.handles.insert(handle.clone_untyped());
+
+        handle
+    }
 }
 
 // run loop stages
@@ -74,7 +99,8 @@ pub const LATER: &str = "LATER";
 
 fn main() {
     App::build()
-        .add_resource(State::new(AppState::Loading))
+        .add_resource(State::new(AppState::default()))
+        .add_resource(LoadProgress::default())
         // add stages to run loop
         .add_stage_after(UPDATE, EARLY, StateStage::<AppState>::default())
         .add_stage_after(EARLY, LATER, StateStage::<AppState>::default())
@@ -112,11 +138,15 @@ fn wait_for_asset_loading_system(
     mut map_event_reader: Local<EventReader<AssetEvent<Map>>>,
     map_events: Res<Events<AssetEvent<Map>>>,
     mut state: ResMut<State<AppState>>,
+    mut load_progress: ResMut<LoadProgress>,
 ) {
     for event in map_event_reader.iter(&map_events) {
         match event {
-            AssetEvent::Created { handle: _ } => {
-                state.set_next(AppState::Menu).expect("couldn't change state when assets finished loading");
+            AssetEvent::Created { handle } => {
+                load_progress.handles.remove(&handle.clone_untyped());
+                if load_progress.is_complete() {
+                    state.set_next(load_progress.next_state).expect("couldn't change state when assets finished loading");
+                }
             }
             AssetEvent::Modified { handle: _ } => {
             }
@@ -217,6 +247,7 @@ fn setup_system(
     commands: &mut Commands,
     asset_server: Res<AssetServer>,
     mut materials: ResMut<Assets<ColorMaterial>>,
+    mut to_load: ResMut<LoadProgress>,
 ) {
     // Default materials
     let default_blue = materials.add(Color::rgba(0.4, 0.4, 0.9, 0.5).into());
@@ -241,7 +272,7 @@ fn setup_system(
     let transient_state = TransientState {
         debug_mode: DEBUG_MODE_DEFAULT,
         num_players: 0,
-        current_map: asset_server.load("maps/melle/sandyrocks.tmx"),
+        current_map: to_load.add(asset_server.load("maps/melle/sandyrocks.tmx")),
         current_dialogue: None,
         default_blue: default_blue.clone(),
         button_color: materials.add(Color::rgb(0.4, 0.4, 0.9).into()),
@@ -265,6 +296,8 @@ fn setup_system(
         });
 
     commands.insert_resource(transient_state);
+
+    to_load.next_state = AppState::Menu;
 }
 
 fn setup_menu_system(
