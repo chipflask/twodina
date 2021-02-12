@@ -64,6 +64,7 @@ const MAP_SKEW: f32 = 1.0; // We liked ~1.4, but this should be done with the ca
 #[derive(Clone)]
 pub enum AppState {
     Menu,
+    Loading,
     InGame,
 }
 
@@ -73,7 +74,7 @@ pub const LATER: &str = "LATER";
 
 fn main() {
     App::build()
-        .add_resource(State::new(AppState::Menu))
+        .add_resource(State::new(AppState::Loading))
         // add stages to run loop
         .add_stage_after(UPDATE, EARLY, StateStage::<AppState>::default())
         .add_stage_after(EARLY, LATER, StateStage::<AppState>::default())
@@ -92,6 +93,9 @@ fn main() {
         .on_state_update(LATER, AppState::Menu, bevy::input::system::exit_on_esc_system.system())
         .on_state_update(LATER, AppState::Menu, map_item_system.system())
         .on_state_exit(EARLY, AppState::Menu, cleanup_menu_system.system())
+        // dialog
+        .on_state_update(LATER, AppState::Loading, wait_for_asset_loading_system.system())
+
         // in-game:
         .on_state_enter(EARLY, AppState::InGame, setup_players_system.system())
         .on_state_update(EARLY, AppState::InGame, handle_input_system.system())
@@ -103,6 +107,25 @@ fn main() {
         .on_state_update(LATER, AppState::InGame, bevy::input::system::exit_on_esc_system.system())
         .run();
 }
+
+fn wait_for_asset_loading_system(
+    mut map_event_reader: Local<EventReader<AssetEvent<Map>>>,
+    map_events: Res<Events<AssetEvent<Map>>>,
+    mut state: ResMut<State<AppState>>,
+) {
+    for event in map_event_reader.iter(&map_events) {
+        match event {
+            AssetEvent::Created { handle: _ } => {
+                state.set_next(AppState::Menu).expect("couldn't change state when assets finished loading");
+            }
+            AssetEvent::Modified { handle: _ } => {
+            }
+            AssetEvent::Removed { handle: _ } => {
+            }
+        }
+    }
+}
+
 
 fn handle_input_system(
     input_actions: Res<InputActionSet>,
