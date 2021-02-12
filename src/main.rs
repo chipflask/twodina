@@ -1,7 +1,7 @@
 use std;
 use std::convert::TryFrom;
 
-use bevy::{asset::Asset, prelude::*, render::camera::{Camera, CameraProjection, OrthographicProjection}, utils::HashSet};
+use bevy::{asset::{Asset, HandleId}, prelude::*, render::camera::{Camera, CameraProjection, OrthographicProjection}, utils::HashSet};
 use bevy_tiled_prototype::{DebugConfig, Map, Object, ObjectReadyEvent, ObjectShape, TiledMapCenter, TiledMapComponents, TiledMapPlugin};
 use bevy::math::Vec3Swizzles;
 
@@ -25,7 +25,6 @@ const TILED_MAP_SCALE: f32 = 2.0;
 #[derive(Clone, Debug)]
 struct TransientState {
     debug_mode: bool,
-    num_players: u8,
     current_map: Handle<Map>,
     current_dialogue: Option<Entity>,
     default_blue: Handle<ColorMaterial>,
@@ -63,8 +62,8 @@ const MAP_SKEW: f32 = 1.0; // We liked ~1.4, but this should be done with the ca
 
 #[derive(Debug, Copy, Clone)]
 pub enum AppState {
-    Menu,
     Loading,
+    Menu,
     InGame,
 }
 
@@ -82,14 +81,14 @@ struct LoadProgress {
 }
 
 impl LoadProgress {
-    pub fn is_complete(&self) -> bool {
-        self.handles.is_empty()
-    }
-
     pub fn add<T: Asset>(&mut self, handle: Handle<T>) -> Handle<T> {
         self.handles.insert(handle.clone_untyped());
 
         handle
+    }
+
+    pub fn reset(&mut self) {
+        self.handles.clear();
     }
 }
 
@@ -112,18 +111,17 @@ fn main() {
         .add_plugin(items::ItemsPlugin::default())
         // init
         .add_startup_system(setup_system.system())
+        // loading
+        .on_state_update(LATER, AppState::Loading, wait_for_asset_loading_system.system())
         //
         // menu
         .on_state_enter(EARLY, AppState::Menu, setup_menu_system.system())
-        .on_state_update(LATER, AppState::Menu, menu_system.system())
+        .on_state_update(LATER, AppState::Menu, menu_system.system().chain(setup_players_system.system()))
         .on_state_update(LATER, AppState::Menu, bevy::input::system::exit_on_esc_system.system())
         .on_state_update(LATER, AppState::Menu, map_item_system.system())
         .on_state_exit(EARLY, AppState::Menu, cleanup_menu_system.system())
-        // dialog
-        .on_state_update(LATER, AppState::Loading, wait_for_asset_loading_system.system())
 
         // in-game:
-        .on_state_enter(EARLY, AppState::InGame, setup_players_system.system())
         .on_state_update(EARLY, AppState::InGame, handle_input_system.system())
         .on_state_update(LATER, AppState::InGame, animate_sprite_system.system())
         .on_state_update(LATER, AppState::InGame, move_character_system.system())
@@ -135,24 +133,21 @@ fn main() {
 }
 
 fn wait_for_asset_loading_system(
-    mut map_event_reader: Local<EventReader<AssetEvent<Map>>>,
-    map_events: Res<Events<AssetEvent<Map>>>,
     mut state: ResMut<State<AppState>>,
     mut load_progress: ResMut<LoadProgress>,
+    asset_server: Res<AssetServer>,
 ) {
-    for event in map_event_reader.iter(&map_events) {
-        match event {
-            AssetEvent::Created { handle } => {
-                load_progress.handles.remove(&handle.clone_untyped());
-                if load_progress.is_complete() {
-                    state.set_next(load_progress.next_state).expect("couldn't change state when assets finished loading");
-                }
-            }
-            AssetEvent::Modified { handle: _ } => {
-            }
-            AssetEvent::Removed { handle: _ } => {
-            }
+    let handle_ids = load_progress.handles.iter()
+        .map(|handle| HandleId::from(handle));
+    match asset_server.get_group_load_state(handle_ids) {
+        bevy::asset::LoadState::NotLoaded => {}
+        bevy::asset::LoadState::Loading => {}
+        bevy::asset::LoadState::Loaded => {
+            state.set_next(load_progress.next_state).expect("couldn't change state when assets finished loading");
+            load_progress.reset();
         }
+        // TODO: Handle failed loading of assets.
+        bevy::asset::LoadState::Failed => {}
     }
 }
 
@@ -271,7 +266,6 @@ fn setup_system(
     // transient_state: Res<TransientState>,
     let transient_state = TransientState {
         debug_mode: DEBUG_MODE_DEFAULT,
-        num_players: 0,
         current_map: to_load.add(asset_server.load("maps/melle/sandyrocks.tmx")),
         current_dialogue: None,
         default_blue: default_blue.clone(),
@@ -412,26 +406,30 @@ fn cleanup_menu_system(
     }
 }
 
+enum MenuAction {
+    Nil,
+    LoadPlayers { num_players: u8 },
+}
+
 fn menu_system(
-    mut transient_state: ResMut<TransientState>,
-    mut state: ResMut<State<AppState>>,
+    transient_state: ResMut<TransientState>,
     mut interaction_query: Query<
         (&Interaction, &mut Handle<ColorMaterial>, &MenuButton),
         (Mutated<Interaction>, With<Button>),
     >,
-) {
+) -> MenuAction {
+    let mut action = MenuAction::Nil;
     for (interaction, mut material, button_choice) in interaction_query.iter_mut() {
         match *interaction {
             Interaction::Clicked => {
                 match button_choice {
                     MenuButton::OnePlayer => {
-                        transient_state.num_players = 1;
+                        action = MenuAction::LoadPlayers { num_players: 1 };
                     }
                     MenuButton::TwoPlayers => {
-                        transient_state.num_players = 2;
+                        action = MenuAction::LoadPlayers { num_players: 2 };
                     }
                 }
-                state.set_next(AppState::InGame).expect("Set Next failed");
             }
             Interaction::Hovered => {
                 *material = transient_state.button_hovered_color.clone();
@@ -441,24 +439,37 @@ fn menu_system(
             }
         }
     }
+
+    action
 }
 
 const PLAYER_WIDTH: f32 = 31.0;
 const PLAYER_HEIGHT: f32 = 32.0;
 
 fn setup_players_system(
+    In(menu_action): In<MenuAction>,
     commands: &mut Commands,
     asset_server: Res<AssetServer>,
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     mut transient_state: ResMut<TransientState>,
+    mut state: ResMut<State<AppState>>,
+    mut to_load: ResMut<LoadProgress>,
 ) {
+    let num_players = match menu_action {
+        MenuAction::Nil => return,
+        MenuAction::LoadPlayers { num_players } => num_players,
+    };
+
+    state.set_next(AppState::Loading).expect("Set Next failed");
+    to_load.next_state = AppState::InGame;
+
     // Load dialog.
-    let level_dialogue = asset_server.load("dialogue/level1.dialogue");
+    let level_dialogue = to_load.add(asset_server.load("dialogue/level1.dialogue"));
     commands
         .spawn(TextBundle {
             text: Text {
-                font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                font: to_load.add(asset_server.load("fonts/FiraSans-Bold.ttf")),
                 value: "".to_string(),
                 style: TextStyle {
                     color: Color::rgb(0.2, 0.2, 0.2),
@@ -487,8 +498,8 @@ fn setup_players_system(
 
     let default_red = materials.add(Color::rgba(1.0, 0.4, 0.9, 0.8).into());
     // Players.
-    for i in 0..transient_state.num_players {
-        let texture_handle = asset_server.load(format!("sprites/character{}.png", i + 1).as_str());
+    for i in 0..num_players {
+        let texture_handle = to_load.add(asset_server.load(format!("sprites/character{}.png", i + 1).as_str()));
         let texture_atlas = TextureAtlas::from_grid(
             texture_handle,
             Vec2::new(PLAYER_WIDTH, PLAYER_HEIGHT),
@@ -520,7 +531,7 @@ fn setup_players_system(
             ))
             .with_children(|parent| {
                 // add a shadow sprite -- is there a more efficient way where we load this just once??
-                let shadow_handle = asset_server.load("sprites/shadow.png");
+                let shadow_handle = to_load.add(asset_server.load("sprites/shadow.png"));
                 parent.spawn(SpriteBundle {
                     transform: Transform {
                         translation: Vec3::new(0.0, -13.0, -0.01),
@@ -561,7 +572,7 @@ fn setup_players_system(
             })
             .spawn(TextBundle {
                 text: Text {
-                    font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                    font: to_load.add(asset_server.load("fonts/FiraSans-Bold.ttf")),
                     value: "Position:".to_string(),
                     style: TextStyle {
                         color: Color::rgb(0.7, 0.7, 0.7),
@@ -591,7 +602,7 @@ fn setup_players_system(
 
     // Items
     {
-        let texture_handle = asset_server.load("sprites/items.png");
+        let texture_handle = to_load.add(asset_server.load("sprites/items.png"));
         let items = vec![
             // Shield.
             bevy::sprite::Rect {
@@ -628,7 +639,7 @@ fn setup_players_system(
                 .with(items::EquippedTransform { transform: equipped_transform })
                 .with_children(|parent| {
                     // Add a shadow sprite.
-                    let shadow_handle = asset_server.load("sprites/shadow.png");
+                    let shadow_handle = to_load.add(asset_server.load("sprites/shadow.png"));
                     parent.spawn(SpriteBundle {
                         transform: Transform {
                             translation: Vec3::new(0.0, -5.0, -0.01),
