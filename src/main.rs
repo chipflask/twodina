@@ -1035,6 +1035,7 @@ fn map_item_system(
             };
 
             let collider_component = Collider::new(collider_type, collider_size, Vec2::new(0.0, 0.0));
+            commands.insert_one(event.entity, BelongsToMap{ handle: event.map_handle.clone() });
             commands.insert_one(event.entity, collider_component);
         }
     }

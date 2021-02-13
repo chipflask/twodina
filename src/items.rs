@@ -12,7 +12,7 @@ impl Plugin for ItemsPlugin {
     fn build(&self, app: &mut AppBuilder) {
         app
             .add_event::<Interaction>()
-            .on_state_update(EARLY, AppState::InGame, object_load_system.system())
+            .on_state_update(EARLY, AppState::InGame, trigger_level_load_system.system())
             .on_state_update(LATER, AppState::InGame, items_system.system())
             .on_state_update(LATER,AppState::InGame, inventory_item_reveal_system.system());
     }
@@ -50,7 +50,7 @@ impl Interaction {
     }
 }
 
-pub fn object_load_system(
+pub fn trigger_level_load_system(
     commands: &mut Commands,
     asset_server: Res<AssetServer>,
     mut interaction_reader: Local<EventReader<Interaction>>,
