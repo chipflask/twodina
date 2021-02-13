@@ -3,7 +3,7 @@ use std::fs;
 use bevy::prelude::*;
 use bevy_tiled_prototype::{Object};
 
-use crate::{AppState, LATER, LoadProgress, TransientState, collider::{Collider, ColliderBehavior}, load_next_map};
+use crate::{AppState, EARLY, LATER, LoadProgress, TransientState, collider::{Collider, ColliderBehavior}, load_next_map};
 
 #[derive(Debug, Default)]
 pub struct ItemsPlugin;
@@ -12,6 +12,7 @@ impl Plugin for ItemsPlugin {
     fn build(&self, app: &mut AppBuilder) {
         app
             .add_event::<Interaction>()
+            .on_state_update(EARLY, AppState::InGame, object_load_system.system())
             .on_state_update(LATER, AppState::InGame, items_system.system())
             .on_state_update(LATER,AppState::InGame, inventory_item_reveal_system.system());
     }
@@ -49,6 +50,38 @@ impl Interaction {
     }
 }
 
+pub fn object_load_system(
+    commands: &mut Commands,
+    asset_server: Res<AssetServer>,
+    mut interaction_reader: Local<EventReader<Interaction>>,
+    interactions: Res<Events<Interaction>>,
+    mut state: ResMut<State<AppState>>,
+    mut game_state: ResMut<TransientState>,
+    mut to_load: ResMut<LoadProgress>,
+) {
+    for interaction in interaction_reader.iter(&interactions) {
+        match &interaction.behavior {
+            ColliderBehavior::Load { path } => {
+                let level: String = path.to_owned() + &String::from(".tmx");
+                let level_fs_result = fs::metadata(format!("assets/{}", level));
+                // if this file exists, we're going to want to try loading a state
+                if level_fs_result.is_ok() && state.set_next(AppState::Loading).is_ok() {
+                    println!("Loading level... {}", level);
+                    // eventually do preloading:
+                    // game_state.next_map = Some(asset_server.load(level.as_str()));
+                    game_state.current_map = to_load.add(asset_server.load(level.as_str()));
+                    load_next_map(commands, &game_state);
+                    to_load.next_state = AppState::InGame;
+                } else {
+                    println!("couldn't load level {}", level);
+                };
+            }
+
+            ColliderBehavior::Obstruct | ColliderBehavior::PickUp | ColliderBehavior::Collect | ColliderBehavior::Ignore => {}
+        }
+    }
+}
+
 // handles consume and equip
 pub fn items_system(
     commands: &mut Commands,
@@ -56,9 +89,6 @@ pub fn items_system(
     interactions: Res<Events<Interaction>>,
     mut query: Query<(&mut Transform, Option<&EquippedTransform>, Option<&mut Collider>)>,
     mut inventory_query: Query<&mut Inventory>,
-    mut to_load: ResMut<LoadProgress>,
-    mut state: ResMut<State<AppState>>,
-    mut game_state: ResMut<TransientState>,
     object_query: Query<&Object>,
     asset_server: Res<AssetServer>,
     audio: Res<Audio>,
@@ -82,22 +112,7 @@ pub fn items_system(
                     }
                 }
             }
-            ColliderBehavior::Load { path } => {
-                let level: String = path.to_owned() + &String::from(".tmx");
-                let level_fs_result = fs::metadata(format!("assets/{}", level));
-                // if this file exists, we're going to want to try loading a state
-                if level_fs_result.is_ok() && state.set_next(AppState::Loading).is_ok() {
-                    println!("Loading level... {}", level);
-                    // eventually do preloading:
-                    // game_state.next_map = Some(asset_server.load(level.as_str()));
-                    game_state.current_map = to_load.add(asset_server.load(level.as_str()));
-                    load_next_map(commands, &game_state);
-                    to_load.next_state = AppState::InGame;
-                } else {
-                    println!("couldn't load level {}", level);
-                };
-            }
-            ColliderBehavior::Obstruct | ColliderBehavior::Ignore => {}
+            ColliderBehavior::Obstruct | ColliderBehavior::Ignore | ColliderBehavior::Load { path: _ } => {}
             ColliderBehavior::PickUp => {
                 // this is a collectable
                 let actor_scale = match query.get_mut(interaction.actor) {
