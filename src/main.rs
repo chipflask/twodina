@@ -686,11 +686,16 @@ fn z_from_y(y: f32) -> f32 {
     -y / 100.0
 }
 
+struct BelongsToMap {
+    handle: Handle<Map>,
+}
+
 fn move_character_system(
     time: Res<Time>,
     mut interaction_event: ResMut<Events<items::Interaction>>,
     mut char_query: Query<(Entity, &mut Character, &mut Transform, &GlobalTransform)>,
-    mut collider_query: Query<(Entity, &mut Collider, &GlobalTransform)>,
+    transient_state: Res<TransientState>,
+    mut collider_query: Query<(Entity, &mut Collider, &GlobalTransform, Option<&BelongsToMap>)>,
 ) {
     let mut interaction_colliders: HashSet<Entity> = Default::default();
     for (char_entity, mut character, mut transform, char_global) in char_query.iter_mut() {
@@ -703,10 +708,16 @@ fn move_character_system(
         delta.y /= MAP_SKEW;
         // should stay between +- 2000.0
 
+        // check for collisions with objects in current map
         let char_aabb = char_collider.bounding_volume_with_translation(char_global, delta);
-
         let mut char_collision = Collision::Nil;
-        for (collider_entity, collider, collider_global) in collider_query.iter_mut() {
+        for (collider_entity, collider, collider_global, option_to_map) in collider_query.iter_mut() {
+            // this should be the entity
+            if let Some(owner_map) = option_to_map  {
+                if owner_map.handle != transient_state.current_map {
+                    continue;
+                }
+            }
             // Shouldn't collide with itself.
             if collider_entity == char_entity {
                 continue;
