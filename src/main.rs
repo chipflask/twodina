@@ -996,16 +996,13 @@ fn map_item_system(
             // we should have actual types based on object name
             // and add components based on that
             let collider_type = match object.name.as_ref() {
-                "biggem" => {
+                "biggem" | "gem" => {
                     if !object.visible {
                         ColliderBehavior::Ignore
                     } else {
                         ColliderBehavior::Collect
                     }
                 },
-                "gem" => {
-                    ColliderBehavior::Collect
-                }
                 _ => {
                     if object.is_shape() { // allow hide/show objects without images
                         commands.insert_one(event.entity, Debuggable::default());
