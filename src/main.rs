@@ -23,10 +23,11 @@ const TILED_MAP_SCALE: f32 = 2.0;
 
 // Game state that shouldn't be saved.
 #[derive(Clone, Debug)]
-struct TransientState {
+pub struct TransientState {
     debug_mode: bool,
-    current_map: Handle<Map>,
     current_dialogue: Option<Entity>,
+    current_map: Handle<Map>,
+    next_map: Option<Handle<Map>>,
     default_blue: Handle<ColorMaterial>,
     button_color: Handle<ColorMaterial>,
     button_hovered_color: Handle<ColorMaterial>,
@@ -74,7 +75,7 @@ impl Default for AppState {
 }
 
 #[derive(Debug, Default)]
-struct LoadProgress {
+pub struct LoadProgress {
     handles: HashSet<HandleUntyped>,
     next_state: AppState,
     // progress: f32,
@@ -83,7 +84,6 @@ struct LoadProgress {
 impl LoadProgress {
     pub fn add<T: Asset>(&mut self, handle: Handle<T>) -> Handle<T> {
         self.handles.insert(handle.clone_untyped());
-
         handle
     }
 
@@ -268,11 +268,23 @@ fn setup_system(
         debug_mode: DEBUG_MODE_DEFAULT,
         current_map: to_load.add(asset_server.load("maps/melle/sandyrocks.tmx")),
         current_dialogue: None,
+        next_map: None,
         default_blue: default_blue.clone(),
         button_color: materials.add(Color::rgb(0.4, 0.4, 0.9).into()),
         button_hovered_color: materials.add(Color::rgb(0.5, 0.5, 1.0).into()),
         button_pressed_color: materials.add(Color::rgb(0.3, 0.3, 0.8).into()),
     };
+    load_next_map(commands, &transient_state);
+    commands.insert_resource(transient_state);
+
+    to_load.next_state = AppState::Menu;
+}
+
+pub fn load_next_map(
+    commands: &mut Commands,
+    transient_state: &TransientState,
+) {
+    // hide other maps
     commands
         .spawn(TiledMapComponents {
             map_asset: transient_state.current_map.clone(),
@@ -284,14 +296,10 @@ fn setup_system(
             },
             debug_config: DebugConfig {
                 enabled: DEBUG_MODE_DEFAULT,
-                material: Some(default_blue.clone()),
+                material: Some(transient_state.default_blue.clone()),
             },
             ..Default::default()
         });
-
-    commands.insert_resource(transient_state);
-
-    to_load.next_state = AppState::Menu;
 }
 
 fn setup_menu_system(
@@ -714,13 +722,13 @@ fn move_character_system(
                     interaction_event.send(items::Interaction::new(
                         char_entity,
                         collider_entity,
-                        behavior,
+                        behavior.clone(),
                     ));
 
                     // Upgrade Collision::Nil; don't downgrade Obstruction.
                     match char_collision {
                         Collision::Nil => {
-                            char_collision = collision;
+                            char_collision = Collision::Interaction(behavior);
                         }
                         Collision::Obstruction | Collision::Interaction(_) => (),
                     }
@@ -736,7 +744,7 @@ fn move_character_system(
             // collider's Z offset to the translation.
             transform.translation.z = z_from_y(transform.translation.y + char_collider.offset.y);
         }
-        character.collision = char_collision;
+        character.collision = char_collision.clone();
     }
     for entity in interaction_colliders.iter() {
         if let Ok(mut collider) = collider_query.get_component_mut::<Collider>(*entity) {
@@ -1004,10 +1012,14 @@ fn map_item_system(
                     }
                 },
                 _ => {
-                    if object.is_shape() { // allow hide/show objects without images
-                        commands.insert_one(event.entity, Debuggable::default());
+                    if object.name.starts_with("load:") {
+                        ColliderBehavior::Load { path: object.name[5..].to_string() }
+                    } else {
+                        if object.is_shape() { // allow hide/show objects without images
+                            commands.insert_one(event.entity, Debuggable::default());
+                        }
+                        ColliderBehavior::Obstruct
                     }
-                    ColliderBehavior::Obstruct
                 }
             };
 
