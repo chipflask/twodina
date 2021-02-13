@@ -243,6 +243,7 @@ fn setup_system(
     asset_server: Res<AssetServer>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     mut to_load: ResMut<LoadProgress>,
+    mut query: Query<(&BelongsToMap, &mut Visible)>,
 ) {
     // Default materials
     let default_blue = materials.add(Color::rgba(0.4, 0.4, 0.9, 0.5).into());
@@ -274,7 +275,7 @@ fn setup_system(
         button_hovered_color: materials.add(Color::rgb(0.5, 0.5, 1.0).into()),
         button_pressed_color: materials.add(Color::rgb(0.3, 0.3, 0.8).into()),
     };
-    load_next_map(commands, &transient_state);
+    load_next_map(commands, &transient_state, &mut query);
     commands.insert_resource(transient_state);
 
     to_load.next_state = AppState::Menu;
@@ -283,9 +284,10 @@ fn setup_system(
 pub fn load_next_map(
     commands: &mut Commands,
     transient_state: &TransientState,
-    query: Query<(&BelongsToMap, &mut Visible)>,
+    query: &mut Query<(&BelongsToMap, &mut Visible)>,
 ) {
-    for (map_owner, visible) in query.iter_mut() {
+    for (map_owner,mut visible) in query.iter_mut() {
+        // todo maybe subvert introspection every frame?
         visible.is_visible = map_owner.handle == transient_state.current_map;
     }
     // hide other maps
@@ -690,7 +692,7 @@ fn z_from_y(y: f32) -> f32 {
     -y / 100.0
 }
 
-struct BelongsToMap {
+pub struct BelongsToMap {
     handle: Handle<Map>,
 }
 

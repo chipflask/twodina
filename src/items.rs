@@ -3,7 +3,7 @@ use std::fs;
 use bevy::prelude::*;
 use bevy_tiled_prototype::{Object};
 
-use crate::{AppState, EARLY, LATER, LoadProgress, TransientState, collider::{Collider, ColliderBehavior}, load_next_map};
+use crate::{AppState, BelongsToMap, EARLY, LATER, LoadProgress, TransientState, collider::{Collider, ColliderBehavior}, load_next_map};
 
 #[derive(Debug, Default)]
 pub struct ItemsPlugin;
@@ -58,6 +58,7 @@ pub fn trigger_level_load_system(
     mut state: ResMut<State<AppState>>,
     mut game_state: ResMut<TransientState>,
     mut to_load: ResMut<LoadProgress>,
+    mut entity_query: Query<(&BelongsToMap, &mut Visible)>,
 ) {
     for interaction in interaction_reader.iter(&interactions) {
         match &interaction.behavior {
@@ -70,7 +71,7 @@ pub fn trigger_level_load_system(
                     // eventually do preloading:
                     // game_state.next_map = Some(asset_server.load(level.as_str()));
                     game_state.current_map = to_load.add(asset_server.load(level.as_str()));
-                    load_next_map(commands, &game_state);
+                    load_next_map(commands, &game_state, &mut entity_query);
                     to_load.next_state = AppState::InGame;
                 } else {
                     println!("couldn't load level {}", level);
