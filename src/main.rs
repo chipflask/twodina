@@ -283,7 +283,11 @@ fn setup_system(
 pub fn load_next_map(
     commands: &mut Commands,
     transient_state: &TransientState,
+    query: Query<(&BelongsToMap, &mut Visible)>,
 ) {
+    for (map_owner, visible) in query.iter_mut() {
+        visible.is_visible = map_owner.handle == transient_state.current_map;
+    }
     // hide other maps
     commands
         .spawn(TiledMapComponents {
