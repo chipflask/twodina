@@ -243,7 +243,7 @@ fn setup_system(
     asset_server: Res<AssetServer>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     mut to_load: ResMut<LoadProgress>,
-    mut query: Query<(&BelongsToMap, &mut Visible)>,
+    mut query: Query<(Entity, &Handle<Map>, &mut Visible)>,
 ) {
     // Default materials
     let default_blue = materials.add(Color::rgba(0.4, 0.4, 0.9, 0.5).into());
@@ -284,13 +284,18 @@ fn setup_system(
 pub fn load_next_map(
     commands: &mut Commands,
     transient_state: &TransientState,
-    query: &mut Query<(&BelongsToMap, &mut Visible)>,
+    query: &mut Query<(Entity, &Handle<Map>, &mut Visible)>,
 ) {
-    for (map_owner,mut visible) in query.iter_mut() {
-        // todo maybe subvert introspection every frame?
-        visible.is_visible = map_owner.handle == transient_state.current_map;
+    for (entity, map_owner, mut visible) in query.iter_mut() {
+        if *map_owner != transient_state.current_map {
+            visible.is_visible = false;
+            commands.remove_one::<Debuggable>(entity);
+        } else {
+            visible.is_visible = true;
+        }
     }
-    // hide other maps
+    // todo: add back debuggable when map made visible,
+    // eventually don't spawn if map already exists
     commands
         .spawn(TiledMapComponents {
             map_asset: transient_state.current_map.clone(),
@@ -692,16 +697,12 @@ fn z_from_y(y: f32) -> f32 {
     -y / 100.0
 }
 
-pub struct BelongsToMap {
-    handle: Handle<Map>,
-}
-
 fn move_character_system(
     time: Res<Time>,
     mut interaction_event: ResMut<Events<items::Interaction>>,
     mut char_query: Query<(Entity, &mut Character, &mut Transform, &GlobalTransform)>,
     transient_state: Res<TransientState>,
-    mut collider_query: Query<(Entity, &mut Collider, &GlobalTransform, Option<&BelongsToMap>)>,
+    mut collider_query: Query<(Entity, &mut Collider, &GlobalTransform, Option<&Handle<Map>>)>,
 ) {
     let mut interaction_colliders: HashSet<Entity> = Default::default();
     for (char_entity, mut character, mut transform, char_global) in char_query.iter_mut() {
@@ -720,7 +721,7 @@ fn move_character_system(
         for (collider_entity, collider, collider_global, option_to_map) in collider_query.iter_mut() {
             // this should be the entity
             if let Some(owner_map) = option_to_map  {
-                if owner_map.handle != transient_state.current_map {
+                if *owner_map != transient_state.current_map {
                     continue;
                 }
             }
@@ -1041,7 +1042,6 @@ fn map_item_system(
             };
 
             let collider_component = Collider::new(collider_type, collider_size, Vec2::new(0.0, 0.0));
-            commands.insert_one(event.entity, BelongsToMap{ handle: event.map_handle.clone() });
             commands.insert_one(event.entity, collider_component);
         }
     }

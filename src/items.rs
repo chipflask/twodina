@@ -1,9 +1,9 @@
 use std::fs;
 
 use bevy::prelude::*;
-use bevy_tiled_prototype::{Object};
+use bevy_tiled_prototype::{Map, Object};
 
-use crate::{AppState, BelongsToMap, EARLY, LATER, LoadProgress, TransientState, collider::{Collider, ColliderBehavior}, load_next_map};
+use crate::{AppState, EARLY, LATER, LoadProgress, TransientState, collider::{Collider, ColliderBehavior}, load_next_map};
 
 #[derive(Debug, Default)]
 pub struct ItemsPlugin;
@@ -58,7 +58,7 @@ pub fn trigger_level_load_system(
     mut state: ResMut<State<AppState>>,
     mut game_state: ResMut<TransientState>,
     mut to_load: ResMut<LoadProgress>,
-    mut entity_query: Query<(&BelongsToMap, &mut Visible)>,
+    mut entity_query: Query<(Entity, &Handle<Map>, &mut Visible)>,
 ) {
     for interaction in interaction_reader.iter(&interactions) {
         match &interaction.behavior {
