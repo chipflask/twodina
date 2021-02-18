@@ -26,7 +26,7 @@
   <object id="19" gid="30" x="35" y="275" width="126" height="126"/>
   <object id="20" gid="30" x="533" y="274" width="89" height="89"/>
   <object id="21" gid="30" x="532" y="411" width="96" height="96"/>
-  <object id="22" name="load:tile_maps/path_map" gid="31" x="14" y="116" width="165" height="165"/>
+  <object id="22" name="load:maps/melle/ritualspace" gid="31" x="14" y="116" width="165" height="165"/>
   <object id="23" gid="31" x="492" y="594" width="108" height="108"/>
   <object id="24" gid="31" x="536" y="159" width="100" height="100"/>
  </objectgroup>

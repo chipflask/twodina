@@ -1,7 +1,7 @@
 use std;
 use std::convert::TryFrom;
 
-use bevy::{asset::{Asset, HandleId}, prelude::*, render::camera::{Camera, CameraProjection, OrthographicProjection}, utils::HashSet};
+use bevy::{asset::{Asset, HandleId}, prelude::*, render::camera::{Camera, CameraProjection, OrthographicProjection}, utils::{HashMap, HashSet}};
 use bevy_tiled_prototype::{DebugConfig, Map, Object, ObjectReadyEvent, ObjectShape, TiledMapCenter, TiledMapComponents, TiledMapPlugin};
 use bevy::math::Vec3Swizzles;
 
@@ -28,6 +28,7 @@ pub struct TransientState {
     current_dialogue: Option<Entity>,
     current_map: Handle<Map>,
     next_map: Option<Handle<Map>>,
+    entity_visibility: HashMap<Entity, bool>, // this is a minor memory leak until maps aren't recreated
     default_blue: Handle<ColorMaterial>,
     button_color: Handle<ColorMaterial>,
     button_hovered_color: Handle<ColorMaterial>,
@@ -265,17 +266,18 @@ fn setup_system(
 
     // Map - has some objects
     // transient_state: Res<TransientState>,
-    let transient_state = TransientState {
+    let mut transient_state = TransientState {
         debug_mode: DEBUG_MODE_DEFAULT,
         current_map: to_load.add(asset_server.load("maps/melle/sandyrocks.tmx")),
         current_dialogue: None,
         next_map: None,
+        entity_visibility: HashMap::default(),
         default_blue: default_blue.clone(),
         button_color: materials.add(Color::rgb(0.4, 0.4, 0.9).into()),
         button_hovered_color: materials.add(Color::rgb(0.5, 0.5, 1.0).into()),
         button_pressed_color: materials.add(Color::rgb(0.3, 0.3, 0.8).into()),
     };
-    load_next_map(commands, &transient_state, &mut query);
+    load_next_map(commands, &mut transient_state, &mut query);
     commands.insert_resource(transient_state);
 
     to_load.next_state = AppState::Menu;
@@ -283,15 +285,18 @@ fn setup_system(
 
 pub fn load_next_map(
     commands: &mut Commands,
-    transient_state: &TransientState,
+    transient_state: &mut TransientState,
     query: &mut Query<(Entity, &Handle<Map>, &mut Visible)>,
 ) {
     for (entity, map_owner, mut visible) in query.iter_mut() {
         if *map_owner != transient_state.current_map {
+            transient_state.entity_visibility.insert(entity.clone(), visible.is_visible);
             visible.is_visible = false;
             commands.remove_one::<Debuggable>(entity);
         } else {
-            visible.is_visible = true;
+            let is_visible = transient_state.entity_visibility.get(&entity).unwrap_or(&false);
+            // ^ should default object.visible if object
+            visible.is_visible = *is_visible;
         }
     }
     // todo: add back debuggable when map made visible,
@@ -736,7 +741,17 @@ fn move_character_system(
                     break;
                 }
                 Collision::Interaction(behavior) => {
-                    interaction_colliders.insert(collider_entity);
+                    match behavior {
+                        ColliderBehavior::Obstruct => {}
+                        ColliderBehavior::PickUp => {
+                            // queue setting collider type to ignore
+                            interaction_colliders.insert(collider_entity);
+                        }
+                        ColliderBehavior::Collect => {}
+                        ColliderBehavior::Load { path: _ } => {}
+                        ColliderBehavior::Ignore => {}
+                    }
+
                     interaction_event.send(items::Interaction::new(
                         char_entity,
                         collider_entity,
@@ -1010,6 +1025,7 @@ fn map_item_system(
         if transient_state.current_map != event.map_handle {
             continue;
         }
+        // println!("created object {:?}, {:?}", event.map_handle, event.entity);
         // let map = maps.get(event.map_handle).expect("Expected to find map from ObjectReadyEvent");
         if let Ok(object) = new_item_query.get(event.entity) {
             let collider_size = TILED_MAP_SCALE * match object.shape {
