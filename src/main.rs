@@ -525,7 +525,6 @@ fn setup_players_system(
         .current_entity()
         .map(|entity| transient_state.current_dialogue = Some(entity));
 
-    let default_red = materials.add(Color::rgba(1.0, 0.4, 0.9, 0.8).into());
     // Players.
     for i in 0..num_players {
         let texture_handle = to_load.add(asset_server.load(format!("sprites/character{}.png", i + 1).as_str()));
