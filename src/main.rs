@@ -28,6 +28,7 @@ pub struct TransientState {
     current_dialogue: Option<Entity>,
     current_map: Handle<Map>,
     next_map: Option<Handle<Map>>,
+    loaded_maps: HashSet<Handle<Map>>,
     entity_visibility: HashMap<Entity, bool>, // this is a minor memory leak until maps aren't recreated
     default_blue: Handle<ColorMaterial>,
     button_color: Handle<ColorMaterial>,
@@ -271,6 +272,7 @@ fn setup_system(
         current_map: to_load.add(asset_server.load("maps/melle/sandyrocks.tmx")),
         current_dialogue: None,
         next_map: None,
+        loaded_maps: HashSet::default(),
         entity_visibility: HashMap::default(),
         default_blue: default_blue.clone(),
         button_color: materials.add(Color::rgb(0.4, 0.4, 0.9).into()),
@@ -300,7 +302,11 @@ pub fn load_next_map(
         }
     }
     // todo: add back debuggable when map made visible,
-    // eventually don't spawn if map already exists
+
+    // don't spawn if map already exists
+    if transient_state.loaded_maps.contains(&transient_state.current_map) {
+        return;
+    }
     commands
         .spawn(TiledMapComponents {
             map_asset: transient_state.current_map.clone(),
@@ -316,6 +322,7 @@ pub fn load_next_map(
             },
             ..Default::default()
         });
+    transient_state.loaded_maps.insert(transient_state.current_map.clone());
 }
 
 fn setup_menu_system(
