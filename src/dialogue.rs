@@ -25,6 +25,7 @@ pub struct Dialogue {
     pub handle: Handle<DialogueAsset>,
     pub current_index: usize,
     pub next_index: Option<usize>,
+    pub next_node_name: Option<String>,
     pub is_end: bool,
 }
 
@@ -80,6 +81,15 @@ pub struct Choice {
 }
 
 impl Dialogue {
+    // Start running dialogue from a given node.
+    #[allow(dead_code)]
+    pub fn begin(&mut self, node_name: &str) {
+        self.next_node_name = Some(node_name.to_string());
+        self.is_end = false;
+    }
+
+    // Advance the flow of dialogue.  Call this when the player dismisses the
+    // current dialogue.
     pub fn advance(&mut self) {
         if self.is_end {
             return;
@@ -155,8 +165,20 @@ fn dialogue_execution_system(
         for mut dialogue in query.iter_mut() {
             println!("Found dialogue entity");
             let dialogue_asset = dialogue_assets.get(dialogue.handle.clone()).expect("Couldn't find dialogue asset from component handle");
+            // Override next node with name set in Dialogue::begin().
+            if let Some(node_name) = &dialogue.next_node_name {
+                match dialogue_asset.nodes_by_name.get(node_name) {
+                    None => panic!("Dialogue node with name not found: {}", node_name),
+                    Some(index) => {
+                        dialogue.current_index = *index;
+                        dialogue.next_index = None;
+                    }
+                }
+            }
+            dialogue.next_node_name = None;
+
             loop {
-                match &dialogue_asset.nodes.get(dialogue.current_index) {
+                match dialogue_asset.nodes.get(dialogue.current_index) {
                     None => {
                         // Advanced past the end of all nodes.
                     }
