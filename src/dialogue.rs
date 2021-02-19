@@ -11,10 +11,11 @@ impl Plugin for DialoguePlugin {
     fn build(&self, app: &mut AppBuilder) {
         app
             .add_event::<DialogueChangeEvent>()
+            .add_event::<DialogueEvent>()
             .add_plugin(RonAssetPlugin::<DialogueAsset>::new(&["dialogue"]))
             .on_state_update(LATER, AppState::InGame, asset_load_system.system())
             .on_state_update(LATER, AppState::InGame, handle_change_system.system())
-            .on_state_update(LATER, AppState::InGame, display_dialogue_system.system());
+            .on_state_update(LATER, AppState::InGame, dialogue_execution_system.system());
     }
 }
 
@@ -24,6 +25,7 @@ pub struct Dialogue {
     pub handle: Handle<DialogueAsset>,
     pub current_index: usize,
     pub next_index: Option<usize>,
+    pub is_end: bool,
 }
 
 // Event fired when the current index changes for a given Dialogue.
@@ -31,6 +33,13 @@ pub struct Dialogue {
 pub struct DialogueChangeEvent {
     // Entity with the Dialogue component.
     pub entity: Entity,
+}
+
+// Event fired by this module so that the app can handle dialogue changes.
+#[derive(Debug)]
+pub enum DialogueEvent {
+    End,
+    Text(String),
 }
 
 // This is the result of loading the asset file.
@@ -58,6 +67,7 @@ pub struct DialogueNode {
 pub enum NodeBody {
     Branch(Vec<Choice>),
     // Command(String),
+    End,
     GoTo(String),
     Text(String),
 }
@@ -71,6 +81,9 @@ pub struct Choice {
 
 impl Dialogue {
     pub fn advance(&mut self) {
+        if self.is_end {
+            return;
+        }
         match self.next_index {
             None => {
                 let index = self.current_index.saturating_add(1);
@@ -135,16 +148,17 @@ fn handle_change_system(
 }
 
 // When a dialogue component changes its current node, update the text display.
-fn display_dialogue_system(
+fn dialogue_execution_system(
     mut event_reader: Local<EventReader<DialogueChangeEvent>>,
     dialogue_change_events: Res<Events<DialogueChangeEvent>>,
+    mut dialogue_events: ResMut<Events<DialogueEvent>>,
     dialogue_assets: Res<Assets<DialogueAsset>>,
-    mut query: Query<(&mut Text, &mut Dialogue)>,
+    mut query: Query<&mut Dialogue>,
 ) {
     for _event in event_reader.iter(&dialogue_change_events) {
         println!("Got change event");
-        for (mut ui_text, mut dialogue) in query.iter_mut() {
-            println!("Found dialogue entity with text UI");
+        for mut dialogue in query.iter_mut() {
+            println!("Found dialogue entity");
             let dialogue_asset = dialogue_assets.get(dialogue.handle.clone()).expect("Couldn't find dialogue asset from component handle");
             loop {
                 match &dialogue_asset.nodes.get(dialogue.current_index) {
@@ -155,6 +169,12 @@ fn display_dialogue_system(
                         match &node.body {
                             NodeBody::Branch(_) => {
                                 panic!("Branches aren't implemented yet");
+                            }
+                            NodeBody::End => {
+                                println!("End");
+                                dialogue.is_end = true;
+                                dialogue.next_index = None;
+                                dialogue_events.send(DialogueEvent::End);
                             }
                             NodeBody::GoTo(name) => {
                                 match dialogue_asset.nodes_by_name.get(name) {
@@ -168,7 +188,7 @@ fn display_dialogue_system(
                             }
                             NodeBody::Text(text) => {
                                 println!("Setting text to: {}", text);
-                                ui_text.value = text.clone();
+                                dialogue_events.send(DialogueEvent::Text(text.clone()));
                             }
                         }
                     }

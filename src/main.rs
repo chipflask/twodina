@@ -13,7 +13,7 @@ mod items;
 
 use character::{AnimatedSprite, Character, CharacterState, Direction, VELOCITY_EPSILON};
 use collider::{Collider, ColliderBehavior, Collision};
-use dialogue::Dialogue;
+use dialogue::{Dialogue, DialogueEvent};
 use input::{Action, Flag, InputActionSet};
 use items::Inventory;
 use stage::UPDATE;
@@ -132,6 +132,7 @@ fn main() {
         .on_state_update(LATER, AppState::InGame, update_camera_system.system())
         .on_state_update(LATER, AppState::InGame, position_display_system.system())
         .on_state_update(LATER, AppState::InGame, map_item_system.system())
+        .on_state_update(LATER, AppState::InGame, dialogue_system.system())
         .on_state_update(LATER, AppState::InGame, bevy::input::system::exit_on_esc_system.system())
         .run();
 }
@@ -1064,6 +1065,25 @@ fn map_item_system(
 
             let collider_component = Collider::new(collider_type, collider_size, Vec2::new(0.0, 0.0));
             commands.insert_one(event.entity, collider_component);
+        }
+    }
+}
+
+fn dialogue_system(
+    mut event_reader: Local<EventReader<dialogue::DialogueEvent>>,
+    dialogue_events: Res<Events<dialogue::DialogueEvent>>,
+    mut text_query: Query<&mut Text, With<Dialogue>>,
+) {
+    for event in event_reader.iter(&dialogue_events) {
+        for mut ui_text in text_query.iter_mut() {
+            match event {
+                DialogueEvent::End => {
+                    ui_text.value = "".to_string();
+                }
+                DialogueEvent::Text(text) => {
+                    ui_text.value = text.clone();
+                }
+            }
         }
     }
 }

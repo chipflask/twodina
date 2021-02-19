@@ -11,6 +11,10 @@
             body: Text("You made it to the second node!"),
         ),
         (
+            // End this conversation.
+            body: End,
+        ),
+        (
             body: GoTo("Start"),
         ),
     ],
