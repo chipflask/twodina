@@ -84,15 +84,10 @@ impl Dialogue {
         if self.is_end {
             return;
         }
-        match self.next_index {
-            None => {
-                let index = self.current_index.saturating_add(1);
-                self.current_index = index;
-            }
-            Some(index) => {
-                self.current_index = index;
-            }
-        }
+        // Use next index or increment the current one.
+        self.current_index = self.next_index.unwrap_or_else(||
+            self.current_index.saturating_add(1)
+        );
         self.next_index = None;
     }
 }
