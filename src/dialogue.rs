@@ -20,7 +20,7 @@ impl Plugin for DialoguePlugin {
 }
 
 // A component that you should spawn with.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Dialogue {
     pub handle: Handle<DialogueAsset>,
     pub current_index: usize,
@@ -82,7 +82,6 @@ pub struct Choice {
 
 impl Dialogue {
     // Start running dialogue from a given node.
-    #[allow(dead_code)]
     pub fn begin(&mut self, node_name: &str) {
         self.next_node_name = Some(node_name.to_string());
         self.is_end = false;
@@ -102,12 +101,22 @@ impl Dialogue {
     }
 }
 
+impl Default for Dialogue {
+    fn default() -> Self {
+        Dialogue {
+            handle: Default::default(),
+            current_index: 0,
+            next_index: None,
+            next_node_name: None,
+            is_end: true,
+        }
+    }
+}
+
 fn asset_load_system(
     mut event_reader: Local<EventReader<AssetEvent<DialogueAsset>>>,
     dialogue_events: Res<Events<AssetEvent<DialogueAsset>>>,
     mut dialogue_assets: ResMut<Assets<DialogueAsset>>,
-    mut dialogue_change_events: ResMut<Events<DialogueChangeEvent>>,
-    query: Query<Entity, With<Dialogue>>,
 ) {
     for event in event_reader.iter(&dialogue_events) {
         match event {
@@ -124,14 +133,6 @@ fn asset_load_system(
                 }
                 dialogue_asset.nodes_by_name = map;
                 println!("{:#?}", dialogue_asset);
-                // Find all the entities referring to it, and send a change
-                // event for the initial node.
-                for entity in query.iter() {
-                    println!("Sending event {:?}", entity);
-                    dialogue_change_events.send(DialogueChangeEvent {
-                        entity,
-                    })
-                }
             }
             AssetEvent::Modified { handle: _ } => (),
             AssetEvent::Removed { handle: _ } => (),
@@ -164,6 +165,10 @@ fn dialogue_execution_system(
         println!("Got change event");
         for mut dialogue in query.iter_mut() {
             println!("Found dialogue entity");
+            if dialogue.is_end {
+                continue;
+            }
+
             let dialogue_asset = dialogue_assets.get(dialogue.handle.clone()).expect("Couldn't find dialogue asset from component handle");
             // Override next node with name set in Dialogue::begin().
             if let Some(node_name) = &dialogue.next_node_name {

@@ -25,6 +25,7 @@ const TILED_MAP_SCALE: f32 = 2.0;
 #[derive(Clone, Debug)]
 pub struct TransientState {
     debug_mode: bool,
+    start_dialogue_shown: bool,
     current_dialogue: Option<Entity>,
     current_map: Handle<Map>,
     next_map: Option<Handle<Map>>,
@@ -126,6 +127,7 @@ fn main() {
         .on_state_exit(EARLY, AppState::Menu, cleanup_menu_system.system())
 
         // in-game:
+        .on_state_enter(EARLY, AppState::InGame, in_game_start_system.system())
         .on_state_update(EARLY, AppState::InGame, handle_input_system.system())
         .on_state_update(LATER, AppState::InGame, animate_sprite_system.system())
         .on_state_update(LATER, AppState::InGame, move_character_system.system())
@@ -269,6 +271,7 @@ fn setup_system(
     // transient_state: Res<TransientState>,
     let mut transient_state = TransientState {
         debug_mode: DEBUG_MODE_DEFAULT,
+        start_dialogue_shown: false,
         current_map: to_load.add(asset_server.load("maps/melle/sandyrocks.tmx")),
         current_dialogue: None,
         next_map: None,
@@ -1066,6 +1069,18 @@ fn map_item_system(
             let collider_component = Collider::new(collider_type, collider_size, Vec2::new(0.0, 0.0));
             commands.insert_one(event.entity, collider_component);
         }
+    }
+}
+
+fn in_game_start_system(
+    mut transient_state: ResMut<TransientState>,
+    mut query: Query<&mut Dialogue>,
+) {
+    if !transient_state.start_dialogue_shown {
+        for mut dialogue in query.iter_mut() {
+            dialogue.begin("Start");
+        }
+        transient_state.start_dialogue_shown = true;
     }
 }
 
