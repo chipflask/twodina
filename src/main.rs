@@ -728,7 +728,8 @@ fn move_character_system(
         let char_aabb = char_collider.bounding_volume_with_translation(char_global, delta);
         let mut char_collision = Collision::Nil;
         for (collider_entity, collider, collider_global, option_to_map) in collider_query.iter_mut() {
-            // this should be the entity
+            // TODO: Use the entity instead of the map asset handle in case
+            // In theory,  there can be multiple instances of the same map.
             if let Some(owner_map) = option_to_map  {
                 if *owner_map != transient_state.current_map {
                     continue;
