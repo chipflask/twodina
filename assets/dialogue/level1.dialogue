@@ -5,17 +5,28 @@
     nodes: [
         (
             name: "Start",
-            body: Text("Welcome to the game!"),
+            body: Text("You find yourself in an unfamiliar place.  [press Spacebar to advance]"),
         ),
         (
-            body: Text("You made it to the second node!"),
+            body: Text("What interesting things will you find here?"),
         ),
         (
             // End this conversation.
             body: End,
         ),
         (
+            // Example of a jump.
             body: GoTo("Start"),
+        ),
+        (
+            name: "maps/melle/ritualspace",
+            body: Text("What's this?  It must have been a portal connecting two places."),
+        ),
+        (
+            body: Text("Don't you wonder who put the portal there?"),
+        ),
+        (
+            body: End,
         ),
     ],
 )

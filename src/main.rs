@@ -83,6 +83,7 @@ impl Default for AppState {
 pub struct LoadProgress {
     handles: HashSet<HandleUntyped>,
     next_state: AppState,
+    next_dialogue: Option<String>,
     // progress: f32,
 }
 
@@ -94,6 +95,7 @@ impl LoadProgress {
 
     pub fn reset(&mut self) {
         self.handles.clear();
+        self.next_dialogue = None;
     }
 }
 
@@ -143,6 +145,8 @@ fn wait_for_asset_loading_system(
     mut state: ResMut<State<AppState>>,
     mut load_progress: ResMut<LoadProgress>,
     asset_server: Res<AssetServer>,
+    mut dialogue_query: Query<&mut Dialogue>,
+    mut dialogue_events: ResMut<Events<DialogueEvent>>,
 ) {
     let handle_ids = load_progress.handles.iter()
         .map(|handle| HandleId::from(handle));
@@ -151,6 +155,11 @@ fn wait_for_asset_loading_system(
         bevy::asset::LoadState::Loading => {}
         bevy::asset::LoadState::Loaded => {
             state.set_next(load_progress.next_state).expect("couldn't change state when assets finished loading");
+            if let Some(node_name) = &load_progress.next_dialogue {
+                for mut dialogue in dialogue_query.iter_mut() {
+                    dialogue.begin_optional(node_name.as_ref(), &mut dialogue_events);
+                }
+            }
             load_progress.reset();
         }
         // TODO: Handle failed loading of assets.

@@ -73,6 +73,7 @@ pub fn trigger_level_load_system(
                     game_state.current_map = to_load.add(asset_server.load(level.as_str()));
                     load_next_map(commands, &mut game_state, &mut entity_query);
                     to_load.next_state = AppState::InGame;
+                    to_load.next_dialogue = Some(path.clone());
                 } else {
                     println!("couldn't load level {}", level);
                 };

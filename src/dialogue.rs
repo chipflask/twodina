@@ -155,6 +155,19 @@ impl Dialogue {
         self.execute(dialogue_events);
     }
 
+    // Start running dialogue from a given node.  If the node doesn't exist, do
+    // nothing.
+    pub fn begin_optional(
+        &mut self,
+        node_name: &str,
+        dialogue_events: &mut ResMut<Events<DialogueEvent>>,
+    ) {
+        if !self.has_node(node_name) {
+            return;
+        }
+        self.begin(node_name, dialogue_events);
+    }
+
     // Advance the flow of dialogue.  Call this when the player dismisses the
     // current dialogue.
     pub fn advance(
@@ -170,6 +183,10 @@ impl Dialogue {
         );
         self.next_index = None;
         self.execute(dialogue_events);
+    }
+
+    pub fn has_node(&self, name: &str) -> bool {
+        self.asset.nodes_by_name.contains_key(name)
     }
 
     // Run and send events so that the app can display text in the UI.
