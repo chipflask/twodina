@@ -1602,6 +1602,7 @@ dependencies = [
 name = "game_2021"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "bevy",
  "bevy_asset_ron",
  "bevy_tiled_prototype",

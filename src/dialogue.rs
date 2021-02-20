@@ -1,8 +1,6 @@
-use bevy::{prelude::*, reflect::TypeUuid, utils::HashMap};
-
-use bevy_asset_ron::RonAssetPlugin;
-
-use crate::{AppState, LATER};
+use anyhow;
+use bevy::asset::{AssetLoader, LoadContext, LoadedAsset};
+use bevy::{prelude::*, reflect::TypeUuid, utils::{BoxedFuture, HashMap}};
 
 #[derive(Default)]
 pub struct DialoguePlugin;
@@ -10,18 +8,15 @@ pub struct DialoguePlugin;
 impl Plugin for DialoguePlugin {
     fn build(&self, app: &mut AppBuilder) {
         app
-            .add_event::<DialogueChangeEvent>()
             .add_event::<DialogueEvent>()
-            .add_plugin(RonAssetPlugin::<DialogueAsset>::new(&["dialogue"]))
-            .on_state_update(LATER, AppState::InGame, asset_load_system.system())
-            .on_state_update(LATER, AppState::InGame, handle_change_system.system())
-            .on_state_update(LATER, AppState::InGame, dialogue_execution_system.system());
+            .add_asset::<DialogueAsset>()
+            .add_asset_loader(DialogueLoader {});
     }
 }
 
 // A component that you should spawn with.
 #[derive(Debug)]
-pub struct Dialogue {
+pub struct DialoguePlaceholder {
     pub handle: Handle<DialogueAsset>,
     pub current_index: usize,
     pub next_index: Option<usize>,
@@ -29,11 +24,15 @@ pub struct Dialogue {
     pub is_end: bool,
 }
 
-// Event fired when the current index changes for a given Dialogue.
+// A component that you should insert later once the asset loads.
 #[derive(Debug)]
-pub struct DialogueChangeEvent {
-    // Entity with the Dialogue component.
-    pub entity: Entity,
+pub struct Dialogue {
+    pub handle: Handle<DialogueAsset>,
+    pub asset: DialogueAsset,
+    pub current_index: usize,
+    pub next_index: Option<usize>,
+    pub next_node_name: Option<String>,
+    pub is_end: bool,
 }
 
 // Event fired by this module so that the app can handle dialogue changes.
@@ -44,7 +43,7 @@ pub enum DialogueEvent {
 }
 
 // This is the result of loading the asset file.
-#[derive(Debug, serde::Deserialize, TypeUuid)]
+#[derive(Clone, Debug, serde::Deserialize, TypeUuid)]
 #[uuid = "8571f581-e3b1-4e1c-8d15-6dd81bf8e4e3"]
 pub struct DialogueAsset {
     pub name: String,
@@ -53,7 +52,7 @@ pub struct DialogueAsset {
     pub nodes_by_name: HashMap<String, usize>,
 }
 
-#[derive(Debug, serde::Deserialize, TypeUuid)]
+#[derive(Clone, Debug, serde::Deserialize, TypeUuid)]
 #[uuid = "df970dd5-6e00-43c3-b85e-f6aa1eab5b26"]
 pub struct DialogueNode {
     #[serde(default)]
@@ -63,7 +62,7 @@ pub struct DialogueNode {
     pub next: Option<String>,
 }
 
-#[derive(Debug, serde::Deserialize, TypeUuid)]
+#[derive(Clone, Debug, serde::Deserialize, TypeUuid)]
 #[uuid = "fe867e2d-13f8-45f5-9ce7-a078a56b556b"]
 pub enum NodeBody {
     Branch(Vec<Choice>),
@@ -73,37 +72,42 @@ pub enum NodeBody {
     Text(String),
 }
 
-#[derive(Debug, serde::Deserialize, TypeUuid)]
+#[derive(Clone, Debug, serde::Deserialize, TypeUuid)]
 #[uuid = "6f55a47b-bf32-4b12-bf41-583785603696"]
 pub struct Choice {
     pub text: String,
     pub next: String,
 }
 
-impl Dialogue {
-    // Start running dialogue from a given node.
-    pub fn begin(&mut self, node_name: &str) {
-        self.next_node_name = Some(node_name.to_string());
-        self.is_end = false;
+#[derive(Default)]
+pub struct DialogueLoader;
+
+impl AssetLoader for DialogueLoader {
+    fn load<'a>(
+        &'a self,
+        bytes: &'a [u8],
+        load_context: &'a mut LoadContext,
+    ) -> BoxedFuture<'a, anyhow::Result<(), anyhow::Error>> {
+        Box::pin(async move {
+            let mut asset = ron::de::from_bytes::<DialogueAsset>(bytes)?;
+            asset.init();
+
+            load_context.set_default_asset(LoadedAsset::new(asset));
+
+            Ok(())
+        })
     }
 
-    // Advance the flow of dialogue.  Call this when the player dismisses the
-    // current dialogue.
-    pub fn advance(&mut self) {
-        if self.is_end {
-            return;
-        }
-        // Use next index or increment the current one.
-        self.current_index = self.next_index.unwrap_or_else(||
-            self.current_index.saturating_add(1)
-        );
-        self.next_index = None;
+    fn extensions(&self) -> &[&str] {
+        static EXTENSIONS: &[&str] = &["dialogue"];
+
+        EXTENSIONS
     }
 }
 
-impl Default for Dialogue {
+impl Default for DialoguePlaceholder {
     fn default() -> Self {
-        Dialogue {
+        DialoguePlaceholder {
             handle: Default::default(),
             current_index: 0,
             next_index: None,
@@ -113,110 +117,117 @@ impl Default for Dialogue {
     }
 }
 
-fn asset_load_system(
-    mut event_reader: Local<EventReader<AssetEvent<DialogueAsset>>>,
-    dialogue_events: Res<Events<AssetEvent<DialogueAsset>>>,
-    mut dialogue_assets: ResMut<Assets<DialogueAsset>>,
-) {
-    for event in event_reader.iter(&dialogue_events) {
-        match event {
-            AssetEvent::Created { handle } => {
-                // When an asset is loaded, build its node to index map.
-                let mut dialogue_asset = dialogue_assets.get_mut(handle).expect("Couldn't find dialogue asset from event handle");
-                let mut map: HashMap<String, usize> = Default::default();
-                for (i, node) in dialogue_asset.nodes.iter().enumerate() {
-                    // If it has no name, don't add it to the map.
-                    if node.name.is_empty() {
-                        continue;
-                    }
-                    map.insert(node.name.clone(), i);
-                }
-                dialogue_asset.nodes_by_name = map;
-                println!("{:#?}", dialogue_asset);
-            }
-            AssetEvent::Modified { handle: _ } => (),
-            AssetEvent::Removed { handle: _ } => (),
-        }
-    }
-}
-
-// When the dialogue is mutated, send an event.
-fn handle_change_system(
-    query: Query<Entity, Mutated<Dialogue>>,
-    mut dialogue_change_events: ResMut<Events<DialogueChangeEvent>>,
-) {
-    for entity in query.iter() {
-        println!("Sending event due to change {:?}", entity);
-        dialogue_change_events.send(DialogueChangeEvent {
-            entity,
-        })
-    }
-}
-
-// When a dialogue component changes its current node, update the text display.
-fn dialogue_execution_system(
-    mut event_reader: Local<EventReader<DialogueChangeEvent>>,
-    dialogue_change_events: Res<Events<DialogueChangeEvent>>,
-    mut dialogue_events: ResMut<Events<DialogueEvent>>,
-    dialogue_assets: Res<Assets<DialogueAsset>>,
-    mut query: Query<&mut Dialogue>,
-) {
-    for _event in event_reader.iter(&dialogue_change_events) {
-        println!("Got change event");
-        for mut dialogue in query.iter_mut() {
-            println!("Found dialogue entity");
-            if dialogue.is_end {
+impl DialogueAsset {
+    fn init(&mut self) {
+        // When an asset is loaded, build its node to index map.
+        let mut map: HashMap<String, usize> = Default::default();
+        for (i, node) in self.nodes.iter().enumerate() {
+            // If it has no name, don't add it to the map.
+            if node.name.is_empty() {
                 continue;
             }
+            map.insert(node.name.clone(), i);
+        }
+        self.nodes_by_name = map;
+    }
+}
 
-            let dialogue_asset = dialogue_assets.get(dialogue.handle.clone()).expect("Couldn't find dialogue asset from component handle");
-            // Override next node with name set in Dialogue::begin().
-            if let Some(node_name) = &dialogue.next_node_name {
-                match dialogue_asset.nodes_by_name.get(node_name) {
-                    None => panic!("Dialogue node with name not found: {}", node_name),
-                    Some(index) => {
-                        dialogue.current_index = *index;
-                        dialogue.next_index = None;
-                    }
+impl Dialogue {
+    pub fn new(placeholder: &DialoguePlaceholder, asset: DialogueAsset) -> Dialogue {
+        Dialogue {
+            handle: placeholder.handle.clone(),
+            asset,
+            current_index: placeholder.current_index,
+            next_index: placeholder.next_index,
+            next_node_name: placeholder.next_node_name.clone(),
+            is_end: placeholder.is_end,
+        }
+    }
+
+    // Start running dialogue from a given node.
+    pub fn begin(
+        &mut self,
+        node_name: &str,
+        dialogue_events: &mut ResMut<Events<DialogueEvent>>,
+    ) {
+        self.next_node_name = Some(node_name.to_string());
+        self.is_end = false;
+        self.execute(dialogue_events);
+    }
+
+    // Advance the flow of dialogue.  Call this when the player dismisses the
+    // current dialogue.
+    pub fn advance(
+        &mut self,
+        dialogue_events: &mut ResMut<Events<DialogueEvent>>,
+    ) {
+        if self.is_end {
+            return;
+        }
+        // Use next index or increment the current one.
+        self.current_index = self.next_index.unwrap_or_else(||
+            self.current_index.saturating_add(1)
+        );
+        self.next_index = None;
+        self.execute(dialogue_events);
+    }
+
+    // Run and send events so that the app can display text in the UI.
+    fn execute(
+        &mut self,
+        dialogue_events: &mut ResMut<Events<DialogueEvent>>,
+    ) {
+        if self.is_end {
+            return;
+        }
+
+        let dialogue_asset = &self.asset;
+        // Override next node with name set in Dialogue::begin().
+        if let Some(node_name) = &self.next_node_name {
+            match dialogue_asset.nodes_by_name.get(node_name) {
+                None => panic!("Dialogue node with name not found: {}", node_name),
+                Some(index) => {
+                    self.current_index = *index;
+                    self.next_index = None;
                 }
             }
-            dialogue.next_node_name = None;
+        }
+        self.next_node_name = None;
 
-            loop {
-                match dialogue_asset.nodes.get(dialogue.current_index) {
-                    None => {
-                        // Advanced past the end of all nodes.
-                    }
-                    Some(node) => {
-                        match &node.body {
-                            NodeBody::Branch(_) => {
-                                panic!("Branches aren't implemented yet");
-                            }
-                            NodeBody::End => {
-                                println!("End");
-                                dialogue.is_end = true;
-                                dialogue.next_index = None;
-                                dialogue_events.send(DialogueEvent::End);
-                            }
-                            NodeBody::GoTo(name) => {
-                                match dialogue_asset.nodes_by_name.get(name) {
-                                    None => panic!("Dialogue node not found: {}", name),
-                                    Some(index) => {
-                                        println!("Going to: {} {}", index, name);
-                                        dialogue.current_index = *index;
-                                        continue;
-                                    }
+        loop {
+            match dialogue_asset.nodes.get(self.current_index) {
+                None => {
+                    // Advanced past the end of all nodes.
+                }
+                Some(node) => {
+                    match &node.body {
+                        NodeBody::Branch(_) => {
+                            panic!("Branches aren't implemented yet");
+                        }
+                        NodeBody::End => {
+                            println!("End");
+                            self.is_end = true;
+                            self.next_index = None;
+                            dialogue_events.send(DialogueEvent::End);
+                        }
+                        NodeBody::GoTo(name) => {
+                            match dialogue_asset.nodes_by_name.get(name) {
+                                None => panic!("Dialogue node not found: {}", name),
+                                Some(index) => {
+                                    println!("Going to: {} {}", index, name);
+                                    self.current_index = *index;
+                                    continue;
                                 }
                             }
-                            NodeBody::Text(text) => {
-                                println!("Setting text to: {}", text);
-                                dialogue_events.send(DialogueEvent::Text(text.clone()));
-                            }
+                        }
+                        NodeBody::Text(text) => {
+                            println!("Setting text to: {}", text);
+                            dialogue_events.send(DialogueEvent::Text(text.clone()));
                         }
                     }
                 }
-                break;
             }
+            break;
         }
     }
 }

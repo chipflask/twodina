@@ -13,7 +13,7 @@ mod items;
 
 use character::{AnimatedSprite, Character, CharacterState, Direction, VELOCITY_EPSILON};
 use collider::{Collider, ColliderBehavior, Collision};
-use dialogue::{Dialogue, DialogueEvent};
+use dialogue::{Dialogue, DialogueAsset, DialogueEvent, DialoguePlaceholder};
 use input::{Action, Flag, InputActionSet};
 use items::Inventory;
 use stage::UPDATE;
@@ -134,7 +134,7 @@ fn main() {
         .on_state_update(LATER, AppState::InGame, update_camera_system.system())
         .on_state_update(LATER, AppState::InGame, position_display_system.system())
         .on_state_update(LATER, AppState::InGame, map_item_system.system())
-        .on_state_update(LATER, AppState::InGame, dialogue_system.system())
+        .on_state_update(LATER, AppState::InGame, display_dialogue_system.system())
         .on_state_update(LATER, AppState::InGame, bevy::input::system::exit_on_esc_system.system())
         .run();
 }
@@ -164,6 +164,7 @@ fn handle_input_system(
     mut transient_state: ResMut<TransientState>,
     mut query: Query<(&mut Character, &Player)>,
     mut dialogue_query: Query<&mut Dialogue>,
+    mut dialogue_events: ResMut<Events<DialogueEvent>>,
     mut debuggable: Query<(&mut Visible, Option<&Handle<Map>>), With<Debuggable>>,
 ) {
     // check for debug status flag differing from transient_state to determine when to hide/show debug stuff
@@ -235,7 +236,7 @@ fn handle_input_system(
         if let Some(entity) = transient_state.current_dialogue {
             if input_actions.is_active(Action::Accept, player.id) {
                 let mut dialogue = dialogue_query.get_mut(entity).expect("Couldn't find current dialogue entity");
-                dialogue.advance();
+                dialogue.advance(&mut dialogue_events);
             }
         }
     }
@@ -522,7 +523,7 @@ fn setup_players_system(
             },
             ..Default::default()
         })
-        .with(Dialogue {
+        .with(DialoguePlaceholder {
             handle: level_dialogue,
             ..Default::default()
         })
@@ -1073,18 +1074,26 @@ fn map_item_system(
 }
 
 fn in_game_start_system(
+    commands: &mut Commands,
     mut transient_state: ResMut<TransientState>,
-    mut query: Query<&mut Dialogue>,
+    mut dialogue_events: ResMut<Events<DialogueEvent>>,
+    dialogue_assets: Res<Assets<DialogueAsset>>,
+    query: Query<(Entity, &DialoguePlaceholder), Without<Dialogue>>,
 ) {
-    if !transient_state.start_dialogue_shown {
-        for mut dialogue in query.iter_mut() {
-            dialogue.begin("Start");
+    let should_begin = !transient_state.start_dialogue_shown;
+    // Insert a clone of the asset into a new component.
+    for (entity, placeholder) in query.iter() {
+        let dialogue_asset = dialogue_assets.get(&placeholder.handle).expect("Couldn't find dialogue asset from placeholder handle");
+        let mut dialogue = Dialogue::new(placeholder, dialogue_asset.clone());
+        if should_begin {
+            dialogue.begin("Start", &mut dialogue_events);
+            transient_state.start_dialogue_shown = true;
         }
-        transient_state.start_dialogue_shown = true;
+        commands.insert_one(entity, dialogue);
     }
 }
 
-fn dialogue_system(
+fn display_dialogue_system(
     mut event_reader: Local<EventReader<dialogue::DialogueEvent>>,
     dialogue_events: Res<Events<dialogue::DialogueEvent>>,
     mut text_query: Query<&mut Text, With<Dialogue>>,
