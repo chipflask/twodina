@@ -507,7 +507,7 @@ fn setup_players_system(
     state.set_next(AppState::Loading).expect("Set Next failed");
     to_load.next_state = AppState::InGame;
 
-    // Load dialog.
+    // Load dialogue.
     let level_dialogue = to_load.add(asset_server.load("dialogue/level1.dialogue"));
     commands
         .spawn(TextBundle {
