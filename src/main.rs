@@ -1,7 +1,7 @@
 use std;
 use std::convert::TryFrom;
 
-use bevy::{asset::{Asset, HandleId}, prelude::*, render::camera::{Camera, CameraProjection, OrthographicProjection}, utils::HashSet};
+use bevy::{asset::{Asset, HandleId}, prelude::*, render::camera::{Camera, CameraProjection, OrthographicProjection}, utils::{HashMap, HashSet}};
 use bevy_tiled_prototype::{DebugConfig, Map, Object, ObjectReadyEvent, ObjectShape, TiledMapCenter, TiledMapComponents, TiledMapPlugin};
 use bevy::math::Vec3Swizzles;
 
@@ -23,11 +23,16 @@ const TILED_MAP_SCALE: f32 = 2.0;
 
 // Game state that shouldn't be saved.
 #[derive(Clone, Debug)]
-struct TransientState {
+pub struct TransientState {
     debug_mode: bool,
-    current_map: Handle<Map>,
     current_dialogue: Option<Entity>,
+    current_map: Handle<Map>,
+    next_map: Option<Handle<Map>>,
+    loaded_maps: HashSet<Handle<Map>>,
+    entity_visibility: HashMap<Entity, bool>, // this is a minor memory leak until maps aren't recreated
+
     default_blue: Handle<ColorMaterial>,
+    default_red: Handle<ColorMaterial>,
     button_color: Handle<ColorMaterial>,
     button_hovered_color: Handle<ColorMaterial>,
     button_pressed_color: Handle<ColorMaterial>,
@@ -74,7 +79,7 @@ impl Default for AppState {
 }
 
 #[derive(Debug, Default)]
-struct LoadProgress {
+pub struct LoadProgress {
     handles: HashSet<HandleUntyped>,
     next_state: AppState,
     // progress: f32,
@@ -83,7 +88,6 @@ struct LoadProgress {
 impl LoadProgress {
     pub fn add<T: Asset>(&mut self, handle: Handle<T>) -> Handle<T> {
         self.handles.insert(handle.clone_untyped());
-
         handle
     }
 
@@ -156,24 +160,20 @@ fn handle_input_system(
     input_actions: Res<InputActionSet>,
     mut transient_state: ResMut<TransientState>,
     mut query: Query<(&mut Character, &Player)>,
-    mut debuggable: Query<&mut Visible, With<Debuggable>>,
     mut dialogue_query: Query<&mut Dialogue>,
+    mut debuggable: Query<(&mut Visible, Option<&Handle<Map>>), With<Debuggable>>,
 ) {
     // check for debug status flag differing from transient_state to determine when to hide/show debug stuff
-    if input_actions.has_flag(Flag::Debug) {
-        if !transient_state.debug_mode {
-            // for now hide, but ideally we spawn debug things here
-            for mut visible in debuggable.iter_mut() {
-                visible.is_visible = true;
-            }
-            transient_state.debug_mode = true;
+    if input_actions.has_flag(Flag::Debug) != transient_state.debug_mode {
+        transient_state.debug_mode = !transient_state.debug_mode;
+        // for now hide, but ideally we spawn debug things here
+        for (mut visible, map_option) in debuggable.iter_mut() {
+            let mut in_current_map = true;
+            map_option.map(|map_handle| {
+                in_current_map = *map_handle == transient_state.current_map;
+            });
+            visible.is_visible = in_current_map && transient_state.debug_mode;
         }
-    } else if transient_state.debug_mode {
-        // for now show
-        for mut visible in debuggable.iter_mut() {
-            visible.is_visible = false;
-        }
-        transient_state.debug_mode = false;
     }
 
     for (mut character, player) in query.iter_mut() {
@@ -243,9 +243,11 @@ fn setup_system(
     asset_server: Res<AssetServer>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     mut to_load: ResMut<LoadProgress>,
+    mut query: Query<(Entity, &Handle<Map>, &mut Visible)>,
 ) {
     // Default materials
     let default_blue = materials.add(Color::rgba(0.4, 0.4, 0.9, 0.5).into());
+    let default_red = materials.add(Color::rgba(1.0, 0.4, 0.9, 0.8).into());
     // Cameras.
     commands
         .spawn(Camera2dBundle {
@@ -264,15 +266,45 @@ fn setup_system(
 
     // Map - has some objects
     // transient_state: Res<TransientState>,
-    let transient_state = TransientState {
+    let mut transient_state = TransientState {
         debug_mode: DEBUG_MODE_DEFAULT,
         current_map: to_load.add(asset_server.load("maps/melle/sandyrocks.tmx")),
         current_dialogue: None,
+        next_map: None,
+        loaded_maps: HashSet::default(),
+        entity_visibility: HashMap::default(),
+
         default_blue: default_blue.clone(),
+        default_red: default_red.clone(),
         button_color: materials.add(Color::rgb(0.4, 0.4, 0.9).into()),
         button_hovered_color: materials.add(Color::rgb(0.5, 0.5, 1.0).into()),
         button_pressed_color: materials.add(Color::rgb(0.3, 0.3, 0.8).into()),
     };
+    load_next_map(commands, &mut transient_state, &mut query);
+    commands.insert_resource(transient_state);
+
+    to_load.next_state = AppState::Menu;
+}
+
+pub fn load_next_map(
+    commands: &mut Commands,
+    transient_state: &mut TransientState,
+    query: &mut Query<(Entity, &Handle<Map>, &mut Visible)>,
+) {
+    for (entity, map_owner, mut visible) in query.iter_mut() {
+        if *map_owner != transient_state.current_map {
+            transient_state.entity_visibility.insert(entity.clone(), visible.is_visible);
+            visible.is_visible = false;
+        } else {
+            let is_visible = transient_state.entity_visibility.get(&entity).unwrap_or(&false);
+            // ^ should default object.visible if object
+            visible.is_visible = *is_visible;
+        }
+    }
+    // don't spawn if map already exists
+    if transient_state.loaded_maps.contains(&transient_state.current_map) {
+        return;
+    }
     commands
         .spawn(TiledMapComponents {
             map_asset: transient_state.current_map.clone(),
@@ -284,14 +316,11 @@ fn setup_system(
             },
             debug_config: DebugConfig {
                 enabled: DEBUG_MODE_DEFAULT,
-                material: Some(default_blue.clone()),
+                material: Some(transient_state.default_blue.clone()),
             },
             ..Default::default()
         });
-
-    commands.insert_resource(transient_state);
-
-    to_load.next_state = AppState::Menu;
+    transient_state.loaded_maps.insert(transient_state.current_map.clone());
 }
 
 fn setup_menu_system(
@@ -496,7 +525,6 @@ fn setup_players_system(
         .current_entity()
         .map(|entity| transient_state.current_dialogue = Some(entity));
 
-    let default_red = materials.add(Color::rgba(1.0, 0.4, 0.9, 0.8).into());
     // Players.
     for i in 0..num_players {
         let texture_handle = to_load.add(asset_server.load(format!("sprites/character{}.png", i + 1).as_str()));
@@ -557,7 +585,7 @@ fn setup_players_system(
                 .with(Debuggable::default());
                 // Center debug indicator.
                 parent.spawn(SpriteBundle {
-                    material: default_red.clone(),
+                    material: transient_state.default_red.clone(),
                     // Don't scale here since the whole character will be scaled.
                     sprite: Sprite::new(Vec2::new(5.0, 5.0)),
                     transform: Transform::from_translation(Vec3::new(0.0, 0.0, 100.0)),
@@ -682,7 +710,8 @@ fn move_character_system(
     time: Res<Time>,
     mut interaction_event: ResMut<Events<items::Interaction>>,
     mut char_query: Query<(Entity, &mut Character, &mut Transform, &GlobalTransform)>,
-    mut collider_query: Query<(Entity, &mut Collider, &GlobalTransform)>,
+    transient_state: Res<TransientState>,
+    mut collider_query: Query<(Entity, &mut Collider, &GlobalTransform, Option<&Handle<Map>>)>,
 ) {
     let mut interaction_colliders: HashSet<Entity> = Default::default();
     for (char_entity, mut character, mut transform, char_global) in char_query.iter_mut() {
@@ -695,10 +724,17 @@ fn move_character_system(
         delta.y /= MAP_SKEW;
         // should stay between +- 2000.0
 
+        // check for collisions with objects in current map
         let char_aabb = char_collider.bounding_volume_with_translation(char_global, delta);
-
         let mut char_collision = Collision::Nil;
-        for (collider_entity, collider, collider_global) in collider_query.iter_mut() {
+        for (collider_entity, collider, collider_global, option_to_map) in collider_query.iter_mut() {
+            // TODO: Use the entity instead of the map asset handle in case
+            // In theory,  there can be multiple instances of the same map.
+            if let Some(owner_map) = option_to_map  {
+                if *owner_map != transient_state.current_map {
+                    continue;
+                }
+            }
             // Shouldn't collide with itself.
             if collider_entity == char_entity {
                 continue;
@@ -710,17 +746,27 @@ fn move_character_system(
                     break;
                 }
                 Collision::Interaction(behavior) => {
-                    interaction_colliders.insert(collider_entity);
+                    match behavior {
+                        ColliderBehavior::Obstruct => {}
+                        ColliderBehavior::PickUp => {
+                            // queue setting collider type to ignore
+                            interaction_colliders.insert(collider_entity);
+                        }
+                        ColliderBehavior::Collect => {}
+                        ColliderBehavior::Load { path: _ } => {}
+                        ColliderBehavior::Ignore => {}
+                    }
+
                     interaction_event.send(items::Interaction::new(
                         char_entity,
                         collider_entity,
-                        behavior,
+                        behavior.clone(),
                     ));
 
                     // Upgrade Collision::Nil; don't downgrade Obstruction.
                     match char_collision {
                         Collision::Nil => {
-                            char_collision = collision;
+                            char_collision = Collision::Interaction(behavior);
                         }
                         Collision::Obstruction | Collision::Interaction(_) => (),
                     }
@@ -736,7 +782,7 @@ fn move_character_system(
             // collider's Z offset to the translation.
             transform.translation.z = z_from_y(transform.translation.y + char_collider.offset.y);
         }
-        character.collision = char_collision;
+        character.collision = char_collision.clone();
     }
     for entity in interaction_colliders.iter() {
         if let Ok(mut collider) = collider_query.get_component_mut::<Collider>(*entity) {
@@ -984,6 +1030,7 @@ fn map_item_system(
         if transient_state.current_map != event.map_handle {
             continue;
         }
+        // println!("created object {:?}, {:?}", event.map_handle, event.entity);
         // let map = maps.get(event.map_handle).expect("Expected to find map from ObjectReadyEvent");
         if let Ok(object) = new_item_query.get(event.entity) {
             let collider_size = TILED_MAP_SCALE * match object.shape {
@@ -996,21 +1043,22 @@ fn map_item_system(
             // we should have actual types based on object name
             // and add components based on that
             let collider_type = match object.name.as_ref() {
-                "biggem" => {
+                "biggem" | "gem" => {
                     if !object.visible {
                         ColliderBehavior::Ignore
                     } else {
                         ColliderBehavior::Collect
                     }
                 },
-                "gem" => {
-                    ColliderBehavior::Collect
-                }
                 _ => {
-                    if object.is_shape() { // allow hide/show objects without images
-                        commands.insert_one(event.entity, Debuggable::default());
+                    if object.name.starts_with("load:") {
+                        ColliderBehavior::Load { path: object.name[5..].to_string() }
+                    } else {
+                        if object.is_shape() { // allow hide/show objects without images
+                            commands.insert_one(event.entity, Debuggable::default());
+                        }
+                        ColliderBehavior::Obstruct
                     }
-                    ColliderBehavior::Obstruct
                 }
             };
 

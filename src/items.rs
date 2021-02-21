@@ -1,7 +1,9 @@
-use bevy::prelude::*;
-use bevy_tiled_prototype::Object;
+use std::fs;
 
-use crate::{AppState, LATER, collider::{Collider, ColliderBehavior}};
+use bevy::prelude::*;
+use bevy_tiled_prototype::{Map, Object};
+
+use crate::{AppState, EARLY, LATER, LoadProgress, TransientState, collider::{Collider, ColliderBehavior}, load_next_map};
 
 #[derive(Debug, Default)]
 pub struct ItemsPlugin;
@@ -10,6 +12,7 @@ impl Plugin for ItemsPlugin {
     fn build(&self, app: &mut AppBuilder) {
         app
             .add_event::<Interaction>()
+            .on_state_update(EARLY, AppState::InGame, trigger_level_load_system.system())
             .on_state_update(LATER, AppState::InGame, items_system.system())
             .on_state_update(LATER,AppState::InGame, inventory_item_reveal_system.system());
     }
@@ -47,6 +50,39 @@ impl Interaction {
     }
 }
 
+pub fn trigger_level_load_system(
+    commands: &mut Commands,
+    asset_server: Res<AssetServer>,
+    mut interaction_reader: Local<EventReader<Interaction>>,
+    interactions: Res<Events<Interaction>>,
+    mut state: ResMut<State<AppState>>,
+    mut game_state: ResMut<TransientState>,
+    mut to_load: ResMut<LoadProgress>,
+    mut entity_query: Query<(Entity, &Handle<Map>, &mut Visible)>,
+) {
+    for interaction in interaction_reader.iter(&interactions) {
+        match &interaction.behavior {
+            ColliderBehavior::Load { path } => {
+                let level: String = path.to_owned() + &String::from(".tmx");
+                let level_fs_result = fs::metadata(format!("assets/{}", level));
+                // if this file exists, we're going to want to try loading a state
+                if level_fs_result.is_ok() && state.set_next(AppState::Loading).is_ok() {
+                    println!("Loading level... {}", level);
+                    // eventually do preloading:
+                    // game_state.next_map = Some(asset_server.load(level.as_str()));
+                    game_state.current_map = to_load.add(asset_server.load(level.as_str()));
+                    load_next_map(commands, &mut game_state, &mut entity_query);
+                    to_load.next_state = AppState::InGame;
+                } else {
+                    println!("couldn't load level {}", level);
+                };
+            }
+
+            ColliderBehavior::Obstruct | ColliderBehavior::PickUp | ColliderBehavior::Collect | ColliderBehavior::Ignore => {}
+        }
+    }
+}
+
 // handles consume and equip
 pub fn items_system(
     commands: &mut Commands,
@@ -59,7 +95,7 @@ pub fn items_system(
     audio: Res<Audio>,
 ) {
     for interaction in interaction_reader.iter(&interactions) {
-        match interaction.behavior {
+        match &interaction.behavior {
             ColliderBehavior::Collect => {
                 commands.despawn_recursive(interaction.object);
                 if let Ok(mut inventory) = inventory_query.get_mut(interaction.actor) {
@@ -76,28 +112,30 @@ pub fn items_system(
                         audio.play(asset_server.load(sfx_path));
                     }
                 }
-                continue;
             }
-            _ => (),
-        }
-        let actor_scale = match query.get_mut(interaction.actor) {
-            Ok((actor_transform, _, _)) => actor_transform.scale.clone(),
-            Err(_) => continue,
-        };
-        if let Ok((mut object_transform, equipped_transform_option, object_collider_option)) = query.get_mut(interaction.object) {
-            // An object can have a special transform applied when equipped.
-            if let Some(equipped) = equipped_transform_option {
-                object_transform.translation = equipped.transform.translation;
-                object_transform.rotation = equipped.transform.rotation;
-                object_transform.scale = equipped.transform.scale;
+            ColliderBehavior::Obstruct | ColliderBehavior::Ignore | ColliderBehavior::Load { path: _ } => {}
+            ColliderBehavior::PickUp => {
+                // this is a collectable
+                let actor_scale = match query.get_mut(interaction.actor) {
+                    Ok((actor_transform, _, _)) => actor_transform.scale.clone(),
+                    Err(_) => continue,
+                };
+                if let Ok((mut object_transform, equipped_transform_option, object_collider_option)) = query.get_mut(interaction.object) {
+                    // An object can have a special transform applied when equipped.
+                    if let Some(equipped) = equipped_transform_option {
+                        object_transform.translation = equipped.transform.translation;
+                        object_transform.rotation = equipped.transform.rotation;
+                        object_transform.scale = equipped.transform.scale;
+                    }
+                    object_transform.scale /= actor_scale;
+                    // If the object has a Collider component, stop colliding so that it
+                    // doesn't get picked up again.
+                    if let Some(mut object_collider) = object_collider_option {
+                        object_collider.behavior = ColliderBehavior::Ignore;
+                    }
+                    commands.push_children(interaction.actor, &[interaction.object]);
+                }
             }
-            object_transform.scale /= actor_scale;
-            // If the object has a Collider component, stop colliding so that it
-            // doesn't get picked up again.
-            if let Some(mut object_collider) = object_collider_option {
-                object_collider.behavior = ColliderBehavior::Ignore;
-            }
-            commands.push_children(interaction.actor, &[interaction.object]);
         }
     }
 }
