@@ -64,6 +64,9 @@ struct PlayerCamera;
 #[derive(Debug, Default)]
 struct Debuggable;
 
+// The UI element that displays dialogue.
+struct DialogueWindow;
+
 const MAP_SKEW: f32 = 1.0; // We liked ~1.4, but this should be done with the camera
 
 #[derive(Debug, Copy, Clone)]
@@ -509,35 +512,64 @@ fn setup_players_system(
 
     // Load dialogue.
     let level_dialogue = to_load.add(asset_server.load("dialogue/level1.dialogue"));
-    commands
-        .spawn(TextBundle {
-            text: Text {
-                font: to_load.add(asset_server.load("fonts/FiraSans-Bold.ttf")),
-                value: "".to_string(),
-                style: TextStyle {
-                    color: Color::rgb(0.2, 0.2, 0.2),
-                    font_size: 24.0,
-                    ..Default::default()
-                },
-            },
+    // Root node.
+    commands.spawn(NodeBundle {
+        style: Style {
+            size: Size::new(Val::Percent(100.0), Val::Percent(100.0)),
+            flex_direction: FlexDirection::Column,
+            // Aligns the dialogue window to the bottom of the window.  Yes, it
+            // starts from the bottom!
+            justify_content: JustifyContent::FlexStart,
+            // Center horizontally.
+            align_items: AlignItems::Center,
+            ..Default::default()
+        },
+        material: materials.add(Color::NONE.into()),
+        ..Default::default()
+    })
+    .with_children(|parent| {
+        // Dialogue window.
+        parent.spawn(NodeBundle {
             style: Style {
-                position_type: PositionType::Absolute,
-                position: Rect {
-                    left: Val::Px(20.0),
-                    right: Val::Px(20.0),
-                    bottom: Val::Px(20.0),
+                size: Size::new(Val::Percent(95.0), Val::Px(80.0)),
+                flex_direction: FlexDirection::Column,
+                // Aligns text to the top of the dialogue window.  Yes, it
+                // starts from the bottom, so the end is the top!
+                justify_content: JustifyContent::FlexEnd,
+                // Left-align text.
+                align_items: AlignItems::FlexStart,
+                ..Default::default()
+            },
+            // Brown
+            material: materials.add(Color::rgba(0.804, 0.522, 0.247, 0.9).into()),
+            ..Default::default()
+        })
+        .with(DialogueWindow {})
+        .with_children(|parent| {
+            parent.spawn(TextBundle {
+                text: Text {
+                    font: to_load.add(asset_server.load("fonts/FiraSans-Bold.ttf")),
+                    value: "".to_string(),
+                    style: TextStyle {
+                        color: Color::rgb(0.2, 0.2, 0.2),
+                        font_size: 24.0,
+                        ..Default::default()
+                    },
+                },
+                style: Style {
+                    margin: Rect::all(Val::Px(10.0)),
                     ..Default::default()
                 },
                 ..Default::default()
-            },
-            ..Default::default()
-        })
-        .with(DialoguePlaceholder {
-            handle: level_dialogue,
-            ..Default::default()
-        })
-        .current_entity()
-        .map(|entity| transient_state.current_dialogue = Some(entity));
+            })
+            .with(DialoguePlaceholder {
+                handle: level_dialogue,
+                ..Default::default()
+            })
+            .current_entity()
+            .map(|entity| transient_state.current_dialogue = Some(entity));
+        });
+    });
 
     // Players.
     for i in 0..num_players {
@@ -1106,15 +1138,22 @@ fn display_dialogue_system(
     mut event_reader: Local<EventReader<dialogue::DialogueEvent>>,
     dialogue_events: Res<Events<dialogue::DialogueEvent>>,
     mut text_query: Query<&mut Text, With<Dialogue>>,
+    mut visible_query: Query<&mut Visible, With<DialogueWindow>>,
 ) {
     for event in event_reader.iter(&dialogue_events) {
         for mut ui_text in text_query.iter_mut() {
             match event {
                 DialogueEvent::End => {
                     ui_text.value = "".to_string();
+                    for mut visible in visible_query.iter_mut() {
+                        visible.is_visible = false;
+                    }
                 }
                 DialogueEvent::Text(text) => {
                     ui_text.value = text.clone();
+                    for mut visible in visible_query.iter_mut() {
+                        visible.is_visible = true;
+                    }
                 }
             }
         }
