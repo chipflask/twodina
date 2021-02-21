@@ -1,14 +1,17 @@
 use anyhow;
-use bevy::asset::{AssetLoader, LoadContext, LoadedAsset};
-use bevy::{prelude::*, reflect::TypeUuid, utils::{BoxedFuture, HashMap}};
+use bevy::{
+    asset::{AssetLoader, LoadContext, LoadedAsset},
+    prelude::*,
+    reflect::TypeUuid,
+    utils::{BoxedFuture, HashMap},
+};
 
 #[derive(Default)]
 pub struct DialoguePlugin;
 
 impl Plugin for DialoguePlugin {
     fn build(&self, app: &mut AppBuilder) {
-        app
-            .add_event::<DialogueEvent>()
+        app.add_event::<DialogueEvent>()
             .add_asset::<DialogueAsset>()
             .add_asset_loader(DialogueLoader {});
     }
@@ -133,7 +136,10 @@ impl DialogueAsset {
 }
 
 impl Dialogue {
-    pub fn new(placeholder: &DialoguePlaceholder, asset: DialogueAsset) -> Dialogue {
+    pub fn new(
+        placeholder: &DialoguePlaceholder,
+        asset: DialogueAsset,
+    ) -> Dialogue {
         Dialogue {
             handle: placeholder.handle.clone(),
             asset,
@@ -178,9 +184,9 @@ impl Dialogue {
             return;
         }
         // Use next index or increment the current one.
-        self.current_index = self.next_index.unwrap_or_else(||
-            self.current_index.saturating_add(1)
-        );
+        self.current_index = self
+            .next_index
+            .unwrap_or_else(|| self.current_index.saturating_add(1));
         self.next_index = None;
         self.execute(dialogue_events);
     }
@@ -190,10 +196,7 @@ impl Dialogue {
     }
 
     // Run and send events so that the app can display text in the UI.
-    fn execute(
-        &mut self,
-        dialogue_events: &mut ResMut<Events<DialogueEvent>>,
-    ) {
+    fn execute(&mut self, dialogue_events: &mut ResMut<Events<DialogueEvent>>) {
         if self.is_end {
             return;
         }
@@ -202,7 +205,9 @@ impl Dialogue {
         // Override next node with name set in Dialogue::begin().
         if let Some(node_name) = &self.next_node_name {
             match dialogue_asset.nodes_by_name.get(node_name) {
-                None => panic!("Dialogue node with name not found: {}", node_name),
+                None => {
+                    panic!("Dialogue node with name not found: {}", node_name)
+                }
                 Some(index) => {
                     self.current_index = *index;
                     self.next_index = None;
@@ -216,33 +221,31 @@ impl Dialogue {
                 None => {
                     // Advanced past the end of all nodes.
                 }
-                Some(node) => {
-                    match &node.body {
-                        NodeBody::Branch(_) => {
-                            panic!("Branches aren't implemented yet");
-                        }
-                        NodeBody::End => {
-                            println!("End");
-                            self.is_end = true;
-                            self.next_index = None;
-                            dialogue_events.send(DialogueEvent::End);
-                        }
-                        NodeBody::GoTo(name) => {
-                            match dialogue_asset.nodes_by_name.get(name) {
-                                None => panic!("Dialogue node not found: {}", name),
-                                Some(index) => {
-                                    println!("Going to: {} {}", index, name);
-                                    self.current_index = *index;
-                                    continue;
-                                }
+                Some(node) => match &node.body {
+                    NodeBody::Branch(_) => {
+                        panic!("Branches aren't implemented yet");
+                    }
+                    NodeBody::End => {
+                        println!("End");
+                        self.is_end = true;
+                        self.next_index = None;
+                        dialogue_events.send(DialogueEvent::End);
+                    }
+                    NodeBody::GoTo(name) => {
+                        match dialogue_asset.nodes_by_name.get(name) {
+                            None => panic!("Dialogue node not found: {}", name),
+                            Some(index) => {
+                                println!("Going to: {} {}", index, name);
+                                self.current_index = *index;
+                                continue;
                             }
                         }
-                        NodeBody::Text(text) => {
-                            println!("Setting text to: {}", text);
-                            dialogue_events.send(DialogueEvent::Text(text.clone()));
-                        }
                     }
-                }
+                    NodeBody::Text(text) => {
+                        println!("Setting text to: {}", text);
+                        dialogue_events.send(DialogueEvent::Text(text.clone()));
+                    }
+                },
             }
             break;
         }
