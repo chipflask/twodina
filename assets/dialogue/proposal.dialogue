@@ -1,0 +1,47 @@
+(
+  name: "Demo Level 0",
+  meta: {
+    "Start": ["onload", "mainstory"],
+    "BumpIntoTree": ["runonce"],
+  },
+  // ^ not used yet
+  nodes: {
+    "Start": [
+      Text("You find yourself in a rocky quarry, there appear to be [b]gems[/b] scattered around you."),
+      Branch({
+        "Gaze at them longingly...": [
+            Text("They gaze back, piercing your soul."),
+            Set("$gem_connection", 1), // can this be ron::Value ?
+        ],
+        "Pretend you don't see them": [
+          Text("Well, fine! They don't seem to notice you, either."),
+        ],
+      }),
+      GoTo("choice1"),
+    ],
+    "choice1": [
+      Prompt("What do you do next?", {  // sugar for Branch ^
+        "Leave": GoTo("exit"),
+        "Look around", GoTo("explore"),
+      }),
+    ],
+    "exit": [ 
+      Text("You decide to leave. Better not to be late..."),
+      If("notAlone()", [ // reflection? or digests? 
+          Text("'Come on, lets go,' you say to your friend."),
+          Text("'Sure, OK,' they reply. 'Who wants gems anyway?'"),
+      ]),
+      If("$gem_connection == 1", [  // https://docs.rs/eval/0.4.3/eval/
+          Text("The gems seem to dull slightly, as if saddened at your departure."),
+      ]),
+      Command("ExitLevel"),
+    ],
+    "explore": [
+      Text("`Let's look around,` you say.|"), // | prevents newline
+      If("notAlone()", [
+          Text("..to no one in particular."),
+      ]), //sugar: SayIf("notAlone()", "...to no one in particular"),
+      Text("Better not take too long, they're waiting for you at campus..."),
+    ],
+  },
+)

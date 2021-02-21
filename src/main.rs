@@ -1,17 +1,19 @@
 use std;
 use std::convert::TryFrom;
 
-use bevy::{prelude::*, render::camera::{Camera, CameraProjection, OrthographicProjection}, utils::HashSet};
+use bevy::{asset::{Asset, HandleId}, prelude::*, render::camera::{Camera, CameraProjection, OrthographicProjection}, utils::{HashMap, HashSet}};
 use bevy_tiled_prototype::{DebugConfig, Map, Object, ObjectReadyEvent, ObjectShape, TiledMapCenter, TiledMapComponents, TiledMapPlugin};
 use bevy::math::Vec3Swizzles;
 
 mod character;
 mod collider;
+mod dialogue;
 mod input;
 mod items;
 
 use character::{AnimatedSprite, Character, CharacterState, Direction, VELOCITY_EPSILON};
 use collider::{Collider, ColliderBehavior, Collision};
+use dialogue::{Dialogue, DialogueAsset, DialogueEvent, DialoguePlaceholder};
 use input::{Action, Flag, InputActionSet};
 use items::Inventory;
 use stage::UPDATE;
@@ -21,11 +23,17 @@ const TILED_MAP_SCALE: f32 = 2.0;
 
 // Game state that shouldn't be saved.
 #[derive(Clone, Debug)]
-struct TransientState {
+pub struct TransientState {
     debug_mode: bool,
-    num_players: u8,
+    start_dialogue_shown: bool,
+    current_dialogue: Option<Entity>,
     current_map: Handle<Map>,
+    next_map: Option<Handle<Map>>,
+    loaded_maps: HashSet<Handle<Map>>,
+    entity_visibility: HashMap<Entity, bool>, // this is a minor memory leak until maps aren't recreated
+
     default_blue: Handle<ColorMaterial>,
+    default_red: Handle<ColorMaterial>,
     button_color: Handle<ColorMaterial>,
     button_hovered_color: Handle<ColorMaterial>,
     button_pressed_color: Handle<ColorMaterial>,
@@ -58,10 +66,37 @@ struct Debuggable;
 
 const MAP_SKEW: f32 = 1.0; // We liked ~1.4, but this should be done with the camera
 
-#[derive(Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum AppState {
+    Loading,
     Menu,
     InGame,
+}
+
+impl Default for AppState {
+    fn default() -> Self {
+        AppState::Loading
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct LoadProgress {
+    handles: HashSet<HandleUntyped>,
+    next_state: AppState,
+    next_dialogue: Option<String>,
+    // progress: f32,
+}
+
+impl LoadProgress {
+    pub fn add<T: Asset>(&mut self, handle: Handle<T>) -> Handle<T> {
+        self.handles.insert(handle.clone_untyped());
+        handle
+    }
+
+    pub fn reset(&mut self) {
+        self.handles.clear();
+        self.next_dialogue = None;
+    }
 }
 
 // run loop stages
@@ -70,57 +105,88 @@ pub const LATER: &str = "LATER";
 
 fn main() {
     App::build()
-        .add_resource(State::new(AppState::Menu))
+        .add_resource(State::new(AppState::default()))
+        .add_resource(LoadProgress::default())
         // add stages to run loop
         .add_stage_after(UPDATE, EARLY, StateStage::<AppState>::default())
         .add_stage_after(EARLY, LATER, StateStage::<AppState>::default())
         // add plugins
         .add_plugins(DefaultPlugins)
         .add_plugin(TiledMapPlugin)
+        .add_plugin(dialogue::DialoguePlugin::default())
         .add_plugin(input::InputActionPlugin::default())
         .add_plugin(items::ItemsPlugin::default())
         // init
         .add_startup_system(setup_system.system())
+        // loading
+        .on_state_update(LATER, AppState::Loading, wait_for_asset_loading_system.system())
         //
         // menu
         .on_state_enter(EARLY, AppState::Menu, setup_menu_system.system())
-        .on_state_update(LATER, AppState::Menu, menu_system.system())
+        .on_state_update(LATER, AppState::Menu, menu_system.system().chain(setup_players_system.system()))
         .on_state_update(LATER, AppState::Menu, bevy::input::system::exit_on_esc_system.system())
         .on_state_update(LATER, AppState::Menu, map_item_system.system())
         .on_state_exit(EARLY, AppState::Menu, cleanup_menu_system.system())
+
         // in-game:
-        .on_state_enter(EARLY, AppState::InGame, setup_players_system.system())
+        .on_state_enter(EARLY, AppState::InGame, in_game_start_system.system())
         .on_state_update(EARLY, AppState::InGame, handle_input_system.system())
         .on_state_update(LATER, AppState::InGame, animate_sprite_system.system())
         .on_state_update(LATER, AppState::InGame, move_character_system.system())
         .on_state_update(LATER, AppState::InGame, update_camera_system.system())
         .on_state_update(LATER, AppState::InGame, position_display_system.system())
         .on_state_update(LATER, AppState::InGame, map_item_system.system())
+        .on_state_update(LATER, AppState::InGame, display_dialogue_system.system())
         .on_state_update(LATER, AppState::InGame, bevy::input::system::exit_on_esc_system.system())
         .run();
 }
+
+fn wait_for_asset_loading_system(
+    mut state: ResMut<State<AppState>>,
+    mut load_progress: ResMut<LoadProgress>,
+    asset_server: Res<AssetServer>,
+    mut dialogue_query: Query<&mut Dialogue>,
+    mut dialogue_events: ResMut<Events<DialogueEvent>>,
+) {
+    let handle_ids = load_progress.handles.iter()
+        .map(|handle| HandleId::from(handle));
+    match asset_server.get_group_load_state(handle_ids) {
+        bevy::asset::LoadState::NotLoaded => {}
+        bevy::asset::LoadState::Loading => {}
+        bevy::asset::LoadState::Loaded => {
+            state.set_next(load_progress.next_state).expect("couldn't change state when assets finished loading");
+            if let Some(node_name) = &load_progress.next_dialogue {
+                for mut dialogue in dialogue_query.iter_mut() {
+                    dialogue.begin_optional(node_name.as_ref(), &mut dialogue_events);
+                }
+            }
+            load_progress.reset();
+        }
+        // TODO: Handle failed loading of assets.
+        bevy::asset::LoadState::Failed => {}
+    }
+}
+
 
 fn handle_input_system(
     input_actions: Res<InputActionSet>,
     mut transient_state: ResMut<TransientState>,
     mut query: Query<(&mut Character, &Player)>,
-    mut debuggable: Query<&mut Visible, With<Debuggable>>,
+    mut dialogue_query: Query<&mut Dialogue>,
+    mut dialogue_events: ResMut<Events<DialogueEvent>>,
+    mut debuggable: Query<(&mut Visible, Option<&Handle<Map>>), With<Debuggable>>,
 ) {
     // check for debug status flag differing from transient_state to determine when to hide/show debug stuff
-    if input_actions.has_flag(Flag::Debug) {
-        if !transient_state.debug_mode {
-            // for now hide, but ideally we spawn debug things here
-            for mut visible in debuggable.iter_mut() {
-                visible.is_visible = true;
-            }
-            transient_state.debug_mode = true;
+    if input_actions.has_flag(Flag::Debug) != transient_state.debug_mode {
+        transient_state.debug_mode = !transient_state.debug_mode;
+        // for now hide, but ideally we spawn debug things here
+        for (mut visible, map_option) in debuggable.iter_mut() {
+            let mut in_current_map = true;
+            map_option.map(|map_handle| {
+                in_current_map = *map_handle == transient_state.current_map;
+            });
+            visible.is_visible = in_current_map && transient_state.debug_mode;
         }
-    } else if transient_state.debug_mode {
-        // for now show
-        for mut visible in debuggable.iter_mut() {
-            visible.is_visible = false;
-        }
-        transient_state.debug_mode = false;
     }
 
     for (mut character, player) in query.iter_mut() {
@@ -175,6 +241,13 @@ fn handle_input_system(
         // Don't modify z if the character has a z velocity for some reason.
 
         character.set_state(new_state);
+
+        if let Some(entity) = transient_state.current_dialogue {
+            if input_actions.is_active(Action::Accept, player.id) {
+                let mut dialogue = dialogue_query.get_mut(entity).expect("Couldn't find current dialogue entity");
+                dialogue.advance(&mut dialogue_events);
+            }
+        }
     }
 }
 
@@ -182,9 +255,12 @@ fn setup_system(
     commands: &mut Commands,
     asset_server: Res<AssetServer>,
     mut materials: ResMut<Assets<ColorMaterial>>,
+    mut to_load: ResMut<LoadProgress>,
+    mut query: Query<(Entity, &Handle<Map>, &mut Visible)>,
 ) {
     // Default materials
     let default_blue = materials.add(Color::rgba(0.4, 0.4, 0.9, 0.5).into());
+    let default_red = materials.add(Color::rgba(1.0, 0.4, 0.9, 0.8).into());
     // Cameras.
     commands
         .spawn(Camera2dBundle {
@@ -203,15 +279,46 @@ fn setup_system(
 
     // Map - has some objects
     // transient_state: Res<TransientState>,
-    let transient_state = TransientState {
+    let mut transient_state = TransientState {
         debug_mode: DEBUG_MODE_DEFAULT,
-        num_players: 0,
-        current_map: asset_server.load("maps/melle/sandyrocks.tmx"),
+        start_dialogue_shown: false,
+        current_map: to_load.add(asset_server.load("maps/melle/sandyrocks.tmx")),
+        current_dialogue: None,
+        next_map: None,
+        loaded_maps: HashSet::default(),
+        entity_visibility: HashMap::default(),
+
         default_blue: default_blue.clone(),
+        default_red: default_red.clone(),
         button_color: materials.add(Color::rgb(0.4, 0.4, 0.9).into()),
         button_hovered_color: materials.add(Color::rgb(0.5, 0.5, 1.0).into()),
         button_pressed_color: materials.add(Color::rgb(0.3, 0.3, 0.8).into()),
     };
+    load_next_map(commands, &mut transient_state, &mut query);
+    commands.insert_resource(transient_state);
+
+    to_load.next_state = AppState::Menu;
+}
+
+pub fn load_next_map(
+    commands: &mut Commands,
+    transient_state: &mut TransientState,
+    query: &mut Query<(Entity, &Handle<Map>, &mut Visible)>,
+) {
+    for (entity, map_owner, mut visible) in query.iter_mut() {
+        if *map_owner != transient_state.current_map {
+            transient_state.entity_visibility.insert(entity.clone(), visible.is_visible);
+            visible.is_visible = false;
+        } else {
+            let is_visible = transient_state.entity_visibility.get(&entity).unwrap_or(&false);
+            // ^ should default object.visible if object
+            visible.is_visible = *is_visible;
+        }
+    }
+    // don't spawn if map already exists
+    if transient_state.loaded_maps.contains(&transient_state.current_map) {
+        return;
+    }
     commands
         .spawn(TiledMapComponents {
             map_asset: transient_state.current_map.clone(),
@@ -223,12 +330,11 @@ fn setup_system(
             },
             debug_config: DebugConfig {
                 enabled: DEBUG_MODE_DEFAULT,
-                material: Some(default_blue.clone()),
+                material: Some(transient_state.default_blue.clone()),
             },
             ..Default::default()
         });
-
-    commands.insert_resource(transient_state);
+    transient_state.loaded_maps.insert(transient_state.current_map.clone());
 }
 
 fn setup_menu_system(
@@ -343,26 +449,30 @@ fn cleanup_menu_system(
     }
 }
 
+enum MenuAction {
+    Nil,
+    LoadPlayers { num_players: u8 },
+}
+
 fn menu_system(
-    mut transient_state: ResMut<TransientState>,
-    mut state: ResMut<State<AppState>>,
+    transient_state: ResMut<TransientState>,
     mut interaction_query: Query<
         (&Interaction, &mut Handle<ColorMaterial>, &MenuButton),
         (Mutated<Interaction>, With<Button>),
     >,
-) {
+) -> MenuAction {
+    let mut action = MenuAction::Nil;
     for (interaction, mut material, button_choice) in interaction_query.iter_mut() {
         match *interaction {
             Interaction::Clicked => {
                 match button_choice {
                     MenuButton::OnePlayer => {
-                        transient_state.num_players = 1;
+                        action = MenuAction::LoadPlayers { num_players: 1 };
                     }
                     MenuButton::TwoPlayers => {
-                        transient_state.num_players = 2;
+                        action = MenuAction::LoadPlayers { num_players: 2 };
                     }
                 }
-                state.set_next(AppState::InGame).expect("Set Next failed");
             }
             Interaction::Hovered => {
                 *material = transient_state.button_hovered_color.clone();
@@ -372,22 +482,66 @@ fn menu_system(
             }
         }
     }
+
+    action
 }
 
 const PLAYER_WIDTH: f32 = 31.0;
 const PLAYER_HEIGHT: f32 = 32.0;
 
 fn setup_players_system(
+    In(menu_action): In<MenuAction>,
     commands: &mut Commands,
     asset_server: Res<AssetServer>,
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
-    transient_state: Res<TransientState>,
+    mut transient_state: ResMut<TransientState>,
+    mut state: ResMut<State<AppState>>,
+    mut to_load: ResMut<LoadProgress>,
 ) {
-    let default_red = materials.add(Color::rgba(1.0, 0.4, 0.9, 0.8).into());
+    let num_players = match menu_action {
+        MenuAction::Nil => return,
+        MenuAction::LoadPlayers { num_players } => num_players,
+    };
+
+    state.set_next(AppState::Loading).expect("Set Next failed");
+    to_load.next_state = AppState::InGame;
+
+    // Load dialogue.
+    let level_dialogue = to_load.add(asset_server.load("dialogue/level1.dialogue"));
+    commands
+        .spawn(TextBundle {
+            text: Text {
+                font: to_load.add(asset_server.load("fonts/FiraSans-Bold.ttf")),
+                value: "".to_string(),
+                style: TextStyle {
+                    color: Color::rgb(0.2, 0.2, 0.2),
+                    font_size: 24.0,
+                    ..Default::default()
+                },
+            },
+            style: Style {
+                position_type: PositionType::Absolute,
+                position: Rect {
+                    left: Val::Px(20.0),
+                    right: Val::Px(20.0),
+                    bottom: Val::Px(20.0),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+        .with(DialoguePlaceholder {
+            handle: level_dialogue,
+            ..Default::default()
+        })
+        .current_entity()
+        .map(|entity| transient_state.current_dialogue = Some(entity));
+
     // Players.
-    for i in 0..transient_state.num_players {
-        let texture_handle = asset_server.load(format!("sprites/character{}.png", i + 1).as_str());
+    for i in 0..num_players {
+        let texture_handle = to_load.add(asset_server.load(format!("sprites/character{}.png", i + 1).as_str()));
         let texture_atlas = TextureAtlas::from_grid(
             texture_handle,
             Vec2::new(PLAYER_WIDTH, PLAYER_HEIGHT),
@@ -419,7 +573,7 @@ fn setup_players_system(
             ))
             .with_children(|parent| {
                 // add a shadow sprite -- is there a more efficient way where we load this just once??
-                let shadow_handle = asset_server.load("sprites/shadow.png");
+                let shadow_handle = to_load.add(asset_server.load("sprites/shadow.png"));
                 parent.spawn(SpriteBundle {
                     transform: Transform {
                         translation: Vec3::new(0.0, -13.0, -0.01),
@@ -445,7 +599,7 @@ fn setup_players_system(
                 .with(Debuggable::default());
                 // Center debug indicator.
                 parent.spawn(SpriteBundle {
-                    material: default_red.clone(),
+                    material: transient_state.default_red.clone(),
                     // Don't scale here since the whole character will be scaled.
                     sprite: Sprite::new(Vec2::new(5.0, 5.0)),
                     transform: Transform::from_translation(Vec3::new(0.0, 0.0, 100.0)),
@@ -460,7 +614,7 @@ fn setup_players_system(
             })
             .spawn(TextBundle {
                 text: Text {
-                    font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                    font: to_load.add(asset_server.load("fonts/FiraSans-Bold.ttf")),
                     value: "Position:".to_string(),
                     style: TextStyle {
                         color: Color::rgb(0.7, 0.7, 0.7),
@@ -490,7 +644,7 @@ fn setup_players_system(
 
     // Items
     {
-        let texture_handle = asset_server.load("sprites/items.png");
+        let texture_handle = to_load.add(asset_server.load("sprites/items.png"));
         let items = vec![
             // Shield.
             bevy::sprite::Rect {
@@ -527,7 +681,7 @@ fn setup_players_system(
                 .with(items::EquippedTransform { transform: equipped_transform })
                 .with_children(|parent| {
                     // Add a shadow sprite.
-                    let shadow_handle = asset_server.load("sprites/shadow.png");
+                    let shadow_handle = to_load.add(asset_server.load("sprites/shadow.png"));
                     parent.spawn(SpriteBundle {
                         transform: Transform {
                             translation: Vec3::new(0.0, -5.0, -0.01),
@@ -570,7 +724,8 @@ fn move_character_system(
     time: Res<Time>,
     mut interaction_event: ResMut<Events<items::Interaction>>,
     mut char_query: Query<(Entity, &mut Character, &mut Transform, &GlobalTransform)>,
-    mut collider_query: Query<(Entity, &mut Collider, &GlobalTransform)>,
+    transient_state: Res<TransientState>,
+    mut collider_query: Query<(Entity, &mut Collider, &GlobalTransform, Option<&Handle<Map>>)>,
 ) {
     let mut interaction_colliders: HashSet<Entity> = Default::default();
     for (char_entity, mut character, mut transform, char_global) in char_query.iter_mut() {
@@ -583,10 +738,17 @@ fn move_character_system(
         delta.y /= MAP_SKEW;
         // should stay between +- 2000.0
 
+        // check for collisions with objects in current map
         let char_aabb = char_collider.bounding_volume_with_translation(char_global, delta);
-
         let mut char_collision = Collision::Nil;
-        for (collider_entity, collider, collider_global) in collider_query.iter_mut() {
+        for (collider_entity, collider, collider_global, option_to_map) in collider_query.iter_mut() {
+            // TODO: Use the entity instead of the map asset handle in case
+            // In theory,  there can be multiple instances of the same map.
+            if let Some(owner_map) = option_to_map  {
+                if *owner_map != transient_state.current_map {
+                    continue;
+                }
+            }
             // Shouldn't collide with itself.
             if collider_entity == char_entity {
                 continue;
@@ -598,17 +760,27 @@ fn move_character_system(
                     break;
                 }
                 Collision::Interaction(behavior) => {
-                    interaction_colliders.insert(collider_entity);
+                    match behavior {
+                        ColliderBehavior::Obstruct => {}
+                        ColliderBehavior::PickUp => {
+                            // queue setting collider type to ignore
+                            interaction_colliders.insert(collider_entity);
+                        }
+                        ColliderBehavior::Collect => {}
+                        ColliderBehavior::Load { path: _ } => {}
+                        ColliderBehavior::Ignore => {}
+                    }
+
                     interaction_event.send(items::Interaction::new(
                         char_entity,
                         collider_entity,
-                        behavior,
+                        behavior.clone(),
                     ));
 
                     // Upgrade Collision::Nil; don't downgrade Obstruction.
                     match char_collision {
                         Collision::Nil => {
-                            char_collision = collision;
+                            char_collision = Collision::Interaction(behavior);
                         }
                         Collision::Obstruction | Collision::Interaction(_) => (),
                     }
@@ -624,7 +796,7 @@ fn move_character_system(
             // collider's Z offset to the translation.
             transform.translation.z = z_from_y(transform.translation.y + char_collider.offset.y);
         }
-        character.collision = char_collision;
+        character.collision = char_collision.clone();
     }
     for entity in interaction_colliders.iter() {
         if let Ok(mut collider) = collider_query.get_component_mut::<Collider>(*entity) {
@@ -872,6 +1044,7 @@ fn map_item_system(
         if transient_state.current_map != event.map_handle {
             continue;
         }
+        // println!("created object {:?}, {:?}", event.map_handle, event.entity);
         // let map = maps.get(event.map_handle).expect("Expected to find map from ObjectReadyEvent");
         if let Ok(object) = new_item_query.get(event.entity) {
             let collider_size = TILED_MAP_SCALE * match object.shape {
@@ -884,26 +1057,66 @@ fn map_item_system(
             // we should have actual types based on object name
             // and add components based on that
             let collider_type = match object.name.as_ref() {
-                "biggem" => {
+                "biggem" | "gem" => {
                     if !object.visible {
                         ColliderBehavior::Ignore
                     } else {
                         ColliderBehavior::Collect
                     }
                 },
-                "gem" => {
-                    ColliderBehavior::Collect
-                }
                 _ => {
-                    if object.is_shape() { // allow hide/show objects without images
-                        commands.insert_one(event.entity, Debuggable::default());
+                    if object.name.starts_with("load:") {
+                        ColliderBehavior::Load { path: object.name[5..].to_string() }
+                    } else {
+                        if object.is_shape() { // allow hide/show objects without images
+                            commands.insert_one(event.entity, Debuggable::default());
+                        }
+                        ColliderBehavior::Obstruct
                     }
-                    ColliderBehavior::Obstruct
                 }
             };
 
             let collider_component = Collider::new(collider_type, collider_size, Vec2::new(0.0, 0.0));
             commands.insert_one(event.entity, collider_component);
+        }
+    }
+}
+
+fn in_game_start_system(
+    commands: &mut Commands,
+    mut transient_state: ResMut<TransientState>,
+    mut dialogue_events: ResMut<Events<DialogueEvent>>,
+    dialogue_assets: Res<Assets<DialogueAsset>>,
+    query: Query<(Entity, &DialoguePlaceholder), Without<Dialogue>>,
+) {
+    let should_begin = !transient_state.start_dialogue_shown;
+    // Insert a clone of the asset into a new component.
+    for (entity, placeholder) in query.iter() {
+        let dialogue_asset = dialogue_assets.get(&placeholder.handle).expect("Couldn't find dialogue asset from placeholder handle");
+        let mut dialogue = Dialogue::new(placeholder, dialogue_asset.clone());
+        if should_begin {
+            dialogue.begin("Start", &mut dialogue_events);
+            transient_state.start_dialogue_shown = true;
+        }
+        commands.insert_one(entity, dialogue);
+    }
+}
+
+fn display_dialogue_system(
+    mut event_reader: Local<EventReader<dialogue::DialogueEvent>>,
+    dialogue_events: Res<Events<dialogue::DialogueEvent>>,
+    mut text_query: Query<&mut Text, With<Dialogue>>,
+) {
+    for event in event_reader.iter(&dialogue_events) {
+        for mut ui_text in text_query.iter_mut() {
+            match event {
+                DialogueEvent::End => {
+                    ui_text.value = "".to_string();
+                }
+                DialogueEvent::Text(text) => {
+                    ui_text.value = text.clone();
+                }
+            }
         }
     }
 }

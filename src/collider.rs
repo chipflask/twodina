@@ -8,7 +8,7 @@ pub struct Collider {
     pub offset: Vec2,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub enum ColliderBehavior {
     // Block movement.
     Obstruct,
@@ -17,10 +17,12 @@ pub enum ColliderBehavior {
     // Collected by character.
     Collect,
     // Hit test is skipped.
+    Load { path: String },
+    // open a new level
     Ignore,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub enum Collision {
     Nil,
     Obstruction,
@@ -56,8 +58,8 @@ impl Collider {
     }
 
     pub fn intersect(&self, global_transform: &GlobalTransform, other: &nc::bounding_volume::AABB<f32>) -> Collision {
-        match self.behavior {
-            ColliderBehavior::Obstruct | ColliderBehavior::PickUp | ColliderBehavior::Collect => (),
+        match &self.behavior {
+            ColliderBehavior::Obstruct | ColliderBehavior::PickUp | ColliderBehavior::Collect | ColliderBehavior::Load { path: _ } => (),
             ColliderBehavior::Ignore => return Collision::Nil,
         }
 
@@ -69,7 +71,8 @@ impl Collider {
 
         match self.behavior {
             ColliderBehavior::Obstruct => Collision::Obstruction,
-            ColliderBehavior::PickUp | ColliderBehavior::Collect => Collision::Interaction(self.behavior),
+            ColliderBehavior::PickUp | ColliderBehavior::Collect | ColliderBehavior::Load { path: _ }
+                => Collision::Interaction(self.behavior.clone()),
             ColliderBehavior::Ignore => panic!("Should never reach here"),
         }
     }
