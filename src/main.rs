@@ -311,10 +311,12 @@ pub fn load_next_map(
     for (entity, map_owner, mut visible) in query.iter_mut() {
         if *map_owner != transient_state.current_map {
             transient_state.entity_visibility.insert(entity.clone(), visible.is_visible);
+            commands.remove_one::<Draw>(entity);
             visible.is_visible = false;
         } else {
             let is_visible = transient_state.entity_visibility.get(&entity).unwrap_or(&false);
             // ^ should default object.visible if object
+            commands.insert_one(entity, Draw::default());
             visible.is_visible = *is_visible;
         }
     }
