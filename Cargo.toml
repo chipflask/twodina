@@ -9,7 +9,6 @@ edition = "2018"
 [dependencies]
 anyhow = "^1.0.36"
 bevy = { version = "0.4.0", features = ["vorbis"] }
-bevy_asset_ron = { git = "https://github.com/jamadazi/bevy_asset_ron", branch = "master" }
 bevy_tiled_prototype = { git = "https://github.com/dmtaub/bevy_tiled", branch = "items" }
 ncollide2d = "0.27.0"
 ron = "0.6.4"
