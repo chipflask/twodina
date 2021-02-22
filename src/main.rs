@@ -372,14 +372,16 @@ fn setup_menu_system(
                     ..Default::default()
                 },
                 text: Text {
-                    value: "Celebration 2021".to_string(),
-                    font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-                    style: TextStyle {
-                        font_size: 60.0,
-                        color: Color::BLACK,
-                        ..Default::default()
-                    },
-                    ..Default::default()
+                    sections: vec![TextSection {
+                        value: "Celebration 2021".to_string(),
+                        style: TextStyle {
+                            font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                            font_size: 60.0,
+                            color: Color::BLACK,
+                            ..Default::default()
+                        },
+                    }],
+                    ..Default::default()    
                 },
                 ..Default::default()
             });
@@ -402,13 +404,16 @@ fn setup_menu_system(
             .with_children(|parent| {
                 parent.spawn(TextBundle {
                     text: Text {
-                        value: "1 Player".to_string(),
-                        font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-                        style: TextStyle {
-                            font_size: 40.0,
-                            color: Color::rgb(0.9, 0.9, 0.9),
-                            ..Default::default()
-                        },
+                        sections: vec![TextSection {
+                            value: "1 Player".to_string(),
+                            style: TextStyle {
+                                font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                                font_size: 40.0,
+                                color: Color::rgb(0.9, 0.9, 0.9),
+                                ..Default::default()
+                            },
+                        }],
+                        ..Default::default()    
                     },
                     ..Default::default()
                 });
@@ -432,13 +437,16 @@ fn setup_menu_system(
             .with_children(|parent| {
                 parent.spawn(TextBundle {
                     text: Text {
-                        value: "2 Players".to_string(),
-                        font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-                        style: TextStyle {
-                            font_size: 40.0,
-                            color: Color::rgb(0.9, 0.9, 0.9),
-                            ..Default::default()
-                        },
+                        sections: vec![TextSection {
+                            value: "2 Players".to_string(),
+                            style: TextStyle {
+                                font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                                font_size: 40.0,
+                                color: Color::rgb(0.9, 0.9, 0.9),
+                                ..Default::default()
+                            },
+                        }],
+                        ..Default::default()    
                     },
                     ..Default::default()
                 });
@@ -554,13 +562,16 @@ fn setup_players_system(
         .with_children(|parent| {
             parent.spawn(TextBundle {
                 text: Text {
-                    font: to_load.add(asset_server.load("fonts/FiraSans-Bold.ttf")),
-                    value: "".to_string(),
-                    style: TextStyle {
-                        color: Color::rgb(0.2, 0.2, 0.2),
-                        font_size: 24.0,
-                        ..Default::default()
-                    },
+                    sections: vec![TextSection {
+                        value: "".to_string(),
+                        style: TextStyle {
+                            font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                            font_size: 24.0,
+                            color: Color::rgb(0.2, 0.2, 0.2),
+                            ..Default::default()
+                        },
+                    }],
+                    ..Default::default()    
                 },
                 style: Style {
                     margin: Rect::all(Val::Px(10.0)),
@@ -652,14 +663,16 @@ fn setup_players_system(
             })
             .spawn(TextBundle {
                 text: Text {
-                    font: to_load.add(asset_server.load("fonts/FiraSans-Bold.ttf")),
-                    value: "Position:".to_string(),
-                    style: TextStyle {
-                        color: Color::rgb(0.7, 0.7, 0.7),
-                        font_size: 24.0,
-                        ..Default::default()
-                    },
-                    ..Default::default()
+                    sections: vec![TextSection {
+                        value: "Position:".to_string(),
+                        style: TextStyle {
+                            font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                            font_size: 24.0,
+                            color: Color::rgb(0.7, 0.7, 0.7),
+                            ..Default::default()
+                        },
+                    }],
+                    ..Default::default()    
                 },
                 style: Style {
                     position_type: PositionType::Absolute,
