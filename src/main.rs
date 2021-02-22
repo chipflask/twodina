@@ -2,7 +2,7 @@ use std;
 use std::convert::TryFrom;
 
 use bevy::{asset::{Asset, HandleId}, prelude::*, render::camera::{Camera, CameraProjection, OrthographicProjection}, utils::{HashMap, HashSet}};
-use bevy_tiled_prototype::{DebugConfig, Map, Object, ObjectReadyEvent, ObjectShape, TiledMapCenter, TiledMapComponents, TiledMapPlugin};
+use bevy_tiled_prototype::{DebugConfig, Map, Object, ObjectReadyEvent, ObjectShape, TiledMapCenter, TiledMapBundle, TiledMapPlugin};
 use bevy::math::Vec3Swizzles;
 
 mod character;
@@ -275,7 +275,7 @@ fn setup_system(
             ..Default::default()
         })
         .with(PlayerCamera {})
-        .spawn(CameraUiBundle::default());
+        .spawn(UiCameraBundle::default());
 
     // Watch for asset changes.
     asset_server.watch_for_changes().expect("watch for changes");
@@ -325,7 +325,7 @@ pub fn load_next_map(
         return;
     }
     commands
-        .spawn(TiledMapComponents {
+        .spawn(TiledMapBundle {
             map_asset: transient_state.current_map.clone(),
             center: TiledMapCenter(true),
             origin: Transform {
@@ -1005,11 +1005,10 @@ fn map_item_system(
     commands: &mut Commands,
     new_item_query: Query<&Object>,
     transient_state: Res<TransientState>,
-    mut event_reader: Local<EventReader<ObjectReadyEvent>>,
-    map_ready_events: Res<Events<ObjectReadyEvent>>,
+    mut event_reader: EventReader<ObjectReadyEvent>,
     // maps: Res<Assets<Map>>,
 ) {
-    for event in event_reader.iter(&map_ready_events) {
+    for event in event_reader.iter() {
         if transient_state.current_map != event.map_handle {
             continue;
         }
@@ -1072,12 +1071,11 @@ fn in_game_start_system(
 }
 
 fn display_dialogue_system(
-    mut event_reader: Local<EventReader<dialogue::DialogueEvent>>,
-    dialogue_events: Res<Events<dialogue::DialogueEvent>>,
+    mut event_reader: EventReader<dialogue::DialogueEvent>,
     mut text_query: Query<&mut Text, With<Dialogue>>,
     mut visible_query: Query<&mut Visible, With<DialogueWindow>>,
 ) {
-    for event in event_reader.iter(&dialogue_events) {
+    for event in event_reader.iter() {
         for mut ui_text in text_query.iter_mut() {
             match event {
                 DialogueEvent::End => {
