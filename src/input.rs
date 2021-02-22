@@ -1,6 +1,6 @@
 // use std::collections::HashSet;
 use bevy::prelude::*;
-use bevy::utils::{AHashExt, HashSet};
+use bevy::utils::{HashSet};
 use std::convert::TryFrom;
 
 // Add this plugin to your app.
@@ -40,7 +40,6 @@ pub enum Flag {
 #[derive(Default)]
 struct GamepadSet {
     gamepads: HashSet<Gamepad>,
-    gamepad_event_reader: EventReader<GamepadEvent>,
 }
 
 impl Plugin for InputActionPlugin {
@@ -55,9 +54,9 @@ impl Plugin for InputActionPlugin {
 
 fn gamepad_connection_system(
     mut gamepad_set: ResMut<GamepadSet>,
-    gamepad_events: Res<Events<GamepadEvent>>,
+    gamepad_events: EventReader<GamepadEvent>,
 ) {
-    for event in gamepad_set.gamepad_event_reader.iter(&gamepad_events) {
+    for event in gamepad_events.iter() {
         match &event {
             GamepadEvent(gamepad, GamepadEventType::Connected) => {
                 gamepad_set.gamepads.insert(*gamepad);

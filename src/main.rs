@@ -266,7 +266,7 @@ fn setup_system(
     let default_red = materials.add(Color::rgba(1.0, 0.4, 0.9, 0.8).into());
     // Cameras.
     commands
-        .spawn(Camera2dBundle {
+        .spawn(OrthographicCameraBundle {
             orthographic_projection: OrthographicProjection {
                 near: -2000.0,
                 far: 2000.0,
@@ -379,6 +379,7 @@ fn setup_menu_system(
                         color: Color::BLACK,
                         ..Default::default()
                     },
+                    ..Default::default()
                 },
                 ..Default::default()
             });
@@ -658,6 +659,7 @@ fn setup_players_system(
                         font_size: 24.0,
                         ..Default::default()
                     },
+                    ..Default::default()
                 },
                 style: Style {
                     position_type: PositionType::Absolute,
