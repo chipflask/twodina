@@ -19,7 +19,7 @@ use items::Inventory;
 use stage::UPDATE;
 
 const DEBUG_MODE_DEFAULT: bool = false;
-const TILED_MAP_SCALE: f32 = 2.0;
+const TILED_MAP_SCALE: f32 = 3.0;
 
 // Game state that shouldn't be saved.
 #[derive(Clone, Debug)]

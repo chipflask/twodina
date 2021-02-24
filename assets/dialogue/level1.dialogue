@@ -19,7 +19,7 @@
             body: GoTo("Start"),
         ),
         (
-            name: "maps/melle/ritualspace",
+            name: "maps/ritualspace",
             body: Text("What's this?  It must have been a portal connecting two places."),
         ),
         (
