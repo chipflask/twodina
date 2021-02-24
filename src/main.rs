@@ -1,8 +1,22 @@
 use std;
 use std::convert::TryFrom;
 
-use bevy::{asset::{Asset, HandleId}, prelude::*, render::camera::{Camera, CameraProjection, OrthographicProjection}, utils::{HashMap, HashSet}};
-use bevy_tiled_prototype::{DebugConfig, Map, Object, ObjectReadyEvent, ObjectShape, TiledMapCenter, TiledMapBundle, TiledMapPlugin};
+use bevy::{
+    asset::{Asset, HandleId},
+    prelude::*,
+    render::{camera::{self, Camera, CameraProjection, OrthographicProjection}, render_graph},
+    utils::{HashMap, HashSet},
+};
+use bevy_tiled_prototype::{
+    DebugConfig,
+    Map,
+    Object,
+    ObjectReadyEvent,
+    ObjectShape,
+    TiledMapCenter,
+    TiledMapBundle,
+    TiledMapPlugin,
+};
 use bevy::math::Vec3Swizzles;
 
 mod character;
@@ -108,8 +122,8 @@ pub const LATER: &str = "LATER";
 
 fn main() {
     App::build()
-        .add_resource(State::new(AppState::default()))
-        .add_resource(LoadProgress::default())
+        .insert_resource(State::new(AppState::default()))
+        .insert_resource(LoadProgress::default())
         // add stages to run loop
         .add_stage_after(UPDATE, EARLY, StateStage::<AppState>::default())
         .add_stage_after(EARLY, LATER, StateStage::<AppState>::default())
@@ -265,14 +279,23 @@ fn setup_system(
     let default_blue = materials.add(Color::rgba(0.4, 0.4, 0.9, 0.5).into());
     let default_red = materials.add(Color::rgba(1.0, 0.4, 0.9, 0.8).into());
     // Cameras.
+    let far = 2000.0;
+    let near = -2000.0;
     commands
         .spawn(OrthographicCameraBundle {
-            orthographic_projection: OrthographicProjection {
-                near: -2000.0,
-                far: 2000.0,
+            camera: Camera {
+                name: Some(render_graph::base::camera::CAMERA_2D.to_string()),
                 ..Default::default()
             },
-            ..Default::default()
+            orthographic_projection: OrthographicProjection {
+                near,
+                far,
+                depth_calculation: camera::DepthCalculation::ZDifference,
+                ..Default::default()
+            },
+            visible_entities: Default::default(),
+            transform: Transform::from_xyz(0.0, 0.0, far - 0.1),
+            global_transform: Default::default(),
         })
         .with(PlayerCamera {})
         .spawn(UiCameraBundle::default());
@@ -1094,13 +1117,13 @@ fn display_dialogue_system(
         for mut ui_text in text_query.iter_mut() {
             match event {
                 DialogueEvent::End => {
-                    ui_text.value = "".to_string();
+                    ui_text.sections[0].value = "".to_string();
                     for mut visible in visible_query.iter_mut() {
                         visible.is_visible = false;
                     }
                 }
                 DialogueEvent::Text(text) => {
-                    ui_text.value = text.clone();
+                    ui_text.sections[0].value = text.clone();
                     for mut visible in visible_query.iter_mut() {
                         visible.is_visible = true;
                     }
@@ -1117,7 +1140,7 @@ fn position_display_system(
     for (char_transform, player, character, inventory) in character_query.iter_mut() {
         for (mut text, ppd) in text_query.iter_mut() {
             if ppd.player_id == player.id {
-                text.value = format!(
+                text.sections[0].value = format!(
                     "P{} Position: ({:.1}, {:.1}, {:.1}) collision={:?} gems={:?}",
                     player.id + 1,
                     char_transform.translation.x,

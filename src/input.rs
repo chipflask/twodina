@@ -1,7 +1,6 @@
-// use std::collections::HashSet;
-use bevy::prelude::*;
-use bevy::utils::{HashSet};
 use std::convert::TryFrom;
+use bevy::prelude::*;
+use bevy::utils::HashSet;
 
 // Add this plugin to your app.
 #[derive(Debug, Default)]
@@ -45,8 +44,8 @@ struct GamepadSet {
 impl Plugin for InputActionPlugin {
     fn build(&self, app: &mut AppBuilder) {
         app
-            .add_resource(InputActionSet::default())
-            .add_resource(GamepadSet::default())
+            .insert_resource(InputActionSet::default())
+            .insert_resource(GamepadSet::default())
             .add_system_to_stage(stage::EVENT, action_producer_system.system())
             .add_system_to_stage(stage::PRE_UPDATE, gamepad_connection_system.system());
     }
@@ -54,7 +53,7 @@ impl Plugin for InputActionPlugin {
 
 fn gamepad_connection_system(
     mut gamepad_set: ResMut<GamepadSet>,
-    gamepad_events: EventReader<GamepadEvent>,
+    mut gamepad_events: EventReader<GamepadEvent>,
 ) {
     for event in gamepad_events.iter() {
         match &event {
@@ -73,8 +72,8 @@ fn gamepad_connection_system(
 impl Default for InputActionSet {
     fn default() -> Self {
         InputActionSet {
-            actions: HashSet::with_capacity(8),
-            flags: HashSet::with_capacity(8),
+            actions: HashSet::default(),
+            flags: HashSet::default(),
         }
     }
 }
