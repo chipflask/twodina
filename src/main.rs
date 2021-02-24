@@ -729,10 +729,13 @@ fn move_character_system(
                     match behavior {
                         ColliderBehavior::Obstruct => {}
                         ColliderBehavior::PickUp => {
-                            // queue setting collider type to ignore
+                            // queue setting collider type to ignore, stop collisions if we're carrying
                             interaction_colliders.insert(collider_entity);
                         }
-                        ColliderBehavior::Collect => {}
+                        ColliderBehavior::Collect => {
+                            // queue setting collider type to ignore, make sure we don't double-collect
+                            interaction_colliders.insert(collider_entity);
+                        }
                         ColliderBehavior::Load { path: _ } => {}
                         ColliderBehavior::Ignore => {}
                     }
