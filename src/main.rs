@@ -20,7 +20,7 @@ use stage::UPDATE;
 
 const DEBUG_MODE_DEFAULT: bool = false;
 const TILED_MAP_SCALE: f32 = 3.0;
-
+const CAMERA_BUFFER: f32 = 3.0;
 // Game state that shouldn't be saved.
 #[derive(Clone, Debug)]
 pub struct TransientState {
@@ -909,8 +909,8 @@ fn update_camera_system(
                     let mut new_cam_translation = camera_transform.translation.clone();
                     let mut v1 = camera_transform.translation.clone() - player_translation;
 
-                    v1.x = margin_vec.x.min((v1.x.abs() / win_width).abs()) * v1.x.signum() * win_width;
-                    v1.y = margin_vec.y.min((v1.y.abs() / win_height).abs()) * v1.y.signum() * win_height;
+                    v1.x = margin_vec.x.min(((v1.x.abs() - CAMERA_BUFFER) / win_width).abs()) * v1.x.signum() * win_width;
+                    v1.y = margin_vec.y.min(((v1.y.abs() - CAMERA_BUFFER) / win_height).abs()) * v1.y.signum() * win_height;
                     // println!("{:?} - {:?}", v1, margin_vec);
 
                     new_cam_translation = new_cam_translation - v1 * 2.0;
