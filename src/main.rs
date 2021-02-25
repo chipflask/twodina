@@ -294,7 +294,7 @@ fn setup_system(
                 ..Default::default()
             },
             visible_entities: Default::default(),
-            transform: Transform::from_xyz(0.0, 0.0, far - 0.1),
+            transform: Transform::from_xyz(0.0, 0.0, 0.0),
             global_transform: Default::default(),
         })
         .with(PlayerCamera {})
