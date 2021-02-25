@@ -6,6 +6,8 @@ use bevy::{
     prelude::*,
     render::{camera::{self, Camera, CameraProjection, OrthographicProjection}, render_graph},
     utils::{HashMap, HashSet},
+    math::Vec3Swizzles,
+    app::CoreStage::{Update},
 };
 use bevy_tiled_prototype::{
     DebugConfig,
@@ -17,7 +19,6 @@ use bevy_tiled_prototype::{
     TiledMapBundle,
     TiledMapPlugin,
 };
-use bevy::math::Vec3Swizzles;
 
 mod character;
 mod collider;
@@ -30,7 +31,6 @@ use collider::{Collider, ColliderBehavior, Collision};
 use dialogue::{Dialogue, DialogueAsset, DialogueEvent, DialoguePlaceholder};
 use input::{Action, Flag, InputActionSet};
 use items::Inventory;
-use stage::UPDATE;
 
 const DEBUG_MODE_DEFAULT: bool = false;
 const TILED_MAP_SCALE: f32 = 3.0;
@@ -125,7 +125,7 @@ fn main() {
         .insert_resource(State::new(AppState::default()))
         .insert_resource(LoadProgress::default())
         // add stages to run loop
-        .add_stage_after(UPDATE, EARLY, StateStage::<AppState>::default())
+        .add_stage_after(Update, EARLY, StateStage::<AppState>::default())
         .add_stage_after(EARLY, LATER, StateStage::<AppState>::default())
         // add plugins
         .add_plugins(DefaultPlugins)

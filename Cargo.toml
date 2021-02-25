@@ -1,14 +1,15 @@
 [package]
 name = "game_2021"
-version = "0.1.0"
-authors = ["Jonathan Tran <jonnytran@gmail.com>"]
+description = "A 2d game engine on top of Bevy."
+version = "0.2.0"
+authors = ["Jonathan Tran <jonnytran@gmail.com>", "Daniel Taub <dmtaub@gmail.com>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 anyhow = "^1.0.36"
-bevy = { git = "https://github.com/bevyengine/bevy/", rev="1ca8ce4a799af8dab2d926366de9ac3c8d30939c", features = ["vorbis"] }
+bevy = { git = "https://github.com/bevyengine/bevy/", branch="main", features = ["vorbis"] }
 bevy_tiled_prototype = { git = "https://github.com/dmtaub/bevy_tiled", branch = "items_0.5" }
 ncollide2d = "0.27.0"
 ron = "0.6.4"
