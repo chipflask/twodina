@@ -1,7 +1,7 @@
-// use std::collections::HashSet;
-use bevy::prelude::*;
-use bevy::utils::{AHashExt, HashSet};
 use std::convert::TryFrom;
+use bevy::prelude::*;
+use bevy::utils::HashSet;
+use bevy::app::CoreStage::{Event, PreUpdate};
 
 // Add this plugin to your app.
 #[derive(Debug, Default)]
@@ -40,24 +40,23 @@ pub enum Flag {
 #[derive(Default)]
 struct GamepadSet {
     gamepads: HashSet<Gamepad>,
-    gamepad_event_reader: EventReader<GamepadEvent>,
 }
 
 impl Plugin for InputActionPlugin {
     fn build(&self, app: &mut AppBuilder) {
         app
-            .add_resource(InputActionSet::default())
-            .add_resource(GamepadSet::default())
-            .add_system_to_stage(stage::EVENT, action_producer_system.system())
-            .add_system_to_stage(stage::PRE_UPDATE, gamepad_connection_system.system());
+            .insert_resource(InputActionSet::default())
+            .insert_resource(GamepadSet::default())
+            .add_system_to_stage(Event, action_producer_system.system())
+            .add_system_to_stage(PreUpdate, gamepad_connection_system.system());
     }
 }
 
 fn gamepad_connection_system(
     mut gamepad_set: ResMut<GamepadSet>,
-    gamepad_events: Res<Events<GamepadEvent>>,
+    mut gamepad_events: EventReader<GamepadEvent>,
 ) {
-    for event in gamepad_set.gamepad_event_reader.iter(&gamepad_events) {
+    for event in gamepad_events.iter() {
         match &event {
             GamepadEvent(gamepad, GamepadEventType::Connected) => {
                 gamepad_set.gamepads.insert(*gamepad);
@@ -74,8 +73,8 @@ fn gamepad_connection_system(
 impl Default for InputActionSet {
     fn default() -> Self {
         InputActionSet {
-            actions: HashSet::with_capacity(8),
-            flags: HashSet::with_capacity(8),
+            actions: HashSet::default(),
+            flags: HashSet::default(),
         }
     }
 }

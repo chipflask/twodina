@@ -53,14 +53,13 @@ impl Interaction {
 pub fn trigger_level_load_system(
     commands: &mut Commands,
     asset_server: Res<AssetServer>,
-    mut interaction_reader: Local<EventReader<Interaction>>,
-    interactions: Res<Events<Interaction>>,
+    mut interaction_reader: EventReader<Interaction>,
     mut state: ResMut<State<AppState>>,
     mut game_state: ResMut<TransientState>,
     mut to_load: ResMut<LoadProgress>,
     mut entity_query: Query<(Entity, &Handle<Map>, &mut Visible)>,
 ) {
-    for interaction in interaction_reader.iter(&interactions) {
+    for interaction in interaction_reader.iter() {
         match &interaction.behavior {
             ColliderBehavior::Load { path } => {
                 let level: String = path.to_owned() + &String::from(".tmx");
@@ -87,15 +86,14 @@ pub fn trigger_level_load_system(
 // handles consume and equip
 pub fn items_system(
     commands: &mut Commands,
-    mut interaction_reader: Local<EventReader<Interaction>>,
-    interactions: Res<Events<Interaction>>,
+    mut interaction_reader: EventReader<Interaction>,
     mut query: Query<(&mut Transform, Option<&EquippedTransform>, Option<&mut Collider>)>,
     mut inventory_query: Query<&mut Inventory>,
     object_query: Query<&Object>,
     asset_server: Res<AssetServer>,
     audio: Res<Audio>,
 ) {
-    for interaction in interaction_reader.iter(&interactions) {
+    for interaction in interaction_reader.iter() {
         match &interaction.behavior {
             ColliderBehavior::Collect => {
                 commands.despawn_recursive(interaction.object);

@@ -1,9 +1,24 @@
 use std;
 use std::convert::TryFrom;
 
-use bevy::{asset::{Asset, HandleId}, prelude::*, render::camera::{Camera, CameraProjection, OrthographicProjection}, utils::{HashMap, HashSet}};
-use bevy_tiled_prototype::{DebugConfig, Map, Object, ObjectReadyEvent, ObjectShape, TiledMapCenter, TiledMapComponents, TiledMapPlugin};
-use bevy::math::Vec3Swizzles;
+use bevy::{
+    asset::{Asset, HandleId},
+    prelude::*,
+    render::{camera::{self, Camera, CameraProjection, OrthographicProjection}, render_graph},
+    utils::{HashMap, HashSet},
+    math::Vec3Swizzles,
+    app::CoreStage::{Update},
+};
+use bevy_tiled_prototype::{
+    DebugConfig,
+    Map,
+    Object,
+    ObjectReadyEvent,
+    ObjectShape,
+    TiledMapCenter,
+    TiledMapBundle,
+    TiledMapPlugin,
+};
 
 mod character;
 mod collider;
@@ -16,11 +31,10 @@ use collider::{Collider, ColliderBehavior, Collision};
 use dialogue::{Dialogue, DialogueAsset, DialogueEvent, DialoguePlaceholder};
 use input::{Action, Flag, InputActionSet};
 use items::Inventory;
-use stage::UPDATE;
 
 const DEBUG_MODE_DEFAULT: bool = false;
-const TILED_MAP_SCALE: f32 = 3.0;
-const CAMERA_BUFFER: f32 = 3.0;
+const TILED_MAP_SCALE: f32 = 2.0;
+const CAMERA_BUFFER: f32 = 1.0;
 // Game state that shouldn't be saved.
 #[derive(Clone, Debug)]
 pub struct TransientState {
@@ -108,10 +122,10 @@ pub const LATER: &str = "LATER";
 
 fn main() {
     App::build()
-        .add_resource(State::new(AppState::default()))
-        .add_resource(LoadProgress::default())
+        .insert_resource(State::new(AppState::default()))
+        .insert_resource(LoadProgress::default())
         // add stages to run loop
-        .add_stage_after(UPDATE, EARLY, StateStage::<AppState>::default())
+        .add_stage_after(Update, EARLY, StateStage::<AppState>::default())
         .add_stage_after(EARLY, LATER, StateStage::<AppState>::default())
         // add plugins
         .add_plugins(DefaultPlugins)
@@ -265,17 +279,26 @@ fn setup_system(
     let default_blue = materials.add(Color::rgba(0.4, 0.4, 0.9, 0.5).into());
     let default_red = materials.add(Color::rgba(1.0, 0.4, 0.9, 0.8).into());
     // Cameras.
+    let far = 2000.0;
+    let near = -2000.0;
     commands
-        .spawn(Camera2dBundle {
-            orthographic_projection: OrthographicProjection {
-                near: -2000.0,
-                far: 2000.0,
+        .spawn(OrthographicCameraBundle {
+            camera: Camera {
+                name: Some(render_graph::base::camera::CAMERA_2D.to_string()),
                 ..Default::default()
             },
-            ..Default::default()
+            orthographic_projection: OrthographicProjection {
+                near,
+                far,
+                depth_calculation: camera::DepthCalculation::ZDifference,
+                ..Default::default()
+            },
+            visible_entities: Default::default(),
+            transform: Transform::from_xyz(0.0, 0.0, 0.0),
+            global_transform: Default::default(),
         })
         .with(PlayerCamera {})
-        .spawn(CameraUiBundle::default());
+        .spawn(UiCameraBundle::default());
 
     // Watch for asset changes.
     asset_server.watch_for_changes().expect("watch for changes");
@@ -311,7 +334,7 @@ pub fn load_next_map(
     for (entity, map_owner, mut visible) in query.iter_mut() {
         if *map_owner != transient_state.current_map {
             transient_state.entity_visibility.insert(entity.clone(), visible.is_visible);
-            commands.remove_one::<Draw>(entity);
+            commands.remove_one::<Draw>(entity); // for efficiency (and might help reduce textureId panick)
             visible.is_visible = false;
         } else {
             let is_visible = transient_state.entity_visibility.get(&entity).unwrap_or(&false);
@@ -325,7 +348,7 @@ pub fn load_next_map(
         return;
     }
     commands
-        .spawn(TiledMapComponents {
+        .spawn(TiledMapBundle {
             map_asset: transient_state.current_map.clone(),
             center: TiledMapCenter(true),
             origin: Transform {
@@ -372,13 +395,16 @@ fn setup_menu_system(
                     ..Default::default()
                 },
                 text: Text {
-                    value: "Celebration 2021".to_string(),
-                    font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-                    style: TextStyle {
-                        font_size: 60.0,
-                        color: Color::BLACK,
-                        ..Default::default()
-                    },
+                    sections: vec![TextSection {
+                        value: "Celebration 2021".to_string(),
+                        style: TextStyle {
+                            font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                            font_size: 60.0,
+                            color: Color::BLACK,
+                            ..Default::default()
+                        },
+                    }],
+                    ..Default::default()    
                 },
                 ..Default::default()
             });
@@ -401,13 +427,16 @@ fn setup_menu_system(
             .with_children(|parent| {
                 parent.spawn(TextBundle {
                     text: Text {
-                        value: "1 Player".to_string(),
-                        font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-                        style: TextStyle {
-                            font_size: 40.0,
-                            color: Color::rgb(0.9, 0.9, 0.9),
-                            ..Default::default()
-                        },
+                        sections: vec![TextSection {
+                            value: "1 Player".to_string(),
+                            style: TextStyle {
+                                font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                                font_size: 40.0,
+                                color: Color::rgb(0.9, 0.9, 0.9),
+                                ..Default::default()
+                            },
+                        }],
+                        ..Default::default()    
                     },
                     ..Default::default()
                 });
@@ -431,13 +460,16 @@ fn setup_menu_system(
             .with_children(|parent| {
                 parent.spawn(TextBundle {
                     text: Text {
-                        value: "2 Players".to_string(),
-                        font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-                        style: TextStyle {
-                            font_size: 40.0,
-                            color: Color::rgb(0.9, 0.9, 0.9),
-                            ..Default::default()
-                        },
+                        sections: vec![TextSection {
+                            value: "2 Players".to_string(),
+                            style: TextStyle {
+                                font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                                font_size: 40.0,
+                                color: Color::rgb(0.9, 0.9, 0.9),
+                                ..Default::default()
+                            },
+                        }],
+                        ..Default::default()    
                     },
                     ..Default::default()
                 });
@@ -553,13 +585,16 @@ fn setup_players_system(
         .with_children(|parent| {
             parent.spawn(TextBundle {
                 text: Text {
-                    font: to_load.add(asset_server.load("fonts/FiraSans-Bold.ttf")),
-                    value: "".to_string(),
-                    style: TextStyle {
-                        color: Color::rgb(0.2, 0.2, 0.2),
-                        font_size: 24.0,
-                        ..Default::default()
-                    },
+                    sections: vec![TextSection {
+                        value: "".to_string(),
+                        style: TextStyle {
+                            font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                            font_size: 24.0,
+                            color: Color::rgb(0.2, 0.2, 0.2),
+                            ..Default::default()
+                        },
+                    }],
+                    ..Default::default()    
                 },
                 style: Style {
                     margin: Rect::all(Val::Px(10.0)),
@@ -651,13 +686,16 @@ fn setup_players_system(
             })
             .spawn(TextBundle {
                 text: Text {
-                    font: to_load.add(asset_server.load("fonts/FiraSans-Bold.ttf")),
-                    value: "Position:".to_string(),
-                    style: TextStyle {
-                        color: Color::rgb(0.7, 0.7, 0.7),
-                        font_size: 24.0,
-                        ..Default::default()
-                    },
+                    sections: vec![TextSection {
+                        value: "Position:".to_string(),
+                        style: TextStyle {
+                            font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                            font_size: 24.0,
+                            color: Color::rgb(0.7, 0.7, 0.7),
+                            ..Default::default()
+                        },
+                    }],
+                    ..Default::default()    
                 },
                 style: Style {
                     position_type: PositionType::Absolute,
@@ -1005,11 +1043,10 @@ fn map_item_system(
     commands: &mut Commands,
     new_item_query: Query<&Object>,
     transient_state: Res<TransientState>,
-    mut event_reader: Local<EventReader<ObjectReadyEvent>>,
-    map_ready_events: Res<Events<ObjectReadyEvent>>,
+    mut event_reader: EventReader<ObjectReadyEvent>,
     // maps: Res<Assets<Map>>,
 ) {
-    for event in event_reader.iter(&map_ready_events) {
+    for event in event_reader.iter() {
         if transient_state.current_map != event.map_handle {
             continue;
         }
@@ -1072,22 +1109,21 @@ fn in_game_start_system(
 }
 
 fn display_dialogue_system(
-    mut event_reader: Local<EventReader<dialogue::DialogueEvent>>,
-    dialogue_events: Res<Events<dialogue::DialogueEvent>>,
+    mut event_reader: EventReader<dialogue::DialogueEvent>,
     mut text_query: Query<&mut Text, With<Dialogue>>,
     mut visible_query: Query<&mut Visible, With<DialogueWindow>>,
 ) {
-    for event in event_reader.iter(&dialogue_events) {
+    for event in event_reader.iter() {
         for mut ui_text in text_query.iter_mut() {
             match event {
                 DialogueEvent::End => {
-                    ui_text.value = "".to_string();
+                    ui_text.sections[0].value = "".to_string();
                     for mut visible in visible_query.iter_mut() {
                         visible.is_visible = false;
                     }
                 }
                 DialogueEvent::Text(text) => {
-                    ui_text.value = text.clone();
+                    ui_text.sections[0].value = text.clone();
                     for mut visible in visible_query.iter_mut() {
                         visible.is_visible = true;
                     }
@@ -1104,7 +1140,7 @@ fn position_display_system(
     for (char_transform, player, character, inventory) in character_query.iter_mut() {
         for (mut text, ppd) in text_query.iter_mut() {
             if ppd.player_id == player.id {
-                text.value = format!(
+                text.sections[0].value = format!(
                     "P{} Position: ({:.1}, {:.1}, {:.1}) collision={:?} gems={:?}",
                     player.id + 1,
                     char_transform.translation.x,
