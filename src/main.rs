@@ -33,8 +33,8 @@ use input::{Action, Flag, InputActionSet};
 use items::Inventory;
 
 const DEBUG_MODE_DEFAULT: bool = false;
-const TILED_MAP_SCALE: f32 = 3.0;
-const CAMERA_BUFFER: f32 = 3.0;
+const TILED_MAP_SCALE: f32 = 2.0;
+const CAMERA_BUFFER: f32 = 1.0;
 // Game state that shouldn't be saved.
 #[derive(Clone, Debug)]
 pub struct TransientState {
@@ -334,7 +334,7 @@ pub fn load_next_map(
     for (entity, map_owner, mut visible) in query.iter_mut() {
         if *map_owner != transient_state.current_map {
             transient_state.entity_visibility.insert(entity.clone(), visible.is_visible);
-            commands.remove_one::<Draw>(entity);
+            commands.remove_one::<Draw>(entity); // for efficiency (and might help reduce textureId panick)
             visible.is_visible = false;
         } else {
             let is_visible = transient_state.entity_visibility.get(&entity).unwrap_or(&false);
