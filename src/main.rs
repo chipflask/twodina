@@ -25,6 +25,7 @@ mod collider;
 mod dialogue;
 mod input;
 mod items;
+mod menu;
 mod movement;
 
 use character::{AnimatedSprite, Character, CharacterState, Direction, VELOCITY_EPSILON};
@@ -32,16 +33,20 @@ use collider::{Collider, ColliderBehavior, Collision};
 use dialogue::{Dialogue, DialogueAsset, DialogueEvent, DialoguePlaceholder};
 use input::{Action, Flag, InputActionSet};
 use items::Inventory;
+use menu::MenuAction;
 
 const DEBUG_MODE_DEFAULT: bool = false;
 const TILED_MAP_SCALE: f32 = 2.0;
 const CAMERA_BUFFER: f32 = 1.0;
+
 // Game state that shouldn't be saved.
 #[derive(Clone, Debug)]
 pub struct TransientState {
     debug_mode: bool,
+
     start_dialogue_shown: bool,
     current_dialogue: Option<Entity>,
+
     current_map: Handle<Map>,
     next_map: Option<Handle<Map>>,
     loaded_maps: HashSet<Handle<Map>>,
@@ -52,14 +57,6 @@ pub struct TransientState {
     button_color: Handle<ColorMaterial>,
     button_hovered_color: Handle<ColorMaterial>,
     button_pressed_color: Handle<ColorMaterial>,
-}
-
-// Tag for the menu system UI.
-struct MenuUi;
-
-enum MenuButton {
-    OnePlayer,
-    TwoPlayers,
 }
 
 pub struct Player {
@@ -135,18 +132,17 @@ fn main() {
         .add_plugin(dialogue::DialoguePlugin::default())
         .add_plugin(input::InputActionPlugin::default())
         .add_plugin(items::ItemsPlugin::default())
+        .add_plugin(menu::MenuPlugin::default())
         // init
         .add_startup_system(setup_system.system())
         // loading
         .on_state_update(LATER, AppState::Loading, wait_for_asset_loading_system.system())
         //
         // menu
-        .on_state_enter(EARLY, AppState::Menu, setup_menu_system.system())
-        .on_state_update(LATER, AppState::Menu, menu_system.system().chain(setup_players_system.system()))
+        .on_state_update(LATER, AppState::Menu, menu::menu_system.system().chain(setup_players_system.system()))
         .on_state_update(LATER, AppState::Menu, bevy::input::system::exit_on_esc_system.system())
         .on_state_update(LATER, AppState::Menu, map_item_system.system())
         .on_state_update(LATER, AppState::Menu, movement::move_player_system.system())
-        .on_state_exit(EARLY, AppState::Menu, cleanup_menu_system.system())
 
         // in-game:
         .on_state_enter(EARLY, AppState::InGame, in_game_start_system.system())
@@ -367,164 +363,6 @@ pub fn load_next_map(
             ..Default::default()
         });
     transient_state.loaded_maps.insert(transient_state.current_map.clone());
-}
-
-fn setup_menu_system(
-    commands: &mut Commands,
-    asset_server: Res<AssetServer>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
-    transient_state: Res<TransientState>,
-) {
-    commands
-        // Root
-        .spawn(NodeBundle {
-            style: Style {
-                size: Size::new(Val::Percent(100.0), Val::Percent(100.0)),
-                flex_direction: FlexDirection::ColumnReverse,
-                // Horizontally center child text
-                justify_content: JustifyContent::Center,
-                // Vertically center child text
-                align_items: AlignItems::Center,
-                ..Default::default()
-            },
-            material: materials.add(Color::NONE.into()),
-            ..Default::default()
-        })
-        .with(MenuUi {})
-        .with_children(|parent| {
-            // Title
-            parent.spawn(TextBundle {
-                style: Style {
-                    margin: Rect::all(Val::Px(5.0)),
-                    ..Default::default()
-                },
-                text: Text {
-                    sections: vec![TextSection {
-                        value: "Celebration 2021".to_string(),
-                        style: TextStyle {
-                            font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-                            font_size: 60.0,
-                            color: Color::BLACK,
-                            ..Default::default()
-                        },
-                    }],
-                    ..Default::default()
-                },
-                ..Default::default()
-            });
-
-            // Start button 1 player.
-            parent.spawn(ButtonBundle {
-                style: Style {
-                    size: Size::new(Val::Px(170.0), Val::Px(65.0)),
-                    margin: Rect::all(Val::Px(5.0)),
-                    // Horizontally center child text
-                    justify_content: JustifyContent::Center,
-                    // Vertically center child text
-                    align_items: AlignItems::Center,
-                    ..Default::default()
-                },
-                material: transient_state.button_color.clone(),
-                ..Default::default()
-            })
-            .with(MenuButton::OnePlayer)
-            .with_children(|parent| {
-                parent.spawn(TextBundle {
-                    text: Text {
-                        sections: vec![TextSection {
-                            value: "1 Player".to_string(),
-                            style: TextStyle {
-                                font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-                                font_size: 40.0,
-                                color: Color::rgb(0.9, 0.9, 0.9),
-                                ..Default::default()
-                            },
-                        }],
-                        ..Default::default()
-                    },
-                    ..Default::default()
-                });
-            });
-
-            // Start button 2 players.
-            parent.spawn(ButtonBundle {
-                style: Style {
-                    size: Size::new(Val::Px(170.0), Val::Px(65.0)),
-                    margin: Rect::all(Val::Px(5.0)),
-                    // Horizontally center child text
-                    justify_content: JustifyContent::Center,
-                    // Vertically center child text
-                    align_items: AlignItems::Center,
-                    ..Default::default()
-                },
-                material: transient_state.button_color.clone(),
-                ..Default::default()
-            })
-            .with(MenuButton::TwoPlayers)
-            .with_children(|parent| {
-                parent.spawn(TextBundle {
-                    text: Text {
-                        sections: vec![TextSection {
-                            value: "2 Players".to_string(),
-                            style: TextStyle {
-                                font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-                                font_size: 40.0,
-                                color: Color::rgb(0.9, 0.9, 0.9),
-                                ..Default::default()
-                            },
-                        }],
-                        ..Default::default()
-                    },
-                    ..Default::default()
-                });
-            });
-        });
-}
-
-fn cleanup_menu_system(
-    commands: &mut Commands,
-    query: Query<Entity, With<MenuUi>>,
-) {
-    for entity in query.iter() {
-        commands.despawn_recursive(entity);
-    }
-}
-
-enum MenuAction {
-    Nil,
-    LoadPlayers { num_players: u8 },
-}
-
-fn menu_system(
-    transient_state: ResMut<TransientState>,
-    mut interaction_query: Query<
-        (&Interaction, &mut Handle<ColorMaterial>, &MenuButton),
-        (Mutated<Interaction>, With<Button>),
-    >,
-) -> MenuAction {
-    let mut action = MenuAction::Nil;
-    for (interaction, mut material, button_choice) in interaction_query.iter_mut() {
-        match *interaction {
-            Interaction::Clicked => {
-                match button_choice {
-                    MenuButton::OnePlayer => {
-                        action = MenuAction::LoadPlayers { num_players: 1 };
-                    }
-                    MenuButton::TwoPlayers => {
-                        action = MenuAction::LoadPlayers { num_players: 2 };
-                    }
-                }
-            }
-            Interaction::Hovered => {
-                *material = transient_state.button_hovered_color.clone();
-            }
-            Interaction::None => {
-                *material = transient_state.button_pressed_color.clone();
-            }
-        }
-    }
-
-    action
 }
 
 // for 'naked base'
