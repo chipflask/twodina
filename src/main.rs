@@ -408,7 +408,7 @@ fn setup_menu_system(
                             ..Default::default()
                         },
                     }],
-                    ..Default::default()    
+                    ..Default::default()
                 },
                 ..Default::default()
             });
@@ -440,7 +440,7 @@ fn setup_menu_system(
                                 ..Default::default()
                             },
                         }],
-                        ..Default::default()    
+                        ..Default::default()
                     },
                     ..Default::default()
                 });
@@ -473,7 +473,7 @@ fn setup_menu_system(
                                 ..Default::default()
                             },
                         }],
-                        ..Default::default()    
+                        ..Default::default()
                     },
                     ..Default::default()
                 });
@@ -598,7 +598,7 @@ fn setup_players_system(
                             ..Default::default()
                         },
                     }],
-                    ..Default::default()    
+                    ..Default::default()
                 },
                 style: Style {
                     margin: Rect::all(Val::Px(10.0)),
@@ -699,7 +699,7 @@ fn setup_players_system(
                             ..Default::default()
                         },
                     }],
-                    ..Default::default()    
+                    ..Default::default()
                 },
                 style: Style {
                     position_type: PositionType::Absolute,
