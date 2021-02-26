@@ -1,4 +1,4 @@
-use std;
+use std::{self, marker::PhantomData};
 use std::convert::TryFrom;
 
 use bevy::{
@@ -25,6 +25,7 @@ mod collider;
 mod dialogue;
 mod input;
 mod items;
+mod movement;
 
 use character::{AnimatedSprite, Character, CharacterState, Direction, VELOCITY_EPSILON};
 use collider::{Collider, ColliderBehavior, Collision};
@@ -61,7 +62,7 @@ enum MenuButton {
     TwoPlayers,
 }
 
-struct Player {
+pub struct Player {
     id: u32,
 }
 
@@ -124,6 +125,7 @@ fn main() {
     App::build()
         .insert_resource(State::new(AppState::default()))
         .insert_resource(LoadProgress::default())
+        .add_event::<movement::MoveEntityEvent<Player>>()
         // add stages to run loop
         .add_stage_after(Update, EARLY, StateStage::<AppState>::default())
         .add_stage_after(EARLY, LATER, StateStage::<AppState>::default())
@@ -143,6 +145,7 @@ fn main() {
         .on_state_update(LATER, AppState::Menu, menu_system.system().chain(setup_players_system.system()))
         .on_state_update(LATER, AppState::Menu, bevy::input::system::exit_on_esc_system.system())
         .on_state_update(LATER, AppState::Menu, map_item_system.system())
+        .on_state_update(LATER, AppState::Menu, movement::move_player_system.system())
         .on_state_exit(EARLY, AppState::Menu, cleanup_menu_system.system())
 
         // in-game:
@@ -153,6 +156,7 @@ fn main() {
         .on_state_update(LATER, AppState::InGame, update_camera_system.system())
         .on_state_update(LATER, AppState::InGame, position_display_system.system())
         .on_state_update(LATER, AppState::InGame, map_item_system.system())
+        .on_state_update(LATER, AppState::InGame, movement::move_player_system.system())
         .on_state_update(LATER, AppState::InGame, display_dialogue_system.system())
         .on_state_update(LATER, AppState::InGame, bevy::input::system::exit_on_esc_system.system())
         .run();
@@ -526,8 +530,8 @@ fn menu_system(
 // for 'naked base'
 // const PLAYER_WIDTH: f32 = 26.0;
 // const PLAYER_HEIGHT: f32 = 36.0;
-const PLAYER_WIDTH: f32 = 31.0;
-const PLAYER_HEIGHT: f32 = 32.0;
+pub const PLAYER_WIDTH: f32 = 31.0;
+pub const PLAYER_HEIGHT: f32 = 32.0;
 
 fn setup_players_system(
     In(menu_action): In<MenuAction>,
@@ -1039,11 +1043,13 @@ fn animate_sprite_system(
     }
 }
 
+
 fn map_item_system(
     commands: &mut Commands,
     new_item_query: Query<&Object>,
     transient_state: Res<TransientState>,
     mut event_reader: EventReader<ObjectReadyEvent>,
+    mut move_events: ResMut<Events<movement::MoveEntityEvent<Player>>>,
     // maps: Res<Assets<Map>>,
 ) {
     for event in event_reader.iter() {
@@ -1053,16 +1059,17 @@ fn map_item_system(
         // println!("created object {:?}, {:?}", event.map_handle, event.entity);
         // let map = maps.get(event.map_handle).expect("Expected to find map from ObjectReadyEvent");
         if let Ok(object) = new_item_query.get(event.entity) {
-            let collider_size = TILED_MAP_SCALE * match object.shape {
-                ObjectShape::Rect { width, height } | ObjectShape::Ellipse { width, height } =>
-                    Vec2::new(width, height),
-                ObjectShape::Polyline { points: _ } | ObjectShape::Polygon { points: _ } | ObjectShape::Point(_, _) =>
-                    Vec2::new(40.0, 40.0),
-            };
 
             // we should have actual types based on object name
             // and add components based on that
             let collider_type = match object.name.as_ref() {
+                "spawn" => {
+                    move_events.send(movement::MoveEntityEvent {
+                        object_component: PhantomData,
+                        target: event.entity,
+                    });
+                    ColliderBehavior::Ignore
+                }
                 "biggem" | "gem" => {
                     if !object.visible {
                         ColliderBehavior::Ignore
@@ -1080,6 +1087,13 @@ fn map_item_system(
                         ColliderBehavior::Obstruct
                     }
                 }
+            };
+
+            let collider_size = TILED_MAP_SCALE * match object.shape {
+                ObjectShape::Rect { width, height } | ObjectShape::Ellipse { width, height } =>
+                    Vec2::new(width, height),
+                ObjectShape::Polyline { points: _ } | ObjectShape::Polygon { points: _ } | ObjectShape::Point(_, _) =>
+                    Vec2::new(40.0, 40.0),
             };
 
             let collider_component = Collider::new(collider_type, collider_size, Vec2::new(0.0, 0.0));
