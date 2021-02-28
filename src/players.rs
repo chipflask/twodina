@@ -3,7 +3,7 @@ use bevy::{math::Vec3Swizzles, prelude::*};
 use crate::{DEBUG_MODE_DEFAULT, TransientState,
     character::{AnimatedSprite, Character},
     collider::{Collider, ColliderBehavior},
-    game::LoadProgress,
+    loading::LoadProgress,
     items::Inventory,
     menu::MenuAction,
     // todo: debug::{}

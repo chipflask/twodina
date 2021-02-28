@@ -1,28 +1,28 @@
 use bevy::{
-    asset::HandleId,
     prelude::*,
     utils::HashSet,
     app::CoreStage::Update,
 };
 use bevy_tiled_prototype::{Map, TiledMapPlugin};
 
+mod camera;
 mod character;
 mod collider;
 mod dialogue;
-mod input;
-mod camera;
 mod game;
-mod players;
-mod ui; // in-game ui
-
+mod input;
+mod items;
+mod loading;
 mod menu; 
 mod movement;
-mod items;
+mod players;
+mod ui; // in-game ui
 
 use character::{Character, CharacterState, Direction, VELOCITY_EPSILON};
 use collider::{Collider, ColliderBehavior, Collision};
 use dialogue::{Dialogue, DialogueEvent};
-use game::{GameState, LoadProgress};
+use game::GameState;
+use loading::LoadProgress;
 use input::{Action, Flag, InputActionSet};
 use items::Inventory;
 use players::Player;
@@ -98,7 +98,7 @@ fn main() {
             .chain(game::initialize_levels_onboot.system())
         )
         // loading
-        .on_state_update(LATER, AppState::Loading, wait_for_asset_loading_system.system())
+        .on_state_update(LATER, AppState::Loading, loading::wait_for_asset_loading_system.system())
         //
         // menu
         .on_state_update(LATER, AppState::Menu, menu::menu_system.system()
@@ -107,7 +107,7 @@ fn main() {
             .chain(ui::setup_dialogue_window_runonce.system())
         )
         .on_state_update(LATER, AppState::Menu, bevy::input::system::exit_on_esc_system.system())
-        .on_state_update(LATER, AppState::Menu, game::map_item_system.system())
+        .on_state_update(LATER, AppState::Menu, loading::setup_map_objects_system.system())
         .on_state_update(LATER, AppState::Menu, movement::move_player_system.system())
 
         // in-game:
@@ -117,37 +117,11 @@ fn main() {
         .on_state_update(LATER, AppState::InGame, move_character_system.system())
         .on_state_update(LATER, AppState::InGame, camera::update_camera_system.system())
         .on_state_update(LATER, AppState::InGame, position_display_system.system())
-        .on_state_update(LATER, AppState::InGame, game::map_item_system.system())
+        .on_state_update(LATER, AppState::InGame, loading::setup_map_objects_system.system())
         .on_state_update(LATER, AppState::InGame, movement::move_player_system.system())
         .on_state_update(LATER, AppState::InGame, ui::display_dialogue_system.system())
         .on_state_update(LATER, AppState::InGame, bevy::input::system::exit_on_esc_system.system())
         .run();
-}
-
-fn wait_for_asset_loading_system(
-    mut state: ResMut<State<AppState>>,
-    mut load_progress: ResMut<LoadProgress>,
-    asset_server: Res<AssetServer>,
-    mut dialogue_query: Query<&mut Dialogue>,
-    mut dialogue_events: ResMut<Events<DialogueEvent>>,
-) {
-    let handle_ids = load_progress.handles.iter()
-        .map(|handle| HandleId::from(handle));
-    match asset_server.get_group_load_state(handle_ids) {
-        bevy::asset::LoadState::NotLoaded => {}
-        bevy::asset::LoadState::Loading => {}
-        bevy::asset::LoadState::Loaded => {
-            state.set_next(load_progress.next_state).expect("couldn't change state when assets finished loading");
-            if let Some(node_name) = &load_progress.next_dialogue {
-                for mut dialogue in dialogue_query.iter_mut() {
-                    dialogue.begin_optional(node_name.as_ref(), &mut dialogue_events);
-                }
-            }
-            load_progress.reset();
-        }
-        // TODO: Handle failed loading of assets.
-        bevy::asset::LoadState::Failed => {}
-    }
 }
 
 // split between movement.rs and dialogue / ui.rs ? actions.rs?

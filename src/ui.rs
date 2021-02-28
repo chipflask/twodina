@@ -2,7 +2,9 @@ use bevy::prelude::*;
 use crate::{
     AppState,
     dialogue::{Dialogue, DialogueEvent, DialoguePlaceholder},
-    game::{GameState, LoadProgress}, menu::MenuAction
+    game::GameState,
+    loading::LoadProgress,
+    menu::MenuAction
 };
 
 // The UI element that displays dialogue.
