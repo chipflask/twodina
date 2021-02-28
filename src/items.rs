@@ -3,7 +3,15 @@ use std::fs;
 use bevy::prelude::*;
 use bevy_tiled_prototype::{Map, Object};
 
-use crate::{AppState, EARLY, LATER, LoadProgress, TransientState, collider::{Collider, ColliderBehavior}, load_next_map};
+use crate::{
+    core::{
+        collider::{Collider, ColliderBehavior},
+        state::{AppState, StageLabels::Early, StageLabels::Later, TransientState},
+        game::Game,
+    },
+    scene2d::load_next_map,
+    LoadProgress,
+};
 
 #[derive(Debug, Default)]
 pub struct ItemsPlugin;
@@ -12,9 +20,9 @@ impl Plugin for ItemsPlugin {
     fn build(&self, app: &mut AppBuilder) {
         app
             .add_event::<Interaction>()
-            .on_state_update(EARLY, AppState::InGame, trigger_level_load_system.system())
-            .on_state_update(LATER, AppState::InGame, items_system.system())
-            .on_state_update(LATER,AppState::InGame, inventory_item_reveal_system.system());
+            .on_state_update(Early, AppState::InGame, trigger_level_load_system.system())
+            .on_state_update(Later, AppState::InGame, items_system.system())
+            .on_state_update(Later,AppState::InGame, inventory_item_reveal_system.system());
     }
 }
 
@@ -55,9 +63,11 @@ pub fn trigger_level_load_system(
     asset_server: Res<AssetServer>,
     mut interaction_reader: EventReader<Interaction>,
     mut state: ResMut<State<AppState>>,
-    mut game_state: ResMut<TransientState>,
+    mut game_state: ResMut<Game>,
     mut to_load: ResMut<LoadProgress>,
     mut entity_query: Query<(Entity, &Handle<Map>, &mut Visible)>,
+    // Todo: probably removed when level worflow improved
+    transient_state: Res<TransientState>,
 ) {
     for interaction in interaction_reader.iter() {
         match &interaction.behavior {
@@ -70,7 +80,7 @@ pub fn trigger_level_load_system(
                     // eventually do preloading:
                     // game_state.next_map = Some(asset_server.load(level.as_str()));
                     game_state.current_map = to_load.add(asset_server.load(level.as_str()));
-                    load_next_map(commands, &mut game_state, &mut entity_query);
+                    load_next_map(commands, &mut game_state, &transient_state, &mut entity_query);
                     to_load.next_state = AppState::InGame;
                     to_load.next_dialogue = Some(path.clone());
                 } else {
