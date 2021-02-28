@@ -1,7 +1,6 @@
 use bevy::prelude::*;
 
-use super::state::{AppState, EARLY};
-use crate::TransientState;
+use super::state::{AppState, EARLY, TransientState};
 
 // Tag for the menu system UI.
 struct MenuUi;

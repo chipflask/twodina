@@ -2,19 +2,17 @@ use bevy::{
     prelude::*,
     utils::{HashMap, HashSet},
 };
+use bevy_tiled_prototype::{DebugConfig, Map, TiledMapBundle, TiledMapCenter};
 
 use crate::{
     core::{
         dialogue::{Dialogue, DialogueAsset, DialogueEvent, DialoguePlaceholder},
         game::Game,
-        state::AppState
+        state::{AppState, TransientState},
     },
     loading::LoadProgress,
     DEBUG_MODE_DEFAULT,
 };
-use bevy_tiled_prototype::{DebugConfig, Map, TiledMapBundle, TiledMapCenter};
-
-use crate::TransientState;
 
 // maybe this should go in config.rs or ui.rs?
 pub const TILED_MAP_SCALE: f32 = 2.0;

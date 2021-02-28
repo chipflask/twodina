@@ -1,10 +1,12 @@
 use bevy::{math::Vec3Swizzles, prelude::*};
 
-use crate::{DEBUG_MODE_DEFAULT, TransientState,
+use crate::{
+    DEBUG_MODE_DEFAULT,
     core::{
         character::{AnimatedSprite, Character},
         collider::{Collider, ColliderBehavior},
         menu::MenuAction,
+        state::TransientState,
     },
     debug::{PlayerPositionDisplay, Debuggable},
     items::Inventory,

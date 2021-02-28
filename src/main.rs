@@ -20,22 +20,12 @@ use players::Player;
 
 use crate::core::state::{
     AppState,
-    EARLY, LATER,
+    EARLY,
+    LATER,
+    TransientState
 };
 
 const DEBUG_MODE_DEFAULT: bool = false;
-
-// Game state that shouldn't be saved.
-#[derive(Clone, Debug)]
-pub struct TransientState {
-    debug_mode: bool,
-
-    default_blue: Handle<ColorMaterial>,
-    default_red: Handle<ColorMaterial>,
-    button_color: Handle<ColorMaterial>,
-    button_hovered_color: Handle<ColorMaterial>,
-    button_pressed_color: Handle<ColorMaterial>,
-}
 
 fn main() {
     App::build()
@@ -89,25 +79,10 @@ fn setup_onboot(
     asset_server: Res<AssetServer>,
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) -> TransientState {
-    // Default materials
-    let default_blue = materials.add(Color::rgba(0.4, 0.4, 0.9, 0.5).into());
-    let default_red = materials.add(Color::rgba(1.0, 0.4, 0.9, 0.8).into());
-
     camera::initialize_camera_onboot(commands);
 
     // Watch for asset changes.
     asset_server.watch_for_changes().expect("watch for changes");
 
-    // transient_state: Res<TransientState>,
-    let transient_state = TransientState {
-        debug_mode: DEBUG_MODE_DEFAULT,
-
-        default_blue: default_blue.clone(),
-        default_red: default_red.clone(),
-        button_color: materials.add(Color::rgb(0.4, 0.4, 0.9).into()),
-        button_hovered_color: materials.add(Color::rgb(0.5, 0.5, 1.0).into()),
-        button_pressed_color: materials.add(Color::rgb(0.3, 0.3, 0.8).into()),
-    };
-
-    transient_state
+    TransientState::from_materials(&mut materials, DEBUG_MODE_DEFAULT)
 }

@@ -6,11 +6,11 @@ use bevy_tiled_prototype::{Map, Object};
 use crate::{
     core::{
         collider::{Collider, ColliderBehavior},
-        state::{AppState, EARLY, LATER},
+        state::{AppState, EARLY, LATER, TransientState},
         game::Game,
     },
     scene2d::load_next_map,
-    LoadProgress, TransientState
+    LoadProgress,
 };
 
 #[derive(Debug, Default)]

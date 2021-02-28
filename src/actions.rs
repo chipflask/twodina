@@ -4,12 +4,12 @@ use bevy::prelude::*;
 use bevy_tiled_prototype::Map;
 use crate::{
     debug::Debuggable,
-    TransientState,
     core::{
         character::{RUN_SPEED, WALK_SPEED, Character, CharacterState, Direction},
         dialogue::{Dialogue, DialogueEvent},
         game::Game,
         input::{Action, Flag, InputActionSet},
+        state::TransientState,
     },
 };
 
