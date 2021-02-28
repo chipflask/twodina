@@ -3,7 +3,7 @@ use bevy::prelude::*;
 
 use bevy_tiled_prototype::Map;
 use crate::{
-    Debuggable,
+    debug::Debuggable,
     TransientState,
     character::{RUN_SPEED, WALK_SPEED, Character, CharacterState, Direction}
 };

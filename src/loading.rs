@@ -8,12 +8,13 @@ use bevy::{
 use bevy_tiled_prototype::{Object, ObjectReadyEvent, ObjectShape};
 
 use crate::{
+    AppState,
     collider::{Collider, ColliderBehavior},
+    debug::Debuggable,
     dialogue::{Dialogue, DialogueEvent},
     game::{GameState, TILED_MAP_SCALE},
     motion::MoveEntityEvent,
     players::Player,
-    AppState, Debuggable,
 };
 
 #[derive(Debug, Default)]

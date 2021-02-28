@@ -3,7 +3,11 @@ use std::fs;
 use bevy::prelude::*;
 use bevy_tiled_prototype::{Map, Object};
 
-use crate::{AppState, EARLY, LATER, LoadProgress, TransientState, collider::{Collider, ColliderBehavior}, game::{GameState, load_next_map}};
+use crate::{
+    collider::{Collider, ColliderBehavior},
+    game::{load_next_map, GameState},
+    AppState, LoadProgress, TransientState, EARLY, LATER,
+};
 
 #[derive(Debug, Default)]
 pub struct ItemsPlugin;

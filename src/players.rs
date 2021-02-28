@@ -3,13 +3,12 @@ use bevy::{math::Vec3Swizzles, prelude::*};
 use crate::{DEBUG_MODE_DEFAULT, TransientState,
     character::{AnimatedSprite, Character},
     collider::{Collider, ColliderBehavior},
-    loading::LoadProgress,
+    debug::{PlayerPositionDisplay, Debuggable},
     items::Inventory,
+    loading::LoadProgress,
     menu::MenuAction,
     motion::z_from_y,
     // todo: debug::{}
-    PlayerPositionDisplay,
-    Debuggable,
 };
 
 

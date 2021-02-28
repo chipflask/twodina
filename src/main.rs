@@ -8,6 +8,7 @@ mod actions;
 mod camera;
 mod character;
 mod collider;
+mod debug;
 mod dialogue;
 mod game;
 mod input;
@@ -18,9 +19,7 @@ mod motion;
 mod players;
 mod ui; // in-game ui
 
-use character::Character;
 use loading::LoadProgress;
-use items::Inventory;
 use players::Player;
 
 const DEBUG_MODE_DEFAULT: bool = false;
@@ -36,18 +35,6 @@ pub struct TransientState {
     button_hovered_color: Handle<ColorMaterial>,
     button_pressed_color: Handle<ColorMaterial>,
 }
-
-// TODO: debug.rs
-// Debug entities will be marked with this so that we can despawn them all when
-// debug mode is turned off.
-#[derive(Debug, Default)]
-pub struct Debuggable;
-
-struct PlayerPositionDisplay {
-    player_id: u32,
-}
-
-// const MAP_SKEW: f32 = 1.0; // We liked ~1.4, but this should be done with the camera
 
 #[derive(Debug, Copy, Clone)]
 pub enum AppState {
@@ -102,14 +89,14 @@ fn main() {
         // in-game:
         .on_state_enter(EARLY, AppState::InGame, game::in_game_start_system.system())
         .on_state_update(EARLY, AppState::InGame, actions::handle_input_system.system())
+        .on_state_update(LATER, AppState::InGame, bevy::input::system::exit_on_esc_system.system())
+        .on_state_update(LATER, AppState::InGame, camera::update_camera_system.system())
+        .on_state_update(LATER, AppState::InGame, debug::position_display_system.system())
+        .on_state_update(LATER, AppState::InGame, loading::setup_map_objects_system.system())
         .on_state_update(LATER, AppState::InGame, motion::animate_sprite_system.system())
         .on_state_update(LATER, AppState::InGame, motion::continous_move_character_system.system())
-        .on_state_update(LATER, AppState::InGame, camera::update_camera_system.system())
-        .on_state_update(LATER, AppState::InGame, position_display_system.system())
-        .on_state_update(LATER, AppState::InGame, loading::setup_map_objects_system.system())
         .on_state_update(LATER, AppState::InGame, motion::instant_move_player_system.system())
         .on_state_update(LATER, AppState::InGame, ui::display_dialogue_system.system())
-        .on_state_update(LATER, AppState::InGame, bevy::input::system::exit_on_esc_system.system())
         .run();
 }
 
@@ -139,25 +126,4 @@ fn setup_onboot(
     };
 
     transient_state
-}
-
-fn position_display_system(
-    mut character_query: Query<(&Transform, &Player, &Character, &Inventory)>,
-    mut text_query: Query<(&mut Text, &PlayerPositionDisplay)>,
-) {
-    for (char_transform, player, character, inventory) in character_query.iter_mut() {
-        for (mut text, ppd) in text_query.iter_mut() {
-            if ppd.player_id == player.id {
-                text.sections[0].value = format!(
-                    "P{} Position: ({:.1}, {:.1}, {:.1}) collision={:?} gems={:?}",
-                    player.id + 1,
-                    char_transform.translation.x,
-                    char_transform.translation.y,
-                    char_transform.translation.z,
-                    character.collision,
-                    inventory.num_gems
-                );
-            }
-        }
-    }
 }
