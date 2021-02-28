@@ -1,56 +1,40 @@
-use std::{self, marker::PhantomData};
-use std::convert::TryFrom;
-
 use bevy::{
-    asset::{Asset, HandleId},
+    asset::HandleId,
     prelude::*,
     render::{camera::{self, Camera, CameraProjection, OrthographicProjection}, render_graph},
-    utils::{HashMap, HashSet},
-    math::Vec3Swizzles,
-    app::CoreStage::{Update},
+    utils::HashSet,
+    app::CoreStage::Update,
 };
-use bevy_tiled_prototype::{
-    DebugConfig,
-    Map,
-    Object,
-    ObjectReadyEvent,
-    ObjectShape,
-    TiledMapCenter,
-    TiledMapBundle,
-    TiledMapPlugin,
-};
+use bevy_tiled_prototype::{Map, TiledMapPlugin};
 
 mod character;
 mod collider;
 mod dialogue;
 mod input;
-mod items;
-mod menu;
-mod movement;
 
-use character::{AnimatedSprite, Character, CharacterState, Direction, VELOCITY_EPSILON};
+mod game;
+mod players;
+mod ui; // in-game ui
+
+mod menu; 
+mod movement;
+mod items;
+
+use character::{Character, CharacterState, Direction, VELOCITY_EPSILON};
 use collider::{Collider, ColliderBehavior, Collision};
-use dialogue::{Dialogue, DialogueAsset, DialogueEvent, DialoguePlaceholder};
+use dialogue::{Dialogue, DialogueEvent};
+use game::{GameState, LoadProgress};
 use input::{Action, Flag, InputActionSet};
 use items::Inventory;
-use menu::MenuAction;
+use players::{PLAYER_WIDTH, PLAYER_HEIGHT, Player};
 
 const DEBUG_MODE_DEFAULT: bool = false;
-const TILED_MAP_SCALE: f32 = 2.0;
 const CAMERA_BUFFER: f32 = 1.0;
 
 // Game state that shouldn't be saved.
 #[derive(Clone, Debug)]
 pub struct TransientState {
     debug_mode: bool,
-
-    start_dialogue_shown: bool,
-    current_dialogue: Option<Entity>,
-
-    current_map: Handle<Map>,
-    next_map: Option<Handle<Map>>,
-    loaded_maps: HashSet<Handle<Map>>,
-    entity_visibility: HashMap<Entity, bool>, // this is a minor memory leak until maps aren't recreated
 
     default_blue: Handle<ColorMaterial>,
     default_red: Handle<ColorMaterial>,
@@ -59,27 +43,23 @@ pub struct TransientState {
     button_pressed_color: Handle<ColorMaterial>,
 }
 
-pub struct Player {
-    id: u32,
-}
-
-struct PlayerPositionDisplay {
-    player_id: u32,
-}
 
 // We have multiple cameras, so this one marks the camera that follows the
 // player.
 struct PlayerCamera;
 
+// TODO: debug.rs
 // Debug entities will be marked with this so that we can despawn them all when
 // debug mode is turned off.
 #[derive(Debug, Default)]
 struct Debuggable;
 
-// The UI element that displays dialogue.
-struct DialogueWindow;
 
-const MAP_SKEW: f32 = 1.0; // We liked ~1.4, but this should be done with the camera
+struct PlayerPositionDisplay {
+    player_id: u32,
+}
+
+// const MAP_SKEW: f32 = 1.0; // We liked ~1.4, but this should be done with the camera
 
 #[derive(Debug, Copy, Clone)]
 pub enum AppState {
@@ -94,24 +74,10 @@ impl Default for AppState {
     }
 }
 
-#[derive(Debug, Default)]
-pub struct LoadProgress {
-    handles: HashSet<HandleUntyped>,
-    next_state: AppState,
-    next_dialogue: Option<String>,
-    // progress: f32,
-}
-
-impl LoadProgress {
-    pub fn add<T: Asset>(&mut self, handle: Handle<T>) -> Handle<T> {
-        self.handles.insert(handle.clone_untyped());
-        handle
-    }
-
-    pub fn reset(&mut self) {
-        self.handles.clear();
-        self.next_dialogue = None;
-    }
+// todo: utils.rs
+// Return the Z translation for a given Y translation.  Z determines occlusion.
+pub fn z_from_y(y: f32) -> f32 {
+    -y / 100.0
 }
 
 // run loop stages
@@ -129,31 +95,38 @@ fn main() {
         // add plugins
         .add_plugins(DefaultPlugins)
         .add_plugin(TiledMapPlugin)
+
+        .add_plugin(menu::MenuPlugin::default())
         .add_plugin(dialogue::DialoguePlugin::default())
         .add_plugin(input::InputActionPlugin::default())
         .add_plugin(items::ItemsPlugin::default())
-        .add_plugin(menu::MenuPlugin::default())
         // init
-        .add_startup_system(setup_system.system())
+        .add_startup_system(setup_onboot.system()
+            .chain(game::initialize_levels_onboot.system())
+        )
         // loading
         .on_state_update(LATER, AppState::Loading, wait_for_asset_loading_system.system())
         //
         // menu
-        .on_state_update(LATER, AppState::Menu, menu::menu_system.system().chain(setup_players_system.system()))
+        .on_state_update(LATER, AppState::Menu, menu::menu_system.system()
+            // TODO: run these once using stages
+            .chain(players::setup_players_runonce.system())
+            .chain(ui::setup_dialogue_window_runonce.system())
+        )
         .on_state_update(LATER, AppState::Menu, bevy::input::system::exit_on_esc_system.system())
-        .on_state_update(LATER, AppState::Menu, map_item_system.system())
+        .on_state_update(LATER, AppState::Menu, game::map_item_system.system())
         .on_state_update(LATER, AppState::Menu, movement::move_player_system.system())
 
         // in-game:
-        .on_state_enter(EARLY, AppState::InGame, in_game_start_system.system())
+        .on_state_enter(EARLY, AppState::InGame, game::in_game_start_system.system())
         .on_state_update(EARLY, AppState::InGame, handle_input_system.system())
-        .on_state_update(LATER, AppState::InGame, animate_sprite_system.system())
+        .on_state_update(LATER, AppState::InGame, movement::animate_sprite_system.system())
         .on_state_update(LATER, AppState::InGame, move_character_system.system())
         .on_state_update(LATER, AppState::InGame, update_camera_system.system())
         .on_state_update(LATER, AppState::InGame, position_display_system.system())
-        .on_state_update(LATER, AppState::InGame, map_item_system.system())
+        .on_state_update(LATER, AppState::InGame, game::map_item_system.system())
         .on_state_update(LATER, AppState::InGame, movement::move_player_system.system())
-        .on_state_update(LATER, AppState::InGame, display_dialogue_system.system())
+        .on_state_update(LATER, AppState::InGame, ui::display_dialogue_system.system())
         .on_state_update(LATER, AppState::InGame, bevy::input::system::exit_on_esc_system.system())
         .run();
 }
@@ -184,10 +157,11 @@ fn wait_for_asset_loading_system(
     }
 }
 
-
+// split between movement.rs and dialogue / ui.rs ? actions.rs?
 fn handle_input_system(
     input_actions: Res<InputActionSet>,
     mut transient_state: ResMut<TransientState>,
+    game_state: ResMut<GameState>,
     mut query: Query<(&mut Character, &Player)>,
     mut dialogue_query: Query<&mut Dialogue>,
     mut dialogue_events: ResMut<Events<DialogueEvent>>,
@@ -200,7 +174,7 @@ fn handle_input_system(
         for (mut visible, map_option) in debuggable.iter_mut() {
             let mut in_current_map = true;
             map_option.map(|map_handle| {
-                in_current_map = *map_handle == transient_state.current_map;
+                in_current_map = *map_handle == game_state.current_map;
             });
             visible.is_visible = in_current_map && transient_state.debug_mode;
         }
@@ -259,7 +233,7 @@ fn handle_input_system(
 
         character.set_state(new_state);
 
-        if let Some(entity) = transient_state.current_dialogue {
+        if let Some(entity) = game_state.current_dialogue {
             if input_actions.is_active(Action::Accept, player.id) {
                 let mut dialogue = dialogue_query.get_mut(entity).expect("Couldn't find current dialogue entity");
                 dialogue.advance(&mut dialogue_events);
@@ -268,13 +242,11 @@ fn handle_input_system(
     }
 }
 
-fn setup_system(
+fn setup_onboot(
     commands: &mut Commands,
     asset_server: Res<AssetServer>,
     mut materials: ResMut<Assets<ColorMaterial>>,
-    mut to_load: ResMut<LoadProgress>,
-    mut query: Query<(Entity, &Handle<Map>, &mut Visible)>,
-) {
+) -> TransientState {
     // Default materials
     let default_blue = materials.add(Color::rgba(0.4, 0.4, 0.9, 0.5).into());
     let default_red = materials.add(Color::rgba(1.0, 0.4, 0.9, 0.8).into());
@@ -303,16 +275,9 @@ fn setup_system(
     // Watch for asset changes.
     asset_server.watch_for_changes().expect("watch for changes");
 
-    // Map - has some objects
     // transient_state: Res<TransientState>,
-    let mut transient_state = TransientState {
+    let transient_state = TransientState {
         debug_mode: DEBUG_MODE_DEFAULT,
-        start_dialogue_shown: false,
-        current_map: to_load.add(asset_server.load("maps/sandyrocks.tmx")),
-        current_dialogue: None,
-        next_map: None,
-        loaded_maps: HashSet::default(),
-        entity_visibility: HashMap::default(),
 
         default_blue: default_blue.clone(),
         default_red: default_red.clone(),
@@ -320,257 +285,15 @@ fn setup_system(
         button_hovered_color: materials.add(Color::rgb(0.5, 0.5, 1.0).into()),
         button_pressed_color: materials.add(Color::rgb(0.3, 0.3, 0.8).into()),
     };
-    load_next_map(commands, &mut transient_state, &mut query);
-    commands.insert_resource(transient_state);
 
-    to_load.next_state = AppState::Menu;
-}
-
-pub fn load_next_map(
-    commands: &mut Commands,
-    transient_state: &mut TransientState,
-    query: &mut Query<(Entity, &Handle<Map>, &mut Visible)>,
-) {
-    for (entity, map_owner, mut visible) in query.iter_mut() {
-        if *map_owner != transient_state.current_map {
-            transient_state.entity_visibility.insert(entity.clone(), visible.is_visible);
-            commands.remove_one::<Draw>(entity); // for efficiency (and might help reduce textureId panick)
-            visible.is_visible = false;
-        } else {
-            let is_visible = transient_state.entity_visibility.get(&entity).unwrap_or(&false);
-            // ^ should default object.visible if object
-            commands.insert_one(entity, Draw::default());
-            visible.is_visible = *is_visible;
-        }
-    }
-    // don't spawn if map already exists
-    if transient_state.loaded_maps.contains(&transient_state.current_map) {
-        return;
-    }
-    commands
-        .spawn(TiledMapBundle {
-            map_asset: transient_state.current_map.clone(),
-            center: TiledMapCenter(true),
-            origin: Transform {
-                translation: Vec3::new(0.0, 0.0, -100.0),
-                scale: Vec3::new(TILED_MAP_SCALE, TILED_MAP_SCALE / MAP_SKEW, 1.0),
-                ..Default::default()
-            },
-            debug_config: DebugConfig {
-                enabled: DEBUG_MODE_DEFAULT,
-                material: Some(transient_state.default_blue.clone()),
-            },
-            ..Default::default()
-        });
-    transient_state.loaded_maps.insert(transient_state.current_map.clone());
-}
-
-// for 'naked base'
-// const PLAYER_WIDTH: f32 = 26.0;
-// const PLAYER_HEIGHT: f32 = 36.0;
-pub const PLAYER_WIDTH: f32 = 31.0;
-pub const PLAYER_HEIGHT: f32 = 32.0;
-
-fn setup_players_system(
-    In(menu_action): In<MenuAction>,
-    commands: &mut Commands,
-    asset_server: Res<AssetServer>,
-    mut texture_atlases: ResMut<Assets<TextureAtlas>>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
-    mut transient_state: ResMut<TransientState>,
-    mut state: ResMut<State<AppState>>,
-    mut to_load: ResMut<LoadProgress>,
-) {
-    let num_players = match menu_action {
-        MenuAction::Nil => return,
-        MenuAction::LoadPlayers { num_players } => num_players,
-    };
-
-    state.set_next(AppState::Loading).expect("Set Next failed");
-    to_load.next_state = AppState::InGame;
-
-    // Load dialogue.
-    let level_dialogue = to_load.add(asset_server.load("dialogue/level1.dialogue"));
-    // Root node.
-    commands.spawn(NodeBundle {
-        style: Style {
-            size: Size::new(Val::Percent(100.0), Val::Percent(100.0)),
-            flex_direction: FlexDirection::Column,
-            // Aligns the dialogue window to the bottom of the window.  Yes, it
-            // starts from the bottom!
-            justify_content: JustifyContent::FlexStart,
-            // Center horizontally.
-            align_items: AlignItems::Center,
-            ..Default::default()
-        },
-        material: materials.add(Color::NONE.into()),
-        ..Default::default()
-    })
-    .with_children(|parent| {
-        // Dialogue window.
-        parent.spawn(NodeBundle {
-            style: Style {
-                size: Size::new(Val::Percent(95.0), Val::Px(80.0)),
-                flex_direction: FlexDirection::Column,
-                // Aligns text to the top of the dialogue window.  Yes, it
-                // starts from the bottom, so the end is the top!
-                justify_content: JustifyContent::FlexEnd,
-                // Left-align text.
-                align_items: AlignItems::FlexStart,
-                ..Default::default()
-            },
-            // Brown
-            material: materials.add(Color::rgba(0.804, 0.522, 0.247, 0.9).into()),
-            ..Default::default()
-        })
-        .with(DialogueWindow {})
-        .with_children(|parent| {
-            parent.spawn(TextBundle {
-                text: Text {
-                    sections: vec![TextSection {
-                        value: "".to_string(),
-                        style: TextStyle {
-                            font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-                            font_size: 24.0,
-                            color: Color::rgb(0.2, 0.2, 0.2),
-                            ..Default::default()
-                        },
-                    }],
-                    ..Default::default()
-                },
-                style: Style {
-                    margin: Rect::all(Val::Px(10.0)),
-                    ..Default::default()
-                },
-                ..Default::default()
-            })
-            .with(DialoguePlaceholder {
-                handle: level_dialogue,
-                ..Default::default()
-            })
-            .current_entity()
-            .map(|entity| transient_state.current_dialogue = Some(entity));
-        });
-    });
-
-    // Players.
-    for i in 0..num_players {
-        let texture_handle = to_load.add(asset_server.load(format!("sprites/azuna{}.png", i + 1).as_str()));
-        let texture_atlas = TextureAtlas::from_grid(
-            texture_handle,
-            Vec2::new(PLAYER_WIDTH, PLAYER_HEIGHT),
-            4,
-            8,
-        );
-        let texture_atlas_handle = texture_atlases.add(texture_atlas);
-        let scale = Vec3::splat(4.0);
-        let collider_size = Vec2::new(13.0, 4.5);
-        let collider_offset = Vec2::new(0.0, -12.5);
-        // This should match the move_character_system.
-        let initial_z = z_from_y(collider_offset.y);
-        commands
-            .spawn(SpriteSheetBundle {
-                texture_atlas: texture_atlas_handle,
-                transform: Transform::from_scale(scale)
-                    .mul_transform(Transform::from_translation(
-                        Vec3::new(PLAYER_WIDTH * i as f32 + 20.0, 0.0, initial_z))),
-                ..Default::default()
-            })
-            .with(AnimatedSprite::with_frame_seconds(0.1))
-            .with(Character::default())
-            .with(Player { id: u32::from(i) })
-            .with(items::Inventory::default())
-            .with(Collider::new(
-                ColliderBehavior::Obstruct,
-                collider_size * scale.xy(),
-                collider_offset * scale.xy(),
-            ))
-            .with_children(|parent| {
-                // add a shadow sprite -- is there a more efficient way where we load this just once??
-                let shadow_handle = to_load.add(asset_server.load("sprites/shadow.png"));
-                parent.spawn(SpriteBundle {
-                    transform: Transform {
-                        translation: Vec3::new(0.0, -13.0, -0.01),
-                        scale: Vec3::splat(0.7),
-                        ..Default::default()
-                    },
-                    material: materials.add(shadow_handle.into()),
-                    ..Default::default()
-                });
-                // collider debug indicator - TODO: refactor into Collider::new_with_debug(parent, collider_size, scale)
-                parent.spawn(SpriteBundle {
-                    material: transient_state.default_blue.clone(),
-                    // Don't scale here since the whole character will be scaled.
-                    sprite: Sprite::new(collider_size),
-                    transform: Transform::from_translation(Vec3::new(collider_offset.x, collider_offset.y, 0.0)),
-                    visible: Visible {
-                        is_transparent: true,
-                        is_visible: DEBUG_MODE_DEFAULT,
-                        ..Default::default()
-                    },
-                    ..Default::default()
-                })
-                .with(Debuggable::default());
-                // Center debug indicator.
-                parent.spawn(SpriteBundle {
-                    material: transient_state.default_red.clone(),
-                    // Don't scale here since the whole character will be scaled.
-                    sprite: Sprite::new(Vec2::new(5.0, 5.0)),
-                    transform: Transform::from_translation(Vec3::new(0.0, 0.0, 100.0)),
-                    visible: Visible {
-                        is_transparent: true,
-                        is_visible: DEBUG_MODE_DEFAULT,
-                        ..Default::default()
-                    },
-                    ..Default::default()
-                })
-                .with(Debuggable::default());
-            })
-            .spawn(TextBundle {
-                text: Text {
-                    sections: vec![TextSection {
-                        value: "Position:".to_string(),
-                        style: TextStyle {
-                            font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-                            font_size: 24.0,
-                            color: Color::rgb(0.7, 0.7, 0.7),
-                            ..Default::default()
-                        },
-                    }],
-                    ..Default::default()
-                },
-                style: Style {
-                    position_type: PositionType::Absolute,
-                    position: Rect {
-                        top: Val::Px(5.0 + i as f32 * 20.0),
-                        left: Val::Px(5.0),
-                        ..Default::default()
-                    },
-                    ..Default::default()
-                },
-                visible: Visible {
-                    is_transparent: true,
-                    is_visible: false,
-                    ..Default::default()
-                },
-                ..Default::default()
-            })
-            .with(PlayerPositionDisplay { player_id: u32::from(i) })
-            .with(Debuggable::default());
-    }
-}
-
-// Return the Z translation for a given Y translation.  Z determines occlusion.
-#[inline]
-fn z_from_y(y: f32) -> f32 {
-    -y / 100.0
+    transient_state
 }
 
 fn move_character_system(
     time: Res<Time>,
     mut interaction_event: ResMut<Events<items::Interaction>>,
     mut char_query: Query<(Entity, &mut Character, &mut Transform, &GlobalTransform)>,
-    transient_state: Res<TransientState>,
+    game_state: Res<GameState>,
     mut collider_query: Query<(Entity, &mut Collider, &GlobalTransform, Option<&Handle<Map>>)>,
 ) {
     let mut interaction_colliders: HashSet<Entity> = Default::default();
@@ -580,8 +303,8 @@ fn move_character_system(
             // Character has zero velocity.  Nothing to do.
             continue;
         }
-        let mut delta: Vec2 = character.velocity * time.delta_seconds() * character.movement_speed;
-        delta.y /= MAP_SKEW;
+        let delta: Vec2 = character.velocity * time.delta_seconds() * character.movement_speed;
+        // delta.y /= MAP_SKEW;
         // should stay between +- 2000.0
 
         // check for collisions with objects in current map
@@ -591,7 +314,7 @@ fn move_character_system(
             // TODO: Use the entity instead of the map asset handle in case
             // In theory,  there can be multiple instances of the same map.
             if let Some(owner_map) = option_to_map  {
-                if *owner_map != transient_state.current_map {
+                if *owner_map != game_state.current_map {
                     continue;
                 }
             }
@@ -653,6 +376,8 @@ fn move_character_system(
         }
     }
 }
+
+// TODO: move to UI
 
 fn bounding_box(translation: Vec3, size: Vec2) -> Rect<f32> {
     let half_width = size.x / 2.0;
@@ -814,172 +539,6 @@ fn update_camera_system(
                 projection.update(wh.x, wh.y);
                 camera.projection_matrix = projection.get_projection_matrix();
                 camera.depth_calculation = projection.depth_calculation();
-            }
-        }
-    }
-}
-
-fn animate_sprite_system(
-    time: Res<Time>,
-    texture_atlases: Res<Assets<TextureAtlas>>,
-    mut query: Query<(&mut TextureAtlasSprite, &Handle<TextureAtlas>, &mut AnimatedSprite, Option<&Character>)>
-) {
-    for (mut sprite, texture_atlas_handle, mut animated_sprite, character_option) in query.iter_mut() {
-        // If character just started walking or is colliding, always show
-        // stepping frame, and do it immediately.  Don't wait for the timer's
-        // next tick.
-        let is_stepping = character_option.map_or(false, |ch| {
-            let state = ch.state();
-
-            ch.is_stepping() && (ch.collision.is_solid() || state != ch.previous_state())
-        });
-
-        // Reset to the beginning of the animation when the character becomes
-        // idle.
-        if let Some(character) = character_option {
-            if character.did_just_become_idle() {
-                animated_sprite.reset();
-            }
-        }
-
-        animated_sprite.timer.tick(time.delta_seconds());
-        if is_stepping || animated_sprite.timer.finished() {
-            let texture_atlas = texture_atlases.get(texture_atlas_handle).expect("should have found texture atlas handle");
-            let total_num_cells = texture_atlas.textures.len();
-            let (num_cells_in_animation, start_index) = match character_option {
-                None => {
-                    // No character.  Just use all the cells.
-                    (u32::try_from(total_num_cells).expect("num cells didn't fit in u32"), 0)
-                }
-                Some(character) => {
-                    // This animated sprite is a character.
-                    let row = match character.direction {
-                        Direction::North => 2,
-                        Direction::South => 0,
-                        Direction::East => 6,
-                        Direction::West => 4,
-                    };
-                    let num_cells_per_row = 4;
-
-                    match character.state() {
-                        CharacterState::Idle    => (1, row * num_cells_per_row + 1),
-                        CharacterState::Walking => (4, row * num_cells_per_row),
-                        CharacterState::Running => (4, (row + 1) * num_cells_per_row),
-                    }
-                }
-            };
-            let mut new_anim_index = if is_stepping {
-                // Index of taking a step.
-                2
-            } else {
-                animated_sprite.animation_index + 1
-            };
-            new_anim_index = new_anim_index % num_cells_in_animation;
-            animated_sprite.animation_index = new_anim_index;
-            sprite.index = ((start_index + new_anim_index as usize) % total_num_cells) as u32;
-        }
-    }
-}
-
-
-fn map_item_system(
-    commands: &mut Commands,
-    new_item_query: Query<&Object>,
-    transient_state: Res<TransientState>,
-    mut event_reader: EventReader<ObjectReadyEvent>,
-    mut move_events: ResMut<Events<movement::MoveEntityEvent<Player>>>,
-    // maps: Res<Assets<Map>>,
-) {
-    for event in event_reader.iter() {
-        if transient_state.current_map != event.map_handle {
-            continue;
-        }
-        // println!("created object {:?}, {:?}", event.map_handle, event.entity);
-        // let map = maps.get(event.map_handle).expect("Expected to find map from ObjectReadyEvent");
-        if let Ok(object) = new_item_query.get(event.entity) {
-
-            // we should have actual types based on object name
-            // and add components based on that
-            let collider_type = match object.name.as_ref() {
-                "spawn" => {
-                    move_events.send(movement::MoveEntityEvent {
-                        object_component: PhantomData,
-                        target: event.entity,
-                    });
-                    ColliderBehavior::Ignore
-                }
-                "biggem" | "gem" => {
-                    if !object.visible {
-                        ColliderBehavior::Ignore
-                    } else {
-                        ColliderBehavior::Collect
-                    }
-                },
-                _ => {
-                    if object.name.starts_with("load:") {
-                        ColliderBehavior::Load { path: object.name[5..].to_string() }
-                    } else {
-                        if object.is_shape() { // allow hide/show objects without images
-                            commands.insert_one(event.entity, Debuggable::default());
-                        }
-                        ColliderBehavior::Obstruct
-                    }
-                }
-            };
-
-            let collider_size = TILED_MAP_SCALE * match object.shape {
-                ObjectShape::Rect { width, height } | ObjectShape::Ellipse { width, height } =>
-                    Vec2::new(width, height),
-                ObjectShape::Polyline { points: _ } | ObjectShape::Polygon { points: _ } | ObjectShape::Point(_, _) =>
-                    Vec2::new(40.0, 40.0),
-            };
-
-            let collider_component = Collider::new(collider_type, collider_size, Vec2::new(0.0, 0.0));
-            commands.insert_one(event.entity, collider_component);
-        }
-    }
-}
-
-fn in_game_start_system(
-    commands: &mut Commands,
-    mut transient_state: ResMut<TransientState>,
-    mut dialogue_events: ResMut<Events<DialogueEvent>>,
-    dialogue_assets: Res<Assets<DialogueAsset>>,
-    query: Query<(Entity, &DialoguePlaceholder), Without<Dialogue>>,
-) {
-    let should_begin = !transient_state.start_dialogue_shown;
-    // Insert a clone of the asset into a new component.
-    for (entity, placeholder) in query.iter() {
-        let dialogue_asset = dialogue_assets.get(&placeholder.handle).expect("Couldn't find dialogue asset from placeholder handle");
-        let mut dialogue = Dialogue::new(placeholder, dialogue_asset.clone());
-        if should_begin {
-            dialogue.begin("Start", &mut dialogue_events);
-            transient_state.start_dialogue_shown = true;
-        }
-        commands.insert_one(entity, dialogue);
-    }
-}
-
-fn display_dialogue_system(
-    mut event_reader: EventReader<dialogue::DialogueEvent>,
-    mut text_query: Query<&mut Text, With<Dialogue>>,
-    mut visible_query: Query<&mut Visible, With<DialogueWindow>>,
-) {
-    for event in event_reader.iter() {
-        for mut ui_text in text_query.iter_mut() {
-            match event {
-                DialogueEvent::End => {
-                    ui_text.sections[0].value = "".to_string();
-                    for mut visible in visible_query.iter_mut() {
-                        visible.is_visible = false;
-                    }
-                }
-                DialogueEvent::Text(text) => {
-                    ui_text.sections[0].value = text.clone();
-                    for mut visible in visible_query.iter_mut() {
-                        visible.is_visible = true;
-                    }
-                }
             }
         }
     }
