@@ -34,9 +34,11 @@ fn main() {
         .insert_resource(LoadProgress::default())
         .add_event::<motion::MoveEntityEvent<Player>>()
         // add stages to run loop
+        .add_startup_stage_before(Startup, Early, SystemStage::parallel())
         .add_startup_stage_after(Startup, Later, SystemStage::parallel())
-        .add_stage_after(Update, Early, StateStage::<AppState>::default())
-        .add_stage_after(Early, Later, StateStage::<AppState>::default())
+        .add_stage_before(Update, Early, StateStage::<AppState>::default())
+        .add_stage_after(Update, Later, StateStage::<AppState>::default())
+
         // add Laters
         .add_plugins(DefaultPlugins)
         .add_plugin(TiledMapPlugin)
@@ -64,6 +66,7 @@ fn main() {
         // in-game:
         .on_state_enter(Early, AppState::InGame, scene2d::in_game_start_system.system())
         .on_state_update(Early, AppState::InGame, actions::handle_input_system.system())
+
         .on_state_update(Later, AppState::InGame, bevy::input::system::exit_on_esc_system.system())
         .on_state_update(Later, AppState::InGame, camera::update_camera_system.system())
         .on_state_update(Later, AppState::InGame, debug::position_display_system.system())
