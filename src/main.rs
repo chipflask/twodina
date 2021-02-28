@@ -23,6 +23,7 @@ use crate::core::state::{
     AppState,
     StageLabels::Early,
     StageLabels::Later,
+    StageLabels::Special,
     TransientState,
 };
 
@@ -38,7 +39,7 @@ fn main() {
         .add_startup_stage_after(Startup, Later, SystemStage::parallel())
         .add_stage_before(Update, Early, StateStage::<AppState>::default())
         .add_stage_after(Update, Later, StateStage::<AppState>::default())
-
+        .add_stage_after(Later, Special, StateStage::<AppState>::default())
         // add Laters
         .add_plugins(DefaultPlugins)
         .add_plugin(TiledMapPlugin)
@@ -64,7 +65,7 @@ fn main() {
         .on_state_update(Later, AppState::Menu, motion::instant_move_player_system.system())
 
         // in-game:
-        .on_state_enter(Early, AppState::InGame, scene2d::in_game_start_system.system())
+        .on_state_enter(Special, AppState::InGame, scene2d::in_game_start_system.system())
         .on_state_update(Early, AppState::InGame, actions::handle_input_system.system())
 
         .on_state_update(Later, AppState::InGame, bevy::input::system::exit_on_esc_system.system())

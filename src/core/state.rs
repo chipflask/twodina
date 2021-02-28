@@ -20,6 +20,7 @@ impl Default for AppState {
 pub enum StageLabels {
     Early,
     Later,
+    Special, // used to deal with enter/leave bug
 }
 
 // Game state that shouldn't be saved.
