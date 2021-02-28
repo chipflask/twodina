@@ -2,8 +2,9 @@ use bevy::{
     prelude::*,
     app::CoreStage::Update,
 };
-use bevy_tiled_prototype::{Map, TiledMapPlugin};
+use bevy_tiled_prototype::TiledMapPlugin;
 
+mod actions;
 mod camera;
 mod character;
 mod collider;
@@ -17,13 +18,9 @@ mod motion;
 mod players;
 mod ui; // in-game ui
 
-use character::{Character, CharacterState, Direction};
-use dialogue::{Dialogue, DialogueEvent};
-use game::GameState;
+use character::Character;
 use loading::LoadProgress;
-use input::{Action, Flag, InputActionSet};
 use items::Inventory;
-use motion::VELOCITY_EPSILON;
 use players::Player;
 
 const DEBUG_MODE_DEFAULT: bool = false;
@@ -44,8 +41,7 @@ pub struct TransientState {
 // Debug entities will be marked with this so that we can despawn them all when
 // debug mode is turned off.
 #[derive(Debug, Default)]
-struct Debuggable;
-
+pub struct Debuggable;
 
 struct PlayerPositionDisplay {
     player_id: u32,
@@ -105,7 +101,7 @@ fn main() {
 
         // in-game:
         .on_state_enter(EARLY, AppState::InGame, game::in_game_start_system.system())
-        .on_state_update(EARLY, AppState::InGame, handle_input_system.system())
+        .on_state_update(EARLY, AppState::InGame, actions::handle_input_system.system())
         .on_state_update(LATER, AppState::InGame, motion::animate_sprite_system.system())
         .on_state_update(LATER, AppState::InGame, motion::continous_move_character_system.system())
         .on_state_update(LATER, AppState::InGame, camera::update_camera_system.system())
@@ -115,91 +111,6 @@ fn main() {
         .on_state_update(LATER, AppState::InGame, ui::display_dialogue_system.system())
         .on_state_update(LATER, AppState::InGame, bevy::input::system::exit_on_esc_system.system())
         .run();
-}
-
-// split between movement.rs and dialogue / ui.rs ? actions.rs?
-fn handle_input_system(
-    input_actions: Res<InputActionSet>,
-    mut transient_state: ResMut<TransientState>,
-    game_state: ResMut<GameState>,
-    mut query: Query<(&mut Character, &Player)>,
-    mut dialogue_query: Query<&mut Dialogue>,
-    mut dialogue_events: ResMut<Events<DialogueEvent>>,
-    mut debuggable: Query<(&mut Visible, Option<&Handle<Map>>), With<Debuggable>>,
-) {
-    // check for debug status flag differing from transient_state to determine when to hide/show debug stuff
-    if input_actions.has_flag(Flag::Debug) != transient_state.debug_mode {
-        transient_state.debug_mode = !transient_state.debug_mode;
-        // for now hide, but ideally we spawn debug things here
-        for (mut visible, map_option) in debuggable.iter_mut() {
-            let mut in_current_map = true;
-            map_option.map(|map_handle| {
-                in_current_map = *map_handle == game_state.current_map;
-            });
-            visible.is_visible = in_current_map && transient_state.debug_mode;
-        }
-    }
-
-    for (mut character, player) in query.iter_mut() {
-        let mut new_direction = None;
-        let mut new_velocity = Vec2::zero();
-        let mut new_state = CharacterState::Idle;
-        if input_actions.is_active(Action::Up, player.id) {
-            new_direction = Some(Direction::North);
-            new_velocity.y = 1.0;
-            new_state = CharacterState::Walking;
-        }
-        if input_actions.is_active(Action::Down, player.id) {
-            new_direction = Some(Direction::South);
-            new_velocity.y = -1.0;
-            new_state = CharacterState::Walking;
-        }
-
-        // Favor facing left or right when two directions are pressed simultaneously
-        // by checking left/right after up/down.
-        if input_actions.is_active(Action::Left, player.id) {
-            new_direction = Some(Direction::West);
-            new_velocity.x = -1.0;
-            new_state = CharacterState::Walking;
-        }
-        if input_actions.is_active(Action::Right, player.id) {
-            new_direction = Some(Direction::East);
-            new_velocity.x = 1.0;
-            new_state = CharacterState::Walking;
-        }
-
-        // If the user is pressing two directions at once, go diagonally with
-        // unit velocity.
-        if !new_velocity.abs_diff_eq(Vec2::zero(), VELOCITY_EPSILON) {
-            new_velocity = new_velocity.normalize();
-        }
-
-        if input_actions.is_active(Action::Run, player.id) {
-            character.movement_speed = character::RUN_SPEED;
-            new_state = match new_state {
-                CharacterState::Walking => CharacterState::Running,
-                CharacterState::Idle | CharacterState::Running => new_state,
-            }
-        } else {
-            character.movement_speed = character::WALK_SPEED;
-        }
-
-        if let Some(direction) = new_direction {
-            character.direction = direction;
-        }
-        character.velocity.x = new_velocity.x;
-        character.velocity.y = new_velocity.y;
-        // Don't modify z if the character has a z velocity for some reason.
-
-        character.set_state(new_state);
-
-        if let Some(entity) = game_state.current_dialogue {
-            if input_actions.is_active(Action::Accept, player.id) {
-                let mut dialogue = dialogue_query.get_mut(entity).expect("Couldn't find current dialogue entity");
-                dialogue.advance(&mut dialogue_events);
-            }
-        }
-    }
 }
 
 fn setup_onboot(
