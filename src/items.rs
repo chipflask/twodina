@@ -6,7 +6,7 @@ use bevy_tiled_prototype::{Map, Object};
 use crate::{
     core::{
         collider::{Collider, ColliderBehavior},
-        state::{AppState, EARLY, LATER, TransientState},
+        state::{AppState, StageLabels::Early, StageLabels::Later, TransientState},
         game::Game,
     },
     scene2d::load_next_map,
@@ -20,9 +20,9 @@ impl Plugin for ItemsPlugin {
     fn build(&self, app: &mut AppBuilder) {
         app
             .add_event::<Interaction>()
-            .on_state_update(EARLY, AppState::InGame, trigger_level_load_system.system())
-            .on_state_update(LATER, AppState::InGame, items_system.system())
-            .on_state_update(LATER,AppState::InGame, inventory_item_reveal_system.system());
+            .on_state_update(Early, AppState::InGame, trigger_level_load_system.system())
+            .on_state_update(Later, AppState::InGame, items_system.system())
+            .on_state_update(Later,AppState::InGame, inventory_item_reveal_system.system());
     }
 }
 

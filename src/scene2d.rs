@@ -18,7 +18,7 @@ use crate::{
 pub const TILED_MAP_SCALE: f32 = 2.0;
 
 pub fn initialize_levels_onboot(
-    In(transient_state): In<TransientState>,
+    transient_state: Res<TransientState>,
     commands: &mut Commands,
     asset_server: Res<AssetServer>,
     mut to_load: ResMut<LoadProgress>,
@@ -37,7 +37,6 @@ pub fn initialize_levels_onboot(
     load_next_map(commands, &mut game_state, &transient_state, &mut query);
 
     commands.insert_resource(game_state);
-    commands.insert_resource(transient_state);
 }
 
 pub fn in_game_start_system(

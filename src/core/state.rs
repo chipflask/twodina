@@ -1,4 +1,7 @@
-use bevy::prelude::{Assets, Color, ColorMaterial, Handle, ResMut};
+use bevy::{
+    ecs::StageLabel,
+    prelude::{Assets, Color, ColorMaterial, Handle, ResMut},
+};
 
 #[derive(Debug, Copy, Clone)]
 pub enum AppState {
@@ -13,9 +16,11 @@ impl Default for AppState {
     }
 }
 
-// run loop stages
-pub const EARLY: &str = "EARLY";
-pub const LATER: &str = "LATER";
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, StageLabel)]
+pub enum StageLabels {
+    Early,
+    Later,
+}
 
 // Game state that shouldn't be saved.
 #[derive(Clone, Debug)]
