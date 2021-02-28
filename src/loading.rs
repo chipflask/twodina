@@ -11,7 +11,7 @@ use crate::{
     collider::{Collider, ColliderBehavior},
     dialogue::{Dialogue, DialogueEvent},
     game::{GameState, TILED_MAP_SCALE},
-    movement::MoveEntityEvent,
+    motion::MoveEntityEvent,
     players::Player,
     AppState, Debuggable,
 };

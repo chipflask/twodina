@@ -1,6 +1,5 @@
 use bevy::{
     prelude::*,
-    utils::HashSet,
     app::CoreStage::Update,
 };
 use bevy_tiled_prototype::{Map, TiledMapPlugin};
@@ -14,17 +13,17 @@ mod input;
 mod items;
 mod loading;
 mod menu; 
-mod movement;
+mod motion;
 mod players;
 mod ui; // in-game ui
 
-use character::{Character, CharacterState, Direction, VELOCITY_EPSILON};
-use collider::{Collider, ColliderBehavior, Collision};
+use character::{Character, CharacterState, Direction};
 use dialogue::{Dialogue, DialogueEvent};
 use game::GameState;
 use loading::LoadProgress;
 use input::{Action, Flag, InputActionSet};
 use items::Inventory;
+use motion::VELOCITY_EPSILON;
 use players::Player;
 
 const DEBUG_MODE_DEFAULT: bool = false;
@@ -67,12 +66,6 @@ impl Default for AppState {
     }
 }
 
-// todo: utils.rs
-// Return the Z translation for a given Y translation.  Z determines occlusion.
-pub fn z_from_y(y: f32) -> f32 {
-    -y / 100.0
-}
-
 // run loop stages
 pub const EARLY: &str = "EARLY";
 pub const LATER: &str = "LATER";
@@ -81,7 +74,7 @@ fn main() {
     App::build()
         .insert_resource(State::new(AppState::default()))
         .insert_resource(LoadProgress::default())
-        .add_event::<movement::MoveEntityEvent<Player>>()
+        .add_event::<motion::MoveEntityEvent<Player>>()
         // add stages to run loop
         .add_stage_after(Update, EARLY, StateStage::<AppState>::default())
         .add_stage_after(EARLY, LATER, StateStage::<AppState>::default())
@@ -108,17 +101,17 @@ fn main() {
         )
         .on_state_update(LATER, AppState::Menu, bevy::input::system::exit_on_esc_system.system())
         .on_state_update(LATER, AppState::Menu, loading::setup_map_objects_system.system())
-        .on_state_update(LATER, AppState::Menu, movement::move_player_system.system())
+        .on_state_update(LATER, AppState::Menu, motion::instant_move_player_system.system())
 
         // in-game:
         .on_state_enter(EARLY, AppState::InGame, game::in_game_start_system.system())
         .on_state_update(EARLY, AppState::InGame, handle_input_system.system())
-        .on_state_update(LATER, AppState::InGame, movement::animate_sprite_system.system())
-        .on_state_update(LATER, AppState::InGame, move_character_system.system())
+        .on_state_update(LATER, AppState::InGame, motion::animate_sprite_system.system())
+        .on_state_update(LATER, AppState::InGame, motion::continous_move_character_system.system())
         .on_state_update(LATER, AppState::InGame, camera::update_camera_system.system())
         .on_state_update(LATER, AppState::InGame, position_display_system.system())
         .on_state_update(LATER, AppState::InGame, loading::setup_map_objects_system.system())
-        .on_state_update(LATER, AppState::InGame, movement::move_player_system.system())
+        .on_state_update(LATER, AppState::InGame, motion::instant_move_player_system.system())
         .on_state_update(LATER, AppState::InGame, ui::display_dialogue_system.system())
         .on_state_update(LATER, AppState::InGame, bevy::input::system::exit_on_esc_system.system())
         .run();
@@ -235,94 +228,6 @@ fn setup_onboot(
     };
 
     transient_state
-}
-
-fn move_character_system(
-    time: Res<Time>,
-    mut interaction_event: ResMut<Events<items::Interaction>>,
-    mut char_query: Query<(Entity, &mut Character, &mut Transform, &GlobalTransform)>,
-    game_state: Res<GameState>,
-    mut collider_query: Query<(Entity, &mut Collider, &GlobalTransform, Option<&Handle<Map>>)>,
-) {
-    let mut interaction_colliders: HashSet<Entity> = Default::default();
-    for (char_entity, mut character, mut transform, char_global) in char_query.iter_mut() {
-        let char_collider = collider_query.get_component::<Collider>(char_entity).unwrap().clone();
-        if character.velocity.abs_diff_eq(Vec2::zero(), VELOCITY_EPSILON) {
-            // Character has zero velocity.  Nothing to do.
-            continue;
-        }
-        let delta: Vec2 = character.velocity * time.delta_seconds() * character.movement_speed;
-        // delta.y /= MAP_SKEW;
-        // should stay between +- 2000.0
-
-        // check for collisions with objects in current map
-        let char_aabb = char_collider.bounding_volume_with_translation(char_global, delta);
-        let mut char_collision = Collision::Nil;
-        for (collider_entity, collider, collider_global, option_to_map) in collider_query.iter_mut() {
-            // TODO: Use the entity instead of the map asset handle in case
-            // In theory,  there can be multiple instances of the same map.
-            if let Some(owner_map) = option_to_map  {
-                if *owner_map != game_state.current_map {
-                    continue;
-                }
-            }
-            // Shouldn't collide with itself.
-            if collider_entity == char_entity {
-                continue;
-            }
-            let collision = collider.intersect(collider_global, &char_aabb);
-            match collision {
-                Collision::Obstruction => {
-                    char_collision = collision;
-                    break;
-                }
-                Collision::Interaction(behavior) => {
-                    match behavior {
-                        ColliderBehavior::Obstruct => {}
-                        ColliderBehavior::PickUp => {
-                            // queue setting collider type to ignore, stop collisions if we're carrying
-                            interaction_colliders.insert(collider_entity);
-                        }
-                        ColliderBehavior::Collect => {
-                            // queue setting collider type to ignore, make sure we don't double-collect
-                            interaction_colliders.insert(collider_entity);
-                        }
-                        ColliderBehavior::Load { path: _ } => {}
-                        ColliderBehavior::Ignore => {}
-                    }
-
-                    interaction_event.send(items::Interaction::new(
-                        char_entity,
-                        collider_entity,
-                        behavior.clone(),
-                    ));
-
-                    // Upgrade Collision::Nil; don't downgrade Obstruction.
-                    match char_collision {
-                        Collision::Nil => {
-                            char_collision = Collision::Interaction(behavior);
-                        }
-                        Collision::Obstruction | Collision::Interaction(_) => (),
-                    }
-                }
-                Collision::Nil => (),
-            }
-        }
-        if !char_collision.is_solid() {
-            transform.translation.x += delta.x;
-            transform.translation.y += delta.y;
-            // Z needs to reflect where the character is on the ground, and
-            // presumably, that's where the character collides.  So we add the
-            // collider's Z offset to the translation.
-            transform.translation.z = z_from_y(transform.translation.y + char_collider.offset.y);
-        }
-        character.collision = char_collision.clone();
-    }
-    for entity in interaction_colliders.iter() {
-        if let Ok(mut collider) = collider_query.get_component_mut::<Collider>(*entity) {
-            collider.behavior = ColliderBehavior::Ignore;
-        }
-    }
 }
 
 fn position_display_system(

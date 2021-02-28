@@ -6,6 +6,7 @@ use crate::{DEBUG_MODE_DEFAULT, TransientState,
     loading::LoadProgress,
     items::Inventory,
     menu::MenuAction,
+    motion::z_from_y,
     // todo: debug::{}
     PlayerPositionDisplay,
     Debuggable,
@@ -50,7 +51,7 @@ pub fn setup_players_runonce(
         let collider_size = Vec2::new(13.0, 4.5);
         let collider_offset = Vec2::new(0.0, -12.5);
         // This should match the move_character_system.
-        let initial_z = crate::z_from_y(collider_offset.y);
+        let initial_z = z_from_y(collider_offset.y);
         commands
             .spawn(SpriteSheetBundle {
                 texture_atlas: texture_atlas_handle,

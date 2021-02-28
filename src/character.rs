@@ -6,10 +6,6 @@ use crate::collider::Collision;
 pub const WALK_SPEED: f32 = 175.0;
 pub const RUN_SPEED: f32 = 400.0;
 
-// If two scalars have an absolute value difference less than this, then they're
-// considered equal.
-pub const VELOCITY_EPSILON: f32 = 0.001;
-
 #[derive(Debug)]
 pub struct Character {
     pub direction: Direction,
