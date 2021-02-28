@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::character::Character;
+use crate::core::character::Character;
 use crate::items::Inventory;
 use crate::players::Player;
 

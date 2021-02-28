@@ -5,12 +5,15 @@ use bevy_tiled_prototype::Map;
 use crate::{
     debug::Debuggable,
     TransientState,
-    character::{RUN_SPEED, WALK_SPEED, Character, CharacterState, Direction}
+    core::{
+        character::{RUN_SPEED, WALK_SPEED, Character, CharacterState, Direction},
+        dialogue::{Dialogue, DialogueEvent},
+        game::Game,
+        input::{Action, Flag, InputActionSet},
+    },
 };
-use crate::dialogue::{Dialogue, DialogueEvent};
-use crate::game::GameState;
+
 use crate::motion::VELOCITY_EPSILON;
-use crate::input::{Action, Flag, InputActionSet};
 // use crate::items::Inventory;
 use crate::players::Player;
 
@@ -18,7 +21,7 @@ use crate::players::Player;
 pub fn handle_input_system(
     input_actions: Res<InputActionSet>,
     mut transient_state: ResMut<TransientState>,
-    game_state: ResMut<GameState>,
+    game_state: ResMut<Game>,
     mut query: Query<(&mut Character, &Player)>,
     mut dialogue_query: Query<&mut Dialogue>,
     mut dialogue_events: ResMut<Events<DialogueEvent>>,

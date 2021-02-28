@@ -1,7 +1,7 @@
 use bevy::math::Vec2;
 use bevy::prelude::Timer;
 
-use crate::collider::Collision;
+use super::collider::Collision;
 
 pub const WALK_SPEED: f32 = 175.0;
 pub const RUN_SPEED: f32 = 400.0;

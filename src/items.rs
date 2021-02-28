@@ -4,9 +4,13 @@ use bevy::prelude::*;
 use bevy_tiled_prototype::{Map, Object};
 
 use crate::{
-    collider::{Collider, ColliderBehavior},
-    game::{load_next_map, GameState},
-    AppState, LoadProgress, TransientState, EARLY, LATER,
+    core::{
+        collider::{Collider, ColliderBehavior},
+        state::{AppState, EARLY, LATER},
+        game::Game,
+    },
+    scene2d::load_next_map,
+    LoadProgress, TransientState
 };
 
 #[derive(Debug, Default)]
@@ -59,7 +63,7 @@ pub fn trigger_level_load_system(
     asset_server: Res<AssetServer>,
     mut interaction_reader: EventReader<Interaction>,
     mut state: ResMut<State<AppState>>,
-    mut game_state: ResMut<GameState>,
+    mut game_state: ResMut<Game>,
     mut to_load: ResMut<LoadProgress>,
     mut entity_query: Query<(Entity, &Handle<Map>, &mut Visible)>,
     // Todo: probably removed when level worflow improved

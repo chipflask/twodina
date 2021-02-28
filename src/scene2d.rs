@@ -4,29 +4,20 @@ use bevy::{
 };
 
 use crate::{
-    dialogue::{Dialogue, DialogueAsset, DialogueEvent, DialoguePlaceholder},
+    core::{
+        dialogue::{Dialogue, DialogueAsset, DialogueEvent, DialoguePlaceholder},
+        game::Game,
+        state::AppState
+    },
     loading::LoadProgress,
     DEBUG_MODE_DEFAULT,
 };
 use bevy_tiled_prototype::{DebugConfig, Map, TiledMapBundle, TiledMapCenter};
 
-use crate::{AppState, TransientState};
+use crate::TransientState;
 
 // maybe this should go in config.rs or ui.rs?
 pub const TILED_MAP_SCALE: f32 = 2.0;
-
-// Game state that shouldn't be saved.
-#[derive(Clone, Debug)]
-pub struct GameState {
-    start_dialogue_shown: bool,
-    // potentially persisted:
-    pub current_dialogue: Option<Entity>, //temporary pub -- move to DialogueState?
-    pub current_map: Handle<Map>,
-    entity_visibility: HashMap<Entity, bool>, // this is a minor memory leak until maps aren't recreated
-
-    next_map: Option<Handle<Map>>,
-    loaded_maps: HashSet<Handle<Map>>,
-}
 
 pub fn initialize_levels_onboot(
     In(transient_state): In<TransientState>,
@@ -35,7 +26,7 @@ pub fn initialize_levels_onboot(
     mut to_load: ResMut<LoadProgress>,
     mut query: Query<(Entity, &Handle<Map>, &mut Visible)>,
 ) {
-    let mut game_state = GameState {
+    let mut game_state = Game {
         start_dialogue_shown: false,
         current_map: to_load.add(asset_server.load("maps/sandyrocks.tmx")),
         current_dialogue: None,
@@ -53,7 +44,7 @@ pub fn initialize_levels_onboot(
 
 pub fn in_game_start_system(
     commands: &mut Commands,
-    mut game_state: ResMut<GameState>,
+    mut game_state: ResMut<Game>,
     mut dialogue_events: ResMut<Events<DialogueEvent>>,
     dialogue_assets: Res<Assets<DialogueAsset>>,
     query: Query<(Entity, &DialoguePlaceholder), Without<Dialogue>>,
@@ -75,7 +66,7 @@ pub fn in_game_start_system(
 
 pub fn load_next_map(
     commands: &mut Commands,
-    game_state: &mut GameState,
+    game_state: &mut Game,
     transient_state: &TransientState,
     query: &mut Query<(Entity, &Handle<Map>, &mut Visible)>,
 ) {

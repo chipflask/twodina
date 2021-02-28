@@ -2,8 +2,11 @@ use std::marker::PhantomData;
 use std::convert::TryFrom;
 
 use crate::{
-    character::{AnimatedSprite, Character, CharacterState, Direction},
-    game::GameState,
+    core::{
+        character::{AnimatedSprite, Character, CharacterState, Direction},
+        collider::{Collider, ColliderBehavior, Collision},
+        game::Game,
+    },
     players::{Player, PLAYER_WIDTH},
     items::Interaction as ItemInteraction,
 };
@@ -14,7 +17,6 @@ use bevy::{
 };
 use bevy_tiled_prototype::Map;
 
-use crate::collider::{Collider, ColliderBehavior, Collision};
 
 // If two scalars have an absolute value difference less than this, then they're
 // considered equal.
@@ -128,7 +130,7 @@ pub fn continous_move_character_system(
     time: Res<Time>,
     mut interaction_event: ResMut<Events<ItemInteraction>>,
     mut char_query: Query<(Entity, &mut Character, &mut Transform, &GlobalTransform)>,
-    game_state: Res<GameState>,
+    game_state: Res<Game>,
     mut collider_query: Query<(Entity, &mut Collider, &GlobalTransform, Option<&Handle<Map>>)>,
 ) {
     let mut interaction_colliders: HashSet<Entity> = Default::default();

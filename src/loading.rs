@@ -8,11 +8,14 @@ use bevy::{
 use bevy_tiled_prototype::{Object, ObjectReadyEvent, ObjectShape};
 
 use crate::{
-    AppState,
-    collider::{Collider, ColliderBehavior},
+    core::{
+        collider::{Collider, ColliderBehavior},
+        dialogue::{Dialogue, DialogueEvent},
+        game::Game,
+        state::AppState,
+    },
     debug::Debuggable,
-    dialogue::{Dialogue, DialogueEvent},
-    game::{GameState, TILED_MAP_SCALE},
+    scene2d::TILED_MAP_SCALE,
     motion::MoveEntityEvent,
     players::Player,
 };
@@ -66,7 +69,7 @@ pub fn wait_for_asset_loading_system(
 pub fn setup_map_objects_system(
     commands: &mut Commands,
     new_item_query: Query<&Object>,
-    game_state: Res<GameState>,
+    game_state: Res<Game>,
     mut event_reader: EventReader<ObjectReadyEvent>,
     mut move_events: ResMut<Events<MoveEntityEvent<Player>>>,
     // maps: Res<Assets<Map>>,

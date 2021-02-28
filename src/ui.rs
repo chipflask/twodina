@@ -1,10 +1,12 @@
 use bevy::prelude::*;
 use crate::{
     AppState,
-    dialogue::{Dialogue, DialogueEvent, DialoguePlaceholder},
-    game::GameState,
+    core::{
+        dialogue::{Dialogue, DialogueEvent, DialoguePlaceholder},
+        game::Game,
+        menu::MenuAction
+    },
     loading::LoadProgress,
-    menu::MenuAction
 };
 
 // The UI element that displays dialogue.
@@ -39,7 +41,7 @@ pub fn setup_dialogue_window_runonce (
     In(menu_action): In<MenuAction>,
     commands: &mut Commands,
     mut state: ResMut<State<AppState>>,
-    mut game_state: ResMut<GameState>,
+    mut game_state: ResMut<Game>,
     asset_server: Res<AssetServer>,
     mut to_load: ResMut<LoadProgress>,
     mut materials: ResMut<Assets<ColorMaterial>>,

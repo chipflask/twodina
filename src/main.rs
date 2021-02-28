@@ -6,21 +6,22 @@ use bevy_tiled_prototype::TiledMapPlugin;
 
 mod actions;
 mod camera;
-mod character;
-mod collider;
+mod core;
 mod debug;
-mod dialogue;
-mod game;
-mod input;
+mod scene2d;
 mod items;
 mod loading;
-mod menu; 
 mod motion;
 mod players;
 mod ui; // in-game ui
 
 use loading::LoadProgress;
 use players::Player;
+
+use crate::core::state::{
+    AppState,
+    EARLY, LATER,
+};
 
 const DEBUG_MODE_DEFAULT: bool = false;
 
@@ -36,23 +37,6 @@ pub struct TransientState {
     button_pressed_color: Handle<ColorMaterial>,
 }
 
-#[derive(Debug, Copy, Clone)]
-pub enum AppState {
-    Loading,
-    Menu,
-    InGame,
-}
-
-impl Default for AppState {
-    fn default() -> Self {
-        AppState::Loading
-    }
-}
-
-// run loop stages
-pub const EARLY: &str = "EARLY";
-pub const LATER: &str = "LATER";
-
 fn main() {
     App::build()
         .insert_resource(State::new(AppState::default()))
@@ -65,19 +49,19 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugin(TiledMapPlugin)
 
-        .add_plugin(menu::MenuPlugin::default())
-        .add_plugin(dialogue::DialoguePlugin::default())
-        .add_plugin(input::InputActionPlugin::default())
+        .add_plugin(core::menu::MenuPlugin::default())
+        .add_plugin(core::dialogue::DialoguePlugin::default())
+        .add_plugin(core::input::InputActionPlugin::default())
         .add_plugin(items::ItemsPlugin::default())
         // init
         .add_startup_system(setup_onboot.system()
-            .chain(game::initialize_levels_onboot.system())
+            .chain(scene2d::initialize_levels_onboot.system())
         )
         // loading
         .on_state_update(LATER, AppState::Loading, loading::wait_for_asset_loading_system.system())
         //
         // menu
-        .on_state_update(LATER, AppState::Menu, menu::menu_system.system()
+        .on_state_update(LATER, AppState::Menu, core::menu::menu_system.system()
             // TODO: run these once using stages
             .chain(players::setup_players_runonce.system())
             .chain(ui::setup_dialogue_window_runonce.system())
@@ -87,7 +71,7 @@ fn main() {
         .on_state_update(LATER, AppState::Menu, motion::instant_move_player_system.system())
 
         // in-game:
-        .on_state_enter(EARLY, AppState::InGame, game::in_game_start_system.system())
+        .on_state_enter(EARLY, AppState::InGame, scene2d::in_game_start_system.system())
         .on_state_update(EARLY, AppState::InGame, actions::handle_input_system.system())
         .on_state_update(LATER, AppState::InGame, bevy::input::system::exit_on_esc_system.system())
         .on_state_update(LATER, AppState::InGame, camera::update_camera_system.system())
