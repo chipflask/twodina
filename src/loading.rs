@@ -22,7 +22,7 @@ use crate::{
 
 #[derive(Debug, Default)]
 pub struct LoadProgress {
-    pub handles: HashSet<HandleUntyped>, // todo, use accessors?
+    handles: HashSet<HandleUntyped>,
     pub next_state: AppState,
     pub next_dialogue: Option<String>,
     // progress: f32,
