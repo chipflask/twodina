@@ -153,6 +153,8 @@ pub fn update_camera_system(
         // Add margin.
         // TODO: Handle case when window is smaller than margin.
         let full_bb = rect_expand_by(&full_bb, margin_amount);
+
+        // 1.1 is compensation so we reach steady state instead of cycling
         let margin_vec =  Vec3::new(
             (win_width - margin_amount * 1.1) / win_width,
             (win_height - margin_amount * 1.1) / win_height, 1.0);
@@ -169,16 +171,20 @@ pub fn update_camera_system(
                 let is_player_in_view = is_rect_completely_inside(&full_bb, &camera_rect);
                 if !is_player_in_view {
                     // Mutate the transform, never the global transform.
-                    let mut new_cam_translation = camera_transform.translation.clone();
                     let mut v1 = camera_transform.translation.clone() - player_translation;
 
-                    v1.x = margin_vec.x.min(((v1.x.abs() - CAMERA_BUFFER) / win_width).abs()) * v1.x.signum() * win_width;
-                    v1.y = margin_vec.y.min(((v1.y.abs() - CAMERA_BUFFER) / win_height).abs()) * v1.y.signum() * win_height;
-                    // println!("{:?} - {:?}", v1, margin_vec);
+                    if v1.length() > (win_width * win_width + win_height * win_height).sqrt() / 2.0 {
+                        camera_transform.translation = player_translation;
+                    } else {
+                        let mut new_cam_translation = camera_transform.translation.clone();
+                        v1.x = margin_vec.x.min(((v1.x.abs() - CAMERA_BUFFER) / win_width).abs()) * v1.x.signum() * win_width;
+                        v1.y = margin_vec.y.min(((v1.y.abs() - CAMERA_BUFFER) / win_height).abs()) * v1.y.signum() * win_height;
+                        // println!("{:?} - {:?}", v1, margin_vec);
+                        new_cam_translation = new_cam_translation - v1 * 2.0;
+                        new_cam_translation.z = camera_transform.translation.z;
+                        camera_transform.translation = new_cam_translation;
+                    }
 
-                    new_cam_translation = new_cam_translation - v1 * 2.0;
-                    new_cam_translation.z = camera_transform.translation.z;
-                    camera_transform.translation = new_cam_translation;
 
                 }
             } else {
