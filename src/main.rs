@@ -51,6 +51,8 @@ fn main() {
         // init
         .add_startup_system_to_stage(Startup, setup_onboot.system())
         .add_startup_system_to_stage(Later, scene2d::initialize_levels_onboot.system())
+        // all states
+        .add_system_to_stage(Update, motion::instant_move_player_system.system())
         // loading
         .on_state_update(Later, AppState::Loading, loading::wait_for_asset_loading_system.system())
         //
@@ -62,7 +64,6 @@ fn main() {
         )
         .on_state_update(Later, AppState::Menu, bevy::input::system::exit_on_esc_system.system())
         .on_state_update(Later, AppState::Menu, loading::setup_map_objects_system.system())
-        .on_state_update(Later, AppState::Menu, motion::instant_move_player_system.system())
 
         // in-game:
         .on_state_enter(Special, AppState::InGame, scene2d::in_game_start_system.system())
@@ -74,7 +75,6 @@ fn main() {
         .on_state_update(Later, AppState::InGame, loading::setup_map_objects_system.system())
         .on_state_update(Later, AppState::InGame, motion::animate_sprite_system.system())
         .on_state_update(Later, AppState::InGame, motion::continous_move_character_system.system())
-        .on_state_update(Later, AppState::InGame, motion::instant_move_player_system.system())
         .on_state_update(Later, AppState::InGame, ui::display_dialogue_system.system())
         .run();
 }

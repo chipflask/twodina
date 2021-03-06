@@ -3,15 +3,11 @@ use std::fs;
 use bevy::prelude::*;
 use bevy_tiled_prototype::{Map, Object};
 
-use crate::{
-    core::{
+use crate::{LoadProgress, core::{
         collider::{Collider, ColliderBehavior},
         state::{AppState, StageLabels::Early, StageLabels::Later, TransientState},
         game::Game,
-    },
-    scene2d::load_next_map,
-    LoadProgress,
-};
+    }, motion::MoveEntityEvent, players::Player, scene2d::load_next_map};
 
 #[derive(Debug, Default)]
 pub struct ItemsPlugin;
@@ -65,7 +61,8 @@ pub fn trigger_level_load_system(
     mut state: ResMut<State<AppState>>,
     mut game_state: ResMut<Game>,
     mut to_load: ResMut<LoadProgress>,
-    mut entity_query: Query<(Entity, &Handle<Map>, &mut Visible)>,
+    mut entity_query: Query<(Entity, &Handle<Map>, &mut Visible, Option<&Object>)>,
+    mut move_events: ResMut<Events<MoveEntityEvent<Player>>>,
     // Todo: probably removed when level worflow improved
     transient_state: Res<TransientState>,
 ) {
@@ -80,7 +77,7 @@ pub fn trigger_level_load_system(
                     // eventually do preloading:
                     // game_state.next_map = Some(asset_server.load(level.as_str()));
                     game_state.current_map = to_load.add(asset_server.load(level.as_str()));
-                    load_next_map(commands, &mut game_state, &transient_state, &mut entity_query);
+                    load_next_map(commands, &mut game_state, &transient_state, &mut entity_query, &mut move_events);
                     to_load.next_state = AppState::InGame;
                     to_load.next_dialogue = Some(path.clone());
                 } else {

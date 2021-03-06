@@ -1,18 +1,16 @@
+use std::marker::PhantomData;
+
 use bevy::{
     prelude::*,
     utils::{HashMap, HashSet},
 };
-use bevy_tiled_prototype::{DebugConfig, Map, TiledMapBundle, TiledMapCenter};
+use bevy_tiled_prototype::{DebugConfig, Map, Object, TiledMapBundle, TiledMapCenter};
 
-use crate::{
-    core::{
+use crate::{DEBUG_MODE_DEFAULT, core::{
         dialogue::{Dialogue, DialogueAsset, DialogueEvent, DialoguePlaceholder},
         game::Game,
         state::{AppState, TransientState},
-    },
-    loading::LoadProgress,
-    DEBUG_MODE_DEFAULT,
-};
+    }, loading::LoadProgress, motion::MoveEntityEvent, players::Player};
 
 // maybe this should go in config.rs or ui.rs?
 pub const TILED_MAP_SCALE: f32 = 2.0;
@@ -22,7 +20,8 @@ pub fn initialize_levels_onboot(
     commands: &mut Commands,
     asset_server: Res<AssetServer>,
     mut to_load: ResMut<LoadProgress>,
-    mut query: Query<(Entity, &Handle<Map>, &mut Visible)>,
+    mut query: Query<(Entity, &Handle<Map>, &mut Visible, Option<&Object>)>,
+    mut move_events: ResMut<Events<MoveEntityEvent<Player>>>,
 ) {
     let mut game_state = Game {
         start_dialogue_shown: false,
@@ -34,7 +33,7 @@ pub fn initialize_levels_onboot(
     };
 
     to_load.next_state = AppState::Menu;
-    load_next_map(commands, &mut game_state, &transient_state, &mut query);
+    load_next_map(commands, &mut game_state, &transient_state, &mut query, &mut move_events);
 
     commands.insert_resource(game_state);
 }
@@ -65,9 +64,10 @@ pub fn load_next_map(
     commands: &mut Commands,
     game_state: &mut Game,
     transient_state: &TransientState,
-    query: &mut Query<(Entity, &Handle<Map>, &mut Visible)>,
+    query: &mut Query<(Entity, &Handle<Map>, &mut Visible, Option<&Object>)>,
+    move_events: &mut Events<MoveEntityEvent<Player>>,
 ) {
-    for (entity, map_owner, mut visible) in query.iter_mut() {
+    for (entity, map_owner, mut visible, object_option) in query.iter_mut() {
         if *map_owner != game_state.current_map {
             game_state
                 .entity_visibility
@@ -77,6 +77,13 @@ pub fn load_next_map(
         } else {
             let is_visible =
                 game_state.entity_visibility.get(&entity).unwrap_or(&false);
+            // patch so spawn triggers event whenever we iterate over it in the new map
+            if object_option.is_some() && object_option.unwrap().name == "spawn" {
+                move_events.send(MoveEntityEvent {
+                    object_component: PhantomData,
+                    target: entity,
+                });
+            }
             // ^ should default object.visible if object
             commands.insert_one(entity, Draw::default());
             visible.is_visible = *is_visible;
