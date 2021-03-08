@@ -17,11 +17,11 @@ pub const TILED_MAP_SCALE: f32 = 2.0;
 
 pub fn initialize_levels_onboot(
     transient_state: Res<TransientState>,
-    commands: &mut Commands,
+    mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut to_load: ResMut<LoadProgress>,
     mut query: Query<(Entity, &Handle<Map>, &mut Visible, Option<&Object>)>,
-    mut move_events: ResMut<Events<MoveEntityEvent<Player>>>,
+    mut move_events: EventWriter<MoveEntityEvent<Player>>,
 ) {
     let mut game_state = Game {
         start_dialogue_shown: false,
@@ -33,15 +33,15 @@ pub fn initialize_levels_onboot(
     };
 
     to_load.next_state = AppState::Menu;
-    load_next_map(commands, &mut game_state, &transient_state, &mut query, &mut move_events);
+    load_next_map(&mut commands, &mut game_state, &transient_state, &mut query, &mut move_events);
 
     commands.insert_resource(game_state);
 }
 
 pub fn in_game_start_system(
-    commands: &mut Commands,
+    mut commands: Commands,
     mut game_state: ResMut<Game>,
-    mut dialogue_events: ResMut<Events<DialogueEvent>>,
+    mut dialogue_events: EventWriter<DialogueEvent>,
     dialogue_assets: Res<Assets<DialogueAsset>>,
     query: Query<(Entity, &DialoguePlaceholder), Without<Dialogue>>,
 ) {
@@ -56,7 +56,7 @@ pub fn in_game_start_system(
             dialogue.begin("Start", &mut dialogue_events);
             game_state.start_dialogue_shown = true;
         }
-        commands.insert_one(entity, dialogue);
+        commands.insert(entity, dialogue);
     }
 }
 
@@ -65,14 +65,14 @@ pub fn load_next_map(
     game_state: &mut Game,
     transient_state: &TransientState,
     query: &mut Query<(Entity, &Handle<Map>, &mut Visible, Option<&Object>)>,
-    move_events: &mut Events<MoveEntityEvent<Player>>,
+    move_events: &mut EventWriter<MoveEntityEvent<Player>>,
 ) {
     for (entity, map_owner, mut visible, object_option) in query.iter_mut() {
         if *map_owner != game_state.current_map {
             game_state
                 .entity_visibility
                 .insert(entity.clone(), visible.is_visible);
-            commands.remove_one::<Draw>(entity); // for efficiency (and might help reduce textureId panick)
+            commands.remove::<Draw>(entity); // for efficiency (and might help reduce textureId panick)
             visible.is_visible = false;
         } else {
             let is_visible =
@@ -85,7 +85,7 @@ pub fn load_next_map(
                 });
             }
             // ^ should default object.visible if object
-            commands.insert_one(entity, Draw::default());
+            commands.insert(entity, Draw::default());
             visible.is_visible = *is_visible;
         }
     }

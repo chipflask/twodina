@@ -11,7 +11,7 @@ const CAMERA_BUFFER: f32 = 1.0;
 // player.
 pub struct PlayerCamera;
 
-pub fn initialize_camera_onboot (
+pub fn initialize_camera (
     commands: &mut Commands
 ) {
     let far = 2000.0;
@@ -126,7 +126,7 @@ pub fn update_camera_system(
     // Get bounding box of all players.
     let mut full_bb = None;
     let mut num_players = 0;
-    let mut player_translation = Vec3::zero();
+    let mut player_translation = Vec3::ZERO;
     for player_transform in player_query.iter_mut() {
         num_players += 1;
         // Is sprite in view frame?

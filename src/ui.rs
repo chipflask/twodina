@@ -39,7 +39,7 @@ pub fn display_dialogue_system(
 
 pub fn setup_dialogue_window_runonce (
     In(menu_action): In<MenuAction>,
-    commands: &mut Commands,
+    mut commands: Commands,
     mut state: ResMut<State<AppState>>,
     mut game_state: ResMut<Game>,
     asset_server: Res<AssetServer>,

@@ -10,13 +10,13 @@ edition = "2018"
 [dependencies]
 anyhow = "^1.0.36"
 bevy = { git = "https://github.com/bevyengine/bevy/", branch="main", features = ["vorbis"] }
-bevy_tiled_prototype = { git = "https://github.com/dmtaub/bevy_tiled", branch = "items_0.5" }
+bevy_tiled_prototype = { git = "https://github.com/dmtaub/bevy_tiled", branch = "main" }
 ncollide2d = "0.27.0"
 ron = "0.6.4"
 serde = "^1.0.123"
 
-# [patch.'https://github.com/dmtaub/bevy_tiled']
-# bevy_tiled_prototype = { path = "../bevy_tiled" }
+[patch.'https://github.com/dmtaub/bevy_tiled']
+bevy_tiled_prototype = { path = "../bevy_tiled" }
 
 [profile.dev.package."*"]
 # Optimize dependencies.

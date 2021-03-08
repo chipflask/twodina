@@ -154,7 +154,7 @@ impl Dialogue {
     pub fn begin(
         &mut self,
         node_name: &str,
-        dialogue_events: &mut ResMut<Events<DialogueEvent>>,
+        dialogue_events: &mut EventWriter<DialogueEvent>,
     ) {
         self.next_node_name = Some(node_name.to_string());
         self.is_end = false;
@@ -166,7 +166,7 @@ impl Dialogue {
     pub fn begin_optional(
         &mut self,
         node_name: &str,
-        dialogue_events: &mut ResMut<Events<DialogueEvent>>,
+        dialogue_events: &mut EventWriter<DialogueEvent>,
     ) {
         if !self.has_node(node_name) {
             return;
@@ -178,7 +178,7 @@ impl Dialogue {
     // current dialogue.
     pub fn advance(
         &mut self,
-        dialogue_events: &mut ResMut<Events<DialogueEvent>>,
+        dialogue_events: &mut EventWriter<DialogueEvent>,
     ) {
         if self.is_end {
             return;
@@ -196,7 +196,7 @@ impl Dialogue {
     }
 
     // Run and send events so that the app can display text in the UI.
-    fn execute(&mut self, dialogue_events: &mut ResMut<Events<DialogueEvent>>) {
+    fn execute(&mut self, dialogue_events: &mut EventWriter<DialogueEvent>) {
         if self.is_end {
             return;
         }

@@ -1,5 +1,5 @@
 use bevy::{
-    ecs::StageLabel,
+    ecs::schedule::StageLabel,
     prelude::{Assets, Color, ColorMaterial, Handle, ResMut},
 };
 

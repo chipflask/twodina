@@ -41,7 +41,7 @@ impl Collider {
     }
 
     pub fn bounding_volume(&self, global_trans: &GlobalTransform) -> nc::bounding_volume::AABB<f32> {
-        self.bounding_volume_with_translation(global_trans, Vec2::zero())
+        self.bounding_volume_with_translation(global_trans, Vec2::ZERO)
     }
 
     pub fn bounding_volume_with_translation(&self,

@@ -28,7 +28,7 @@ pub const PLAYER_HEIGHT: f32 = 32.0;
 
 pub fn setup_players_runonce(
     In(menu_action): In<MenuAction>,
-    commands: &mut Commands,
+    mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
     mut materials: ResMut<Assets<ColorMaterial>>,

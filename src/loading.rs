@@ -45,7 +45,7 @@ pub fn wait_for_asset_loading_system(
     mut load_progress: ResMut<LoadProgress>,
     asset_server: Res<AssetServer>,
     mut dialogue_query: Query<&mut Dialogue>,
-    mut dialogue_events: ResMut<Events<DialogueEvent>>,
+    mut dialogue_events: EventWriter<DialogueEvent>,
 ) {
     let handle_ids = load_progress.handles.iter()
         .map(|handle| HandleId::from(handle));
@@ -67,11 +67,11 @@ pub fn wait_for_asset_loading_system(
 }
 
 pub fn setup_map_objects_system(
-    commands: &mut Commands,
+    mut commands: Commands,
     new_item_query: Query<&Object>,
     game_state: Res<Game>,
     mut event_reader: EventReader<ObjectReadyEvent>,
-    mut move_events: ResMut<Events<MoveEntityEvent<Player>>>,
+    mut move_events: EventWriter<MoveEntityEvent<Player>>,
     // maps: Res<Assets<Map>>,
 ) {
     for event in event_reader.iter() {
@@ -104,7 +104,7 @@ pub fn setup_map_objects_system(
                         ColliderBehavior::Load { path: object.name[5..].to_string() }
                     } else {
                         if object.is_shape() { // allow hide/show objects without images
-                            commands.insert_one(event.entity, Debuggable::default());
+                            commands.insert(event.entity, Debuggable::default());
                         }
                         ColliderBehavior::Obstruct
                     }
@@ -119,7 +119,7 @@ pub fn setup_map_objects_system(
             };
 
             let collider_component = Collider::new(collider_type, collider_size, Vec2::new(0.0, 0.0));
-            commands.insert_one(event.entity, collider_component);
+            commands.insert(event.entity, collider_component);
         }
     }
 }
