@@ -55,14 +55,14 @@ impl Interaction {
 }
 
 pub fn trigger_level_load_system(
-    commands: &mut Commands,
+    mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut interaction_reader: EventReader<Interaction>,
     mut state: ResMut<State<AppState>>,
     mut game_state: ResMut<Game>,
     mut to_load: ResMut<LoadProgress>,
     mut entity_query: Query<(Entity, &Handle<Map>, &mut Visible, Option<&Object>)>,
-    mut move_events: ResMut<Events<MoveEntityEvent<Player>>>,
+    mut move_events: EventWriter<MoveEntityEvent<Player>>,
     // Todo: probably removed when level worflow improved
     transient_state: Res<TransientState>,
 ) {
@@ -77,7 +77,7 @@ pub fn trigger_level_load_system(
                     // eventually do preloading:
                     // game_state.next_map = Some(asset_server.load(level.as_str()));
                     game_state.current_map = to_load.add(asset_server.load(level.as_str()));
-                    load_next_map(commands, &mut game_state, &transient_state, &mut entity_query, &mut move_events);
+                    load_next_map(&mut commands, &mut game_state, &transient_state, &mut entity_query, &mut move_events);
                     to_load.next_state = AppState::InGame;
                     to_load.next_dialogue = Some(path.clone());
                 } else {
@@ -92,7 +92,7 @@ pub fn trigger_level_load_system(
 
 // handles consume and equip
 pub fn items_system(
-    commands: &mut Commands,
+    mut commands: Commands,
     mut interaction_reader: EventReader<Interaction>,
     mut query: Query<(&mut Transform, Option<&EquippedTransform>, Option<&mut Collider>)>,
     mut inventory_query: Query<&mut Inventory>,

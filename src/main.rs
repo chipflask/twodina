@@ -80,11 +80,11 @@ fn main() {
 }
 
 fn setup_onboot(
-    commands: &mut Commands,
+    mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
-    camera::initialize_camera_onboot(commands);
+    camera::initialize_camera(&mut commands);
 
     // Watch for asset changes.
     asset_server.watch_for_changes().expect("watch for changes");

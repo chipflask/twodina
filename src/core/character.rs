@@ -66,7 +66,7 @@ impl Default for Character {
             direction: Direction::South,
             state: CharacterState::Idle,
             previous_state: CharacterState::Idle,
-            velocity: Vec2::zero(),
+            velocity: Vec2::ZERO,
             movement_speed: WALK_SPEED,
             collision: Collision::Nil,
         }

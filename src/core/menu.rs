@@ -58,7 +58,7 @@ pub fn menu_system(
 }
 
 fn setup_menu_system(
-    commands: &mut Commands,
+    mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     transient_state: Res<TransientState>,
@@ -174,7 +174,7 @@ fn setup_menu_system(
 }
 
 fn cleanup_menu_system(
-    commands: &mut Commands,
+    mut commands: Commands,
     query: Query<Entity, With<MenuUi>>,
 ) {
     for entity in query.iter() {

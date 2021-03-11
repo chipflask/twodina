@@ -13,6 +13,7 @@ use crate::{
 
 use bevy::{
     prelude::*,
+    ecs::component::Component,
     utils::HashSet,
 };
 use bevy_tiled_prototype::Map;
@@ -51,7 +52,7 @@ fn instant_move_entity<T: Component>(
             Ok((transform, _)) => transform.translation,
             Err(_) => continue,
         };
-        let mut total_offset = Vec3::zero();
+        let mut total_offset = Vec3::ZERO;
         for (mut transform, has_component) in query.iter_mut() {
             if has_component.is_none() {
                 continue;
@@ -85,7 +86,7 @@ pub fn animate_sprite_system(
             }
         }
 
-        animated_sprite.timer.tick(time.delta_seconds());
+        animated_sprite.timer.tick(time.delta());
         if is_stepping || animated_sprite.timer.finished() {
             let texture_atlas = texture_atlases.get(texture_atlas_handle).expect("should have found texture atlas handle");
             let total_num_cells = texture_atlas.textures.len();
@@ -128,7 +129,7 @@ pub fn animate_sprite_system(
 // If the collision is occluding, it stops movement
 pub fn continous_move_character_system(
     time: Res<Time>,
-    mut interaction_event: ResMut<Events<ItemInteraction>>,
+    mut interaction_event: EventWriter<ItemInteraction>,
     mut char_query: Query<(Entity, &mut Character, &mut Transform, &GlobalTransform)>,
     game_state: Res<Game>,
     mut collider_query: Query<(Entity, &mut Collider, &GlobalTransform, Option<&Handle<Map>>)>,
@@ -136,7 +137,7 @@ pub fn continous_move_character_system(
     let mut interaction_colliders: HashSet<Entity> = Default::default();
     for (char_entity, mut character, mut transform, char_global) in char_query.iter_mut() {
         let char_collider = collider_query.get_component::<Collider>(char_entity).unwrap().clone();
-        if character.velocity.abs_diff_eq(Vec2::zero(), VELOCITY_EPSILON) {
+        if character.velocity.abs_diff_eq(Vec2::ZERO, VELOCITY_EPSILON) {
             // Character has zero velocity.  Nothing to do.
             continue;
         }

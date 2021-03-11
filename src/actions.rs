@@ -24,7 +24,7 @@ pub fn handle_input_system(
     game_state: ResMut<Game>,
     mut query: Query<(&mut Character, &Player)>,
     mut dialogue_query: Query<&mut Dialogue>,
-    mut dialogue_events: ResMut<Events<DialogueEvent>>,
+    mut dialogue_events: EventWriter<DialogueEvent>,
     mut debuggable: Query<(&mut Visible, Option<&Handle<Map>>), With<Debuggable>>,
 ) {
     // check for debug status flag differing from transient_state to determine when to hide/show debug stuff
@@ -42,7 +42,7 @@ pub fn handle_input_system(
 
     for (mut character, player) in query.iter_mut() {
         let mut new_direction = None;
-        let mut new_velocity = Vec2::zero();
+        let mut new_velocity = Vec2::ZERO;
         let mut new_state = CharacterState::Idle;
         if input_actions.is_active(Action::Up, player.id) {
             new_direction = Some(Direction::North);
@@ -70,7 +70,7 @@ pub fn handle_input_system(
 
         // If the user is pressing two directions at once, go diagonally with
         // unit velocity.
-        if !new_velocity.abs_diff_eq(Vec2::zero(), VELOCITY_EPSILON) {
+        if !new_velocity.abs_diff_eq(Vec2::ZERO, VELOCITY_EPSILON) {
             new_velocity = new_velocity.normalize();
         }
 
