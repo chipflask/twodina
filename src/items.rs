@@ -1,13 +1,18 @@
 use std::fs;
 
 use bevy::{asset::FileAssetIo, prelude::*};
-use bevy_tiled_prototype::{Map, Object};
+use bevy_tiled_prototype::{Map, Object, tiled};
 
-use crate::{LoadProgress, core::{
+use crate::{
+    core::{
         collider::{Collider, ColliderBehavior},
-        state::{AppState, StageLabels::Early, StageLabels::Later, TransientState},
+        dialogue::{Dialogue, DialogueEvent},
         game::Game,
-    }, motion::MoveEntityEvent, players::Player, scene2d::load_next_map};
+        state::{AppState, StageLabels::Early, StageLabels::Later, TransientState},
+    },
+    loading::LoadProgress,
+    motion::MoveEntityEvent, players::Player, scene2d::load_next_map,
+};
 
 #[derive(Debug, Default)]
 pub struct ItemsPlugin;
@@ -18,6 +23,7 @@ impl Plugin for ItemsPlugin {
             .add_event::<Interaction>()
             .on_state_update(Early, AppState::InGame, trigger_level_load_system.system())
             .on_state_update(Later, AppState::InGame, items_system.system())
+            .on_state_update(Later, AppState::InGame, trigger_dialogue_system.system())
             .on_state_update(Later,AppState::InGame, inventory_item_reveal_system.system());
     }
 }
@@ -92,7 +98,8 @@ pub fn trigger_level_load_system(
                 };
             }
 
-            ColliderBehavior::Obstruct | ColliderBehavior::PickUp | ColliderBehavior::Collect | ColliderBehavior::Ignore => {}
+            ColliderBehavior::Obstruct | ColliderBehavior::PickUp |
+            ColliderBehavior::Collect | ColliderBehavior::Ignore => {}
         }
     }
 }
@@ -126,7 +133,8 @@ pub fn items_system(
                     }
                 }
             }
-            ColliderBehavior::Obstruct | ColliderBehavior::Ignore | ColliderBehavior::Load { path: _ } => {}
+            ColliderBehavior::Obstruct | ColliderBehavior::Ignore |
+            ColliderBehavior::Load { path: _ } => {}
             ColliderBehavior::PickUp => {
                 // this is a collectable
                 let actor_scale = match query.get_mut(interaction.actor) {
@@ -147,6 +155,28 @@ pub fn items_system(
                         object_collider.behavior = ColliderBehavior::Ignore;
                     }
                     commands.push_children(interaction.actor, &[interaction.object]);
+                }
+            }
+        }
+    }
+}
+
+pub fn trigger_dialogue_system(
+    mut interaction_reader: EventReader<Interaction>,
+    object_query: Query<&Object>,
+    mut dialogue_query: Query<&mut Dialogue>,
+    mut dialogue_events: EventWriter<DialogueEvent>,
+) {
+    for interaction in interaction_reader.iter() {
+        if let Ok(object) = object_query.get(interaction.object) {
+            for (k,v) in object.props.iter() {
+                if k == "dialogue" {
+                    if let tiled::PropertyValue::StringValue(s) = v {
+                        for mut dialogue in dialogue_query.iter_mut() {
+                            dialogue.begin_optional(s.as_ref(), &mut dialogue_events);
+                        }
+                        break;
+                    }
                 }
             }
         }

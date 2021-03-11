@@ -25,7 +25,6 @@ pub enum ColliderBehavior {
 #[derive(Clone, Debug)]
 pub enum Collision {
     Nil,
-    Obstruction,
     Interaction(ColliderBehavior),
 }
 
@@ -59,7 +58,8 @@ impl Collider {
 
     pub fn intersect(&self, global_transform: &GlobalTransform, other: &nc::bounding_volume::AABB<f32>) -> Collision {
         match &self.behavior {
-            ColliderBehavior::Obstruct | ColliderBehavior::PickUp | ColliderBehavior::Collect | ColliderBehavior::Load { path: _ } => (),
+            ColliderBehavior::Obstruct | ColliderBehavior::PickUp |
+            ColliderBehavior::Collect | ColliderBehavior::Load { path: _ } => {}
             ColliderBehavior::Ignore => return Collision::Nil,
         }
 
@@ -70,8 +70,9 @@ impl Collider {
         }
 
         match self.behavior {
-            ColliderBehavior::Obstruct => Collision::Obstruction,
-            ColliderBehavior::PickUp | ColliderBehavior::Collect | ColliderBehavior::Load { path: _ }
+            ColliderBehavior::Obstruct |
+            ColliderBehavior::PickUp | ColliderBehavior::Collect |
+            ColliderBehavior::Load { path: _ }
                 => Collision::Interaction(self.behavior.clone()),
             ColliderBehavior::Ignore => panic!("Should never reach here"),
         }
@@ -81,7 +82,7 @@ impl Collider {
 impl Collision {
     pub fn is_solid(&self) -> bool {
         match self {
-            Collision::Obstruction => true,
+            Collision::Interaction(ColliderBehavior::Obstruct) => true,
             Collision::Nil | Collision::Interaction(_) => false,
         }
     }

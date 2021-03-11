@@ -160,10 +160,6 @@ pub fn continous_move_character_system(
             }
             let collision = collider.intersect(collider_global, &char_aabb);
             match collision {
-                Collision::Obstruction => {
-                    char_collision = collision;
-                    break;
-                }
                 Collision::Interaction(behavior) => {
                     match behavior {
                         ColliderBehavior::Obstruct => {}
@@ -187,13 +183,14 @@ pub fn continous_move_character_system(
 
                     // Upgrade Collision::Nil; don't downgrade Obstruction.
                     match char_collision {
+                        Collision::Interaction(ColliderBehavior::Obstruct) => {}
                         Collision::Nil => {
                             char_collision = Collision::Interaction(behavior);
                         }
-                        Collision::Obstruction | Collision::Interaction(_) => (),
+                        Collision::Interaction(_) => {}
                     }
                 }
-                Collision::Nil => (),
+                Collision::Nil => {}
             }
         }
         if !char_collision.is_solid() {
