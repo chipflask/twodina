@@ -16,9 +16,9 @@ pub enum ColliderBehavior {
     PickUp,
     // Collected by character.
     Collect,
-    // Hit test is skipped.
-    Load { path: String },
     // open a new level
+    Load { path: String },
+    // Hit test is skipped.
     Ignore,
 }
 
