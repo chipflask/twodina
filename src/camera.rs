@@ -173,7 +173,7 @@ pub fn update_camera_system(
                     // Mutate the transform, never the global transform.
                     let mut v1 = camera_transform.translation.clone() - player_translation;
 
-                    if v1.length() > (win_width * win_width + win_height * win_height).sqrt() / 2.0 {
+                    if v1.length() > (win_width * win_width + win_height * win_height).sqrt() / 3.0 {
                         camera_transform.translation = player_translation;
                     } else {
                         let mut new_cam_translation = camera_transform.translation.clone();
