@@ -1,7 +1,7 @@
 use std::fs;
 
 use bevy::{asset::FileAssetIo, prelude::*};
-use bevy_tiled_prototype::{Map, Object, tiled};
+use bevy_tiled_prototype::{Object, tiled};
 
 use crate::{
     core::{
@@ -11,7 +11,7 @@ use crate::{
         state::{AppState, StageLabels::Early, StageLabels::Later, TransientState},
     },
     loading::LoadProgress,
-    motion::MoveEntityEvent, players::Player, scene2d::load_next_map,
+    scene2d::load_next_map,
 };
 
 #[derive(Debug, Default)]
@@ -67,8 +67,7 @@ pub fn trigger_level_load_system(
     mut state: ResMut<State<AppState>>,
     mut game_state: ResMut<Game>,
     mut to_load: ResMut<LoadProgress>,
-    mut entity_query: Query<(Entity, &Handle<Map>, &mut Visible, Option<&Object>)>,
-    mut move_events: EventWriter<MoveEntityEvent<Player>>,
+    // mut entity_query: Query<(Entity, &Handle<Map>, &mut Visible, Option<&TileMapChunk>)>,
     // Todo: probably removed when level worflow improved
     transient_state: Res<TransientState>,
 ) {
@@ -90,7 +89,7 @@ pub fn trigger_level_load_system(
                     // eventually do preloading:
                     // game_state.next_map = Some(asset_server.load(level.as_str()));
                     game_state.current_map = to_load.add(asset_server.load(format!("maps/{}", level).as_str()));
-                    load_next_map(&mut commands, &mut game_state, &transient_state, &mut entity_query, &mut move_events);
+                    load_next_map(&mut commands, &mut game_state, &transient_state);
                     to_load.next_state = AppState::InGame;
                     to_load.next_dialogue = Some(path.clone());
                 } else {

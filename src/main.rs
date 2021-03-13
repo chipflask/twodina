@@ -52,9 +52,15 @@ fn main() {
         .add_startup_system_to_stage(Startup, setup_onboot.system())
         .add_startup_system_to_stage(Later, scene2d::initialize_levels_onboot.system())
         // all states
+        .add_system_to_stage(Update, bevy::input::system::exit_on_esc_system.system())
+        .add_system_to_stage(Update, loading::setup_map_objects_system.system())
+        .add_system_to_stage(Update, loading::wait_for_map_ready_system.system()) // this just removes Complicated tag
         .add_system_to_stage(Update, motion::instant_move_player_system.system())
         // loading
         .on_state_update(Later, AppState::Loading, loading::wait_for_asset_loading_system.system())
+        .on_state_exit(Special, AppState::Loading, scene2d::hide_non_map_objects_runonce.system())
+        .on_state_exit(Special, AppState::Loading, scene2d::show_map_and_objects_runonce.system())
+
         //
         // menu
         .on_state_update(Later, AppState::Menu, core::menu::menu_system.system()
@@ -62,17 +68,13 @@ fn main() {
             .chain(players::setup_players_runonce.system())
             .chain(ui::setup_dialogue_window_runonce.system())
         )
-        .on_state_update(Later, AppState::Menu, bevy::input::system::exit_on_esc_system.system())
-        .on_state_update(Later, AppState::Menu, loading::setup_map_objects_system.system())
 
         // in-game:
-        .on_state_enter(Special, AppState::InGame, scene2d::in_game_start_system.system())
+        .on_state_enter(Special, AppState::InGame, scene2d::in_game_start_runonce.system())
         .on_state_update(Early, AppState::InGame, actions::handle_input_system.system())
 
-        .on_state_update(Later, AppState::InGame, bevy::input::system::exit_on_esc_system.system())
         .on_state_update(Later, AppState::InGame, camera::update_camera_system.system())
         .on_state_update(Later, AppState::InGame, debug::position_display_system.system())
-        .on_state_update(Later, AppState::InGame, loading::setup_map_objects_system.system())
         .on_state_update(Later, AppState::InGame, motion::animate_sprite_system.system())
         .on_state_update(Later, AppState::InGame, motion::continous_move_character_system.system())
         .on_state_update(Later, AppState::InGame, ui::display_dialogue_system.system())
