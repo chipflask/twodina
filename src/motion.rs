@@ -4,17 +4,16 @@ use std::convert::TryFrom;
 use crate::{
     core::{
         character::{AnimatedSprite, Character, CharacterState, Direction},
-        collider::{Collider, ColliderBehavior, Collision},
+        collider::{Collider, Collision},
         game::Game,
     },
     players::{Player, PLAYER_WIDTH},
-    items::Interaction as ItemInteraction,
+    items::ItemInteraction,
 };
 
 use bevy::{
     prelude::*,
     ecs::component::Component,
-    utils::HashSet,
 };
 use bevy_tiled_prototype::Map;
 
@@ -75,7 +74,7 @@ pub fn animate_sprite_system(
         let is_stepping = character_option.map_or(false, |ch| {
             let state = ch.state();
 
-            ch.is_stepping() && (ch.collision.is_solid() || state != ch.previous_state())
+            ch.is_stepping() && (ch.collision.is_obstruction() || state != ch.previous_state())
         });
 
         // Reset to the beginning of the animation when the character becomes
@@ -134,7 +133,6 @@ pub fn continous_move_character_system(
     game_state: Res<Game>,
     mut collider_query: Query<(Entity, &mut Collider, &GlobalTransform, Option<&Handle<Map>>)>,
 ) {
-    let mut interaction_colliders: HashSet<Entity> = Default::default();
     for (char_entity, mut character, mut transform, char_global) in char_query.iter_mut() {
         let char_collider = collider_query.get_component::<Collider>(char_entity).unwrap().clone();
         if character.velocity.abs_diff_eq(Vec2::ZERO, VELOCITY_EPSILON) {
@@ -145,7 +143,7 @@ pub fn continous_move_character_system(
 
         // check for collisions with objects in current map
         let char_aabb = char_collider.bounding_volume_with_translation(char_global, delta);
-        let mut char_collision = Collision::Nil;
+        let mut char_collision = Collision::empty();
         for (collider_entity, collider, collider_global, option_to_map) in collider_query.iter_mut() {
             // TODO: Use the entity instead of the map asset handle in case
             // In theory,  there can be multiple instances of the same map.
@@ -158,42 +156,22 @@ pub fn continous_move_character_system(
             if collider_entity == char_entity {
                 continue;
             }
-            let collision = collider.intersect(collider_global, &char_aabb);
-            match collision {
-                Collision::Interaction(behavior) => {
-                    match behavior {
-                        ColliderBehavior::Obstruct => {}
-                        ColliderBehavior::PickUp => {
-                            // queue setting collider type to ignore, stop collisions if we're carrying
-                            interaction_colliders.insert(collider_entity);
-                        }
-                        ColliderBehavior::Collect => {
-                            // queue setting collider type to ignore, make sure we don't double-collect
-                            interaction_colliders.insert(collider_entity);
-                        }
-                        ColliderBehavior::Load { path: _ } => {}
-                        ColliderBehavior::Ignore => {}
+            match collider.intersect(collider_global, &char_aabb) {
+                None => {}
+                Some(collision) => {
+                    for behavior in collision.behaviors.iter() {
+                        char_collision.insert_behavior(behavior.clone());
                     }
 
                     interaction_event.send(ItemInteraction::new(
                         char_entity,
                         collider_entity,
-                        behavior.clone(),
+                        collision.behaviors,
                     ));
-
-                    // Upgrade Collision::Nil; don't downgrade Obstruction.
-                    match char_collision {
-                        Collision::Interaction(ColliderBehavior::Obstruct) => {}
-                        Collision::Nil => {
-                            char_collision = Collision::Interaction(behavior);
-                        }
-                        Collision::Interaction(_) => {}
-                    }
                 }
-                Collision::Nil => {}
             }
         }
-        if !char_collision.is_solid() {
+        if !char_collision.is_obstruction() {
             transform.translation.x += delta.x;
             transform.translation.y += delta.y;
             // Z needs to reflect where the character is on the ground, and
@@ -201,11 +179,6 @@ pub fn continous_move_character_system(
             // collider's Z offset to the translation.
             transform.translation.z = z_from_y(transform.translation.y + char_collider.offset.y);
         }
-        character.collision = char_collision.clone();
-    }
-    for entity in interaction_colliders.iter() {
-        if let Ok(mut collider) = collider_query.get_component_mut::<Collider>(*entity) {
-            collider.behavior = ColliderBehavior::Ignore;
-        }
+        character.collision = char_collision;
     }
 }

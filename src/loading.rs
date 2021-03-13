@@ -1,5 +1,5 @@
 use bevy::{asset::{Asset, HandleId}, prelude::*, utils::HashSet};
-use bevy_tiled_prototype::{MapReadyEvent, Object, ObjectReadyEvent, ObjectShape};
+use bevy_tiled_prototype::{MapReadyEvent, Object, ObjectReadyEvent, ObjectShape, tiled};
 
 use crate::{
     core::{
@@ -96,30 +96,37 @@ pub fn setup_map_objects_system(
             commands.remove::<Draw>(event.entity);
             visible.is_visible = false;
 
+            let mut behaviors: HashSet<ColliderBehavior> = Default::default();
+
+            for (k,v) in object.props.iter() {
+                if k == "dialogue" {
+                    if let tiled::PropertyValue::StringValue(s) = v {
+                        behaviors.insert(ColliderBehavior::Dialogue(s.clone()));
+                        break;
+                    }
+                }
+            }
+
             // we should have actual types based on object name
             // and add components based on that
-            let collider_type = match object.name.as_ref() {
-                "spawn" => {
-                    ColliderBehavior::Ignore
-                }
+            match object.name.as_ref() {
+                "spawn" => {}
                 "biggem" | "gem" => {
-                    if !object.visible {
-                        ColliderBehavior::Ignore
-                    } else {
-                        ColliderBehavior::Collect
+                    if object.visible {
+                        behaviors.insert(ColliderBehavior::Collect);
                     }
                 },
                 _ => {
                     if object.name.starts_with("load:") {
-                        ColliderBehavior::Load { path: object.name[5..].to_string() }
+                        behaviors.insert(ColliderBehavior::Load { path: object.name[5..].to_string() });
                     } else {
                         if object.is_shape() { // allow hide/show objects without images
                             commands.insert(event.entity, Debuggable::default());
                         }
-                        ColliderBehavior::Obstruct
+                        behaviors.insert(ColliderBehavior::Obstruct);
                     }
                 }
-            };
+            }
 
             let collider_size = TILED_MAP_SCALE * match object.shape {
                 ObjectShape::Rect { width, height } | ObjectShape::Ellipse { width, height } =>
@@ -128,7 +135,7 @@ pub fn setup_map_objects_system(
                     Vec2::new(40.0, 40.0),
             };
 
-            let collider_component = Collider::new(collider_type, collider_size, Vec2::new(0.0, 0.0));
+            let collider_component = Collider::new(behaviors, collider_size, Vec2::new(0.0, 0.0));
             commands.insert(event.entity, collider_component);
         }
     }

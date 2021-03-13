@@ -67,7 +67,7 @@ pub fn setup_players_runonce(
             .with(Character::default())
             .with(Player { id: u32::from(i) })
             .with(Inventory::default())
-            .with(Collider::new(
+            .with(Collider::single(
                 ColliderBehavior::Obstruct,
                 collider_size * scale.xy(),
                 collider_offset * scale.xy(),

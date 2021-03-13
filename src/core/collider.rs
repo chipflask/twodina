@@ -1,14 +1,15 @@
 use bevy::prelude::*;
+use bevy::utils::HashSet;
 use ncollide2d::{self as nc, bounding_volume::BoundingVolume, shape::Cuboid};
 
 #[derive(Debug, Clone)]
 pub struct Collider {
-    pub behavior: ColliderBehavior,
+    pub behaviors: HashSet<ColliderBehavior>,
     pub shape: Cuboid<f32>,
     pub offset: Vec2,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub enum ColliderBehavior {
     // Block movement.
     Obstruct,
@@ -18,25 +19,39 @@ pub enum ColliderBehavior {
     Collect,
     // open a new level
     Load { path: String },
-    // Hit test is skipped.
-    Ignore,
+    // Begin dialogue.
+    Dialogue(String),
 }
 
-#[derive(Clone, Debug)]
-pub enum Collision {
-    Nil,
-    Interaction(ColliderBehavior),
+#[derive(Clone, Debug, Default)]
+pub struct Collision {
+    pub behaviors: HashSet<ColliderBehavior>,
 }
 
 impl Collider {
-    pub fn new(collider_type: ColliderBehavior, width_height: Vec2, offset: Vec2) -> Collider {
+    pub fn new(behaviors: HashSet<ColliderBehavior>, width_height: Vec2, offset: Vec2) -> Collider {
         let half_extent = width_height / 2.0;
         let v2 = nc::math::Vector::new(half_extent.x, half_extent.y);
         Collider {
-            behavior: collider_type,
+            behaviors,
             shape: Cuboid::new(v2),
-            offset: offset
+            offset,
         }
+    }
+
+    pub fn single(behavior: ColliderBehavior, width_height: Vec2, offset: Vec2) -> Collider {
+        let mut behaviors: HashSet<ColliderBehavior> = HashSet::default();
+        behaviors.insert(behavior);
+
+        Self::new(behaviors, width_height, offset)
+    }
+
+    pub fn insert_behavior(&mut self, behavior: ColliderBehavior) {
+        self.behaviors.insert(behavior);
+    }
+
+    pub fn remove_behavior(&mut self, behavior: &ColliderBehavior) {
+        self.behaviors.remove(behavior);
     }
 
     pub fn bounding_volume(&self, global_trans: &GlobalTransform) -> nc::bounding_volume::AABB<f32> {
@@ -56,34 +71,45 @@ impl Collider {
         nc::bounding_volume::aabb(&self.shape, &isometry)
     }
 
-    pub fn intersect(&self, global_transform: &GlobalTransform, other: &nc::bounding_volume::AABB<f32>) -> Collision {
-        match &self.behavior {
-            ColliderBehavior::Obstruct | ColliderBehavior::PickUp |
-            ColliderBehavior::Collect | ColliderBehavior::Load { path: _ } => {}
-            ColliderBehavior::Ignore => return Collision::Nil,
+    pub fn intersect(&self, global_transform: &GlobalTransform, other: &nc::bounding_volume::AABB<f32>) -> Option<Collision> {
+        if self.behaviors.is_empty() {
+            return None;
         }
 
         let aabb = self.bounding_volume(global_transform);
 
         if !aabb.intersects(other) {
-            return Collision::Nil;
+            return None;
         }
 
-        match self.behavior {
-            ColliderBehavior::Obstruct |
-            ColliderBehavior::PickUp | ColliderBehavior::Collect |
-            ColliderBehavior::Load { path: _ }
-                => Collision::Interaction(self.behavior.clone()),
-            ColliderBehavior::Ignore => panic!("Should never reach here"),
-        }
+        Some(Collision {
+            behaviors: self.behaviors.clone(),
+        })
     }
 }
 
 impl Collision {
-    pub fn is_solid(&self) -> bool {
-        match self {
-            Collision::Interaction(ColliderBehavior::Obstruct) => true,
-            Collision::Nil | Collision::Interaction(_) => false,
+    pub fn empty() -> Collision {
+        Collision {
+            behaviors: HashSet::default(),
         }
+    }
+
+    pub fn insert_behavior(&mut self, behavior: ColliderBehavior) {
+        self.behaviors.insert(behavior);
+    }
+    
+    pub fn is_obstruction(&self) -> bool {
+        for behavior in self.behaviors.iter() {
+            match behavior {
+                ColliderBehavior::Obstruct => return true,
+                ColliderBehavior::PickUp |
+                ColliderBehavior::Collect |
+                ColliderBehavior::Load { path: _ } |
+                ColliderBehavior::Dialogue(_) => {}
+            }
+        }
+
+        false
     }
 }
