@@ -1,11 +1,5 @@
-use std::marker::PhantomData;
-
-use bevy::{
-    prelude::*,
-    utils::HashSet,
-    asset::{Asset, HandleId}, 
-};
-use bevy_tiled_prototype::{Object, ObjectReadyEvent, ObjectShape};
+use bevy::{asset::{Asset, HandleId}, prelude::*, utils::HashSet};
+use bevy_tiled_prototype::{MapReadyEvent, Object, ObjectReadyEvent, ObjectShape};
 
 use crate::{
     core::{
@@ -16,8 +10,6 @@ use crate::{
     },
     debug::Debuggable,
     scene2d::TILED_MAP_SCALE,
-    motion::MoveEntityEvent,
-    players::Player,
 };
 
 #[derive(Debug, Default)]
@@ -40,10 +32,14 @@ impl LoadProgress {
     }
 }
 
+// prevents existing Loading state just from asset load (e.g. map needs spawn)
+pub struct ComplicatedLoad;
+
 pub fn wait_for_asset_loading_system(
     mut state: ResMut<State<AppState>>,
     mut load_progress: ResMut<LoadProgress>,
     asset_server: Res<AssetServer>,
+    loading_map_query: Query<Entity, With<ComplicatedLoad>>,
     mut dialogue_query: Query<&mut Dialogue>,
     mut dialogue_events: EventWriter<DialogueEvent>,
 ) {
@@ -53,43 +49,57 @@ pub fn wait_for_asset_loading_system(
         bevy::asset::LoadState::NotLoaded => {}
         bevy::asset::LoadState::Loading => {}
         bevy::asset::LoadState::Loaded => {
-            state.set_next(load_progress.next_state).expect("couldn't change state when assets finished loading");
             if let Some(node_name) = &load_progress.next_dialogue {
                 for mut dialogue in dialogue_query.iter_mut() {
                     dialogue.begin_optional(node_name.as_ref(), &mut dialogue_events);
                 }
             }
-            load_progress.reset();
+            // block transition if there are any complicated load objects still in the queue
+            if loading_map_query.iter().next().is_none() {
+                state.set_next(load_progress.next_state).expect("couldn't change state when assets finished loading");
+                load_progress.reset();
+            }
         }
         // TODO: Handle failed loading of assets, get rid of fs check in items.rs
         bevy::asset::LoadState::Failed => {}
     }
 }
 
+
+pub fn wait_for_map_ready_system(
+    mut commands: Commands,
+    mut map_ready_events: EventReader<MapReadyEvent>,
+) {
+    for event in map_ready_events.iter() {
+        let map_entity = event.map_entity_option.expect("why didn't you give this map an entity?");
+        // commands.insert(map_entity, SpawnedMap);
+        // Stop blocking the Loading state transition.
+        commands.remove::<ComplicatedLoad>(map_entity);
+    }
+}
+
 pub fn setup_map_objects_system(
     mut commands: Commands,
-    new_item_query: Query<&Object>,
-    game_state: Res<Game>,
+    mut new_item_query: Query<(&Object, &mut Visible), Without<Collider>>,
+    mut game_state: ResMut<Game>,
     mut event_reader: EventReader<ObjectReadyEvent>,
-    mut move_events: EventWriter<MoveEntityEvent<Player>>,
-    // maps: Res<Assets<Map>>,
+    //mut map_container_query: Query<&mut MapContainer>,
 ) {
     for event in event_reader.iter() {
-        if game_state.current_map != event.map_handle {
-            continue;
-        }
-        // println!("created object {:?}, {:?}", event.map_handle, event.entity);
-        // let map = maps.get(event.map_handle).expect("Expected to find map from ObjectReadyEvent");
-        if let Ok(object) = new_item_query.get(event.entity) {
+        debug!("created object {:?}, {:?}", event.map_handle, event.entity);
+        if let Ok((object, mut visible)) = new_item_query.get_mut(event.entity) {
+            // set default visibility for when map transitions
+            game_state
+                .entity_visibility
+                .insert(event.entity.clone(), object.visible && !object.is_shape());
+            // all objects SHOULD start invisible by default
+            commands.remove::<Draw>(event.entity);
+            visible.is_visible = false;
 
             // we should have actual types based on object name
             // and add components based on that
             let collider_type = match object.name.as_ref() {
                 "spawn" => {
-                    move_events.send(MoveEntityEvent {
-                        object_component: PhantomData,
-                        target: event.entity,
-                    });
                     ColliderBehavior::Ignore
                 }
                 "biggem" | "gem" => {
