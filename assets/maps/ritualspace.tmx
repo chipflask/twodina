@@ -3,16 +3,16 @@
  <tileset firstgid="1" name="melle_bg_remix_64" tilewidth="64" tileheight="64" tilecount="24" columns="6">
   <image source="melle/melle_bg_remix_64.png" width="384" height="256"/>
  </tileset>
- <tileset firstgid="25" name="runestones_0" tilewidth="155" tileheight="155" tilecount="3" columns="1">
-   <image source="melle/runestones_0.png" width="465" height="155"/>
-</tileset>
+ <tileset firstgid="25" name="runestones_0" tilewidth="155" tileheight="155" tilecount="3" columns="3">
+  <image source="melle/runestones_0.png" width="465" height="155"/>
+ </tileset>
  <layer id="1" name="Tile Layer 1" width="10" height="10">
   <data encoding="base64" compression="zlib">
    eJx1kFEKg0AMRMeqqW1VsBX0eHu0PYpH64TNwrC0H48Nm/AmxADswPUp4OC7AXlk3bKyt5CJtfMofzDyaqAHb5nbf/i2mDlJR2o+ySbeQzxDcCOL5MuOyeeewRRez58ltwuH04tL9/PcezhqfnWZ5FpxJs4n9vL6534t7c2cL+xdDDo=
   </data>
  </layer>
  <objectgroup id="2" name="runes">
-  <object id="1" name="load:maps/sandyrocks" gid="26" x="432.746" y="203.515" width="155" height="155"/>
+  <object id="1" name="load:sandyrocks" gid="26" x="432.746" y="203.515" width="155" height="155"/>
   <object id="2" gid="25" x="17.7769" y="375.138" width="155" height="155"/>
   <object id="3" gid="27" x="419.938" y="589.027" width="155" height="155"/>
   <object id="4" name="spawn" x="20" y="540" width="81" height="78"/>

@@ -1,6 +1,6 @@
 use std::fs;
 
-use bevy::prelude::*;
+use bevy::{asset::FileAssetIo, prelude::*};
 use bevy_tiled_prototype::{Map, Object};
 
 use crate::{LoadProgress, core::{
@@ -70,18 +70,25 @@ pub fn trigger_level_load_system(
         match &interaction.behavior {
             ColliderBehavior::Load { path } => {
                 let level: String = path.to_owned() + &String::from(".tmx");
-                let level_fs_result = fs::metadata(format!("assets/{}", level));
+
+                // get asset directory relative to executable - all maps need to be in maps/ for now
+                let mut asset_path = FileAssetIo::get_root_path();
+                asset_path.push("assets");
+                asset_path.push("maps");
+                asset_path.push(level.clone());
+                let level_fs_result = fs::metadata(asset_path.clone());
+
                 // if this file exists, we're going to want to try loading a state
                 if level_fs_result.is_ok() && state.set_next(AppState::Loading).is_ok() {
                     println!("Loading level... {}", level);
                     // eventually do preloading:
                     // game_state.next_map = Some(asset_server.load(level.as_str()));
-                    game_state.current_map = to_load.add(asset_server.load(level.as_str()));
+                    game_state.current_map = to_load.add(asset_server.load(format!("maps/{}", level).as_str()));
                     load_next_map(&mut commands, &mut game_state, &transient_state, &mut entity_query, &mut move_events);
                     to_load.next_state = AppState::InGame;
                     to_load.next_dialogue = Some(path.clone());
                 } else {
-                    println!("couldn't load level '{}' at 'assets/{}'", path, level);
+                    println!("couldn't load level '{}' as {}", path, asset_path.to_string_lossy());
                 };
             }
 

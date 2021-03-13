@@ -61,7 +61,7 @@ pub fn wait_for_asset_loading_system(
             }
             load_progress.reset();
         }
-        // TODO: Handle failed loading of assets.
+        // TODO: Handle failed loading of assets, get rid of fs check in items.rs
         bevy::asset::LoadState::Failed => {}
     }
 }

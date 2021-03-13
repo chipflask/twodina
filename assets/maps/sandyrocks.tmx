@@ -26,7 +26,7 @@
   <object id="19" gid="30" x="-18.5502" y="265.741" width="105.049" height="140.066"/>
   <object id="20" gid="30" x="551.474" y="264.696" width="81.7993" height="109.066"/>
   <object id="21" gid="30" x="550.428" y="438.892" width="78.7993" height="105.066"/>
-  <object id="22" name="load:maps/ritualspace" gid="31" x="-17" y="102.55" width="106.549" height="142.066"/>
+  <object id="22" name="load:ritualspace" gid="31" x="-17" y="102.55" width="106.549" height="142.066"/>
   <object id="23" gid="31" x="508.619" y="599.169" width="83.5493" height="111.399"/>
   <object id="24" gid="31" x="554.609" y="144.494" width="75.0493" height="100.066"/>
  </objectgroup>
