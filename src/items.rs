@@ -85,7 +85,7 @@ pub fn trigger_level_load_system(
 
                 // if this file exists, we're going to want to try loading a state
                 if level_fs_result.is_ok() && state.set_next(AppState::Loading).is_ok() {
-                    println!("Loading level... {}", level);
+                    debug!("Loading level... {}", level);
                     // eventually do preloading:
                     // game_state.next_map = Some(asset_server.load(level.as_str()));
                     game_state.current_map = to_load.add(asset_server.load(format!("maps/{}", level).as_str()));
@@ -93,7 +93,7 @@ pub fn trigger_level_load_system(
                     to_load.next_state = AppState::InGame;
                     to_load.next_dialogue = Some(path.clone());
                 } else {
-                    println!("Couldn't load level '{}' as {}", path, asset_path.to_string_lossy());
+                    info!("Couldn't load level '{}' as {}", path, asset_path.to_string_lossy());
                 };
             }
 

@@ -1,8 +1,4 @@
-use bevy::{
-    prelude::*,
-    utils::HashSet,
-    asset::{Asset, HandleId}, 
-};
+use bevy::{asset::{Asset, HandleId}, prelude::*, utils::HashSet};
 use bevy_tiled_prototype::{MapReadyEvent, Object, ObjectReadyEvent, ObjectShape};
 
 use crate::{
@@ -84,17 +80,15 @@ pub fn wait_for_map_ready_system(
 
 pub fn setup_map_objects_system(
     mut commands: Commands,
-    mut new_item_query: Query<(&Object, &mut Visible)>, // Without<Collider>
+    mut new_item_query: Query<(&Object, &mut Visible), Without<Collider>>,
     mut game_state: ResMut<Game>,
     mut event_reader: EventReader<ObjectReadyEvent>,
     //mut map_container_query: Query<&mut MapContainer>,
-
 ) {
     for event in event_reader.iter() {
-        // println!("created object {:?}, {:?}", event.map_handle, event.entity);
-        // let map = maps.get(event.map_handle).expect("Expected to find map from ObjectReadyEvent");
+        debug!("created object {:?}, {:?}", event.map_handle, event.entity);
         if let Ok((object, mut visible)) = new_item_query.get_mut(event.entity) {
-            // default visibility to vwhen map transitions
+            // set default visibility for when map transitions
             game_state
                 .entity_visibility
                 .insert(event.entity.clone(), object.visible && !object.is_shape());

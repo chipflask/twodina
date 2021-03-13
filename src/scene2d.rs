@@ -86,7 +86,7 @@ pub fn hide_non_map_objects_runonce(
         }
     }
     if found {
-        println!("Hiding entities not in current map.") // {:?}", game_state.current_map);
+        debug!("Hiding entities not in current map.") // {:?}", game_state.current_map);
     }
 }
 
@@ -117,7 +117,7 @@ pub fn show_map_and_objects_runonce(
         }
     }
     if found {
-        println!("Show entities for current map."); // {:?}", game_state.current_map);
+        debug!("Show entities for current map."); // {:?}", game_state.current_map);
     }
 }
 
