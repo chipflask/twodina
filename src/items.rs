@@ -93,7 +93,7 @@ pub fn trigger_level_load_system(
                     to_load.next_state = AppState::InGame;
                     to_load.next_dialogue = Some(path.clone());
                 } else {
-                    println!("couldn't load level '{}' as {}", path, asset_path.to_string_lossy());
+                    println!("Couldn't load level '{}' as {}", path, asset_path.to_string_lossy());
                 };
             }
 

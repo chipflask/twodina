@@ -1,5 +1,3 @@
-use std::marker::PhantomData;
-
 use bevy::{
     prelude::*,
     utils::HashSet,
@@ -16,8 +14,6 @@ use crate::{
     },
     debug::Debuggable,
     scene2d::TILED_MAP_SCALE,
-    motion::MoveEntityEvent,
-    players::Player,
 };
 
 #[derive(Debug, Default)]
@@ -81,7 +77,6 @@ pub fn wait_for_map_ready_system(
     for event in map_ready_events.iter() {
         let map_entity = event.map_entity_option.expect("why didn't you give this map an entity?");
         // commands.insert(map_entity, SpawnedMap);
-        println!("MAP READY");
         // Stop blocking the Loading state transition.
         commands.remove::<ComplicatedLoad>(map_entity);
     }
@@ -92,15 +87,11 @@ pub fn setup_map_objects_system(
     mut new_item_query: Query<(&Object, &mut Visible)>, // Without<Collider>
     mut game_state: ResMut<Game>,
     mut event_reader: EventReader<ObjectReadyEvent>,
-    mut move_events: EventWriter<MoveEntityEvent<Player>>,
     //mut map_container_query: Query<&mut MapContainer>,
 
 ) {
     for event in event_reader.iter() {
-        if game_state.current_map != event.map_handle {
-            continue;
-        }
-        println!("created object {:?}, {:?}", event.map_handle, event.entity);
+        // println!("created object {:?}, {:?}", event.map_handle, event.entity);
         // let map = maps.get(event.map_handle).expect("Expected to find map from ObjectReadyEvent");
         if let Ok((object, mut visible)) = new_item_query.get_mut(event.entity) {
             // default visibility to vwhen map transitions
@@ -115,10 +106,6 @@ pub fn setup_map_objects_system(
             // and add components based on that
             let collider_type = match object.name.as_ref() {
                 "spawn" => {
-                    move_events.send(MoveEntityEvent {
-                        object_component: PhantomData,
-                        target: event.entity,
-                    });
                     ColliderBehavior::Ignore
                 }
                 "biggem" | "gem" => {

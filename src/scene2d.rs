@@ -86,11 +86,7 @@ pub fn hide_non_map_objects_runonce(
         }
     }
     if found {
-        println!("hide entities not in {:?}", game_state.current_map);
-        // if state.set_next(AppState::Loading).is_ok() {
-        //     to_load.next_state = AppState::InGame;
-        //     println!("transition to loading");
-        // }
+        println!("Hiding entities not in current map.") // {:?}", game_state.current_map);
     }
 }
 
@@ -105,9 +101,10 @@ pub fn show_map_and_objects_runonce(
     for (entity, map_owner, mut visible, object_option) in query.iter_mut() {
         if *map_owner == game_state.current_map {
             found = true;
-            // default to objects (tile chunks) being visible
-            let is_visible =
-                game_state.entity_visibility.get(&entity).unwrap_or(&true);
+            // objects should have been added to this hashe when processed, default to tile chunks being visible
+            // TODO: use flag to ensure object was processed or relocate default/current visibility to marker component
+            let is_visible = game_state.entity_visibility.get(&entity).unwrap_or(&true);
+
             // for now, spawn triggers event whenever we iterate over it in the new map
             if object_option.is_some() && object_option.unwrap().name == "spawn" {
                 move_events.send(MoveEntityEvent {
@@ -115,16 +112,12 @@ pub fn show_map_and_objects_runonce(
                     target: entity,
                 });
             }
-            // ^ should default object.visible if object
             commands.insert(entity, Draw::default());
             visible.is_visible = *is_visible;
         }
     }
     if found {
-        println!("show entities are in {:?}", game_state.current_map);
-        // if state.set_next(AppState::InGame).is_ok() {
-        //     println!("transition to loading");
-        // }
+        println!("Show entities for current map."); // {:?}", game_state.current_map);
     }
 }
 
