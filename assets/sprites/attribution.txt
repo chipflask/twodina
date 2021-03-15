@@ -1,0 +1,12 @@
+The "naked_base" sprites in this repository were created by Jason Perry AKA
+@finalbossblues (finalbossblues.com). These templates and our derivations
+thereof are being redistributed with the express permission of the artist.
+Any further redistribution of these assets must include a copy of this notice.
+However, you may use and edit this art for your own free or commercial games.
+-- For additional details and more awesome pixel art, visit timefantasy.net
+
+
+The "azuna#.png" files are from the "Cyberpunk Shooter" set by Azuna Pixels
+and have been included by permission from the artist: dribbble.com/azunapixels
+-- To purchase the full tileset, as well as other fine pixel art, visit:
+https://www.gamedevmarket.net/member/azuna-pixels/

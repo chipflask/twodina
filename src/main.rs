@@ -491,6 +491,9 @@ fn menu_system(
     action
 }
 
+// for 'naked base'
+// const PLAYER_WIDTH: f32 = 26.0;
+// const PLAYER_HEIGHT: f32 = 36.0;
 const PLAYER_WIDTH: f32 = 31.0;
 const PLAYER_HEIGHT: f32 = 32.0;
 
@@ -575,12 +578,12 @@ fn setup_players_system(
 
     // Players.
     for i in 0..num_players {
-        let texture_handle = to_load.add(asset_server.load(format!("sprites/character{}.png", i + 1).as_str()));
+        let texture_handle = to_load.add(asset_server.load(format!("sprites/azuna{}.png", i + 1).as_str()));
         let texture_atlas = TextureAtlas::from_grid(
             texture_handle,
             Vec2::new(PLAYER_WIDTH, PLAYER_HEIGHT),
+            4,
             8,
-            16,
         );
         let texture_atlas_handle = texture_atlases.add(texture_atlas);
         let scale = Vec3::splat(4.0);
@@ -1039,17 +1042,17 @@ fn animate_sprite_system(
                 Some(character) => {
                     // This animated sprite is a character.
                     let row = match character.direction {
-                        Direction::North => 3,
+                        Direction::North => 2,
                         Direction::South => 0,
-                        Direction::East => 2,
-                        Direction::West => 1,
+                        Direction::East => 6,
+                        Direction::West => 4,
                     };
-                    let num_cells_per_row = 8;
+                    let num_cells_per_row = 4;
 
                     match character.state() {
                         CharacterState::Idle    => (1, row * num_cells_per_row + 1),
                         CharacterState::Walking => (4, row * num_cells_per_row),
-                        CharacterState::Running => (4, (row + 4) * num_cells_per_row),
+                        CharacterState::Running => (4, (row + 1) * num_cells_per_row),
                     }
                 }
             };
