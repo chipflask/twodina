@@ -1,5 +1,5 @@
 use bevy::{asset::{Asset, HandleId}, prelude::*, utils::HashSet};
-use bevy_tiled_prototype::{MapReadyEvent, Object, ObjectReadyEvent, ObjectShape, tiled};
+use bevy_tiled_prototype::{MapReadyEvent, Object, ObjectReadyEvent, ObjectShape, PropertyValue};
 
 use crate::{
     core::{
@@ -100,7 +100,7 @@ pub fn setup_map_objects_system(
 
             for (k,v) in object.props.iter() {
                 if k == "dialogue" {
-                    if let tiled::PropertyValue::StringValue(s) = v {
+                    if let PropertyValue::StringValue(s) = v {
                         behaviors.insert(ColliderBehavior::Dialogue(s.clone()));
                         break;
                     }

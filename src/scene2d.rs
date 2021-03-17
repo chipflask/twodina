@@ -4,7 +4,7 @@ use bevy::{
     prelude::*,
     utils::{HashMap, HashSet},
 };
-use bevy_tiled_prototype::{DebugConfig, Map, Object, TileMapChunk, TiledMapBundle, TiledMapCenter};
+use bevy_tiled_prototype::{DebugConfig, Map, Object, TileMapChunk, TiledMapComponents, TiledMapCenter};
 
 use crate::{DEBUG_MODE_DEFAULT, core::{
         dialogue::{Dialogue, DialogueAsset, DialogueEvent, DialoguePlaceholder},
@@ -143,7 +143,7 @@ pub fn load_next_map(
         ComplicatedLoad,
     )).current_entity();
 
-    commands.spawn(TiledMapBundle {
+    commands.spawn(TiledMapComponents {
         map_asset: game_state.current_map.clone(),
         center: TiledMapCenter(true),
         origin: Transform {

@@ -1,7 +1,7 @@
 use std::convert::TryFrom;
 use bevy::prelude::*;
 use bevy::utils::HashSet;
-use bevy::app::CoreStage::{Event, PreUpdate};
+use bevy::app::CoreStage::{First, PreUpdate};
 
 // Add this plugin to your app.
 #[derive(Debug, Default)]
@@ -47,7 +47,7 @@ impl Plugin for InputActionPlugin {
         app
             .insert_resource(InputActionSet::default())
             .insert_resource(GamepadSet::default())
-            .add_system_to_stage(Event, action_producer_system.system())
+            .add_system_to_stage(First, action_producer_system.system())
             .add_system_to_stage(PreUpdate, gamepad_connection_system.system());
     }
 }
