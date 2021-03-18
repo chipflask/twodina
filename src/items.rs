@@ -23,10 +23,11 @@ impl Plugin for ItemsPlugin {
         app
             .add_event::<ItemInteraction>()
             .add_system_set(SystemSet::on_update(AppState::InGame)
-                .with_system(trigger_level_load_system.system())
-                .with_system(items_system.system())
-                .with_system(trigger_dialogue_system.system())
-                .with_system(inventory_item_reveal_system.system())
+                .with_system(trigger_level_load_system.system()
+                    .before("main"))
+                .with_system(items_system.system().label("main"))
+                .with_system(trigger_dialogue_system.system().label("main"))
+                .with_system(inventory_item_reveal_system.system().label("main"))
             );
     }
 }
