@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use super::state::{AppState, StageLabels::Special, TransientState};
+use super::state::{AppState, TransientState};
 
 // Tag for the menu system UI.
 struct MenuUi;
@@ -20,8 +20,9 @@ pub struct MenuPlugin;
 
 impl Plugin for MenuPlugin {
     fn build(&self, app: &mut AppBuilder) {
-        app.on_state_enter(Special, AppState::Menu, setup_menu_system.system())
-            .on_state_exit(Special, AppState::Menu, cleanup_menu_system.system());
+        app
+        .add_system_set(SystemSet::on_enter(AppState::Menu).with_system(setup_menu_system.system()))
+        .add_system_set(SystemSet::on_exit(AppState::Menu).with_system(cleanup_menu_system.system()));
     }
 }
 

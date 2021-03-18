@@ -9,7 +9,7 @@ use crate::{
         collider::{Collider, ColliderBehavior},
         dialogue::{Dialogue, DialogueEvent},
         game::Game,
-        state::{AppState, StageLabels::Early, StageLabels::Later, TransientState},
+        state::{AppState, TransientState},
     },
     loading::LoadProgress,
     scene2d::load_next_map,
@@ -22,10 +22,12 @@ impl Plugin for ItemsPlugin {
     fn build(&self, app: &mut AppBuilder) {
         app
             .add_event::<ItemInteraction>()
-            .on_state_update(Early, AppState::InGame, trigger_level_load_system.system())
-            .on_state_update(Later, AppState::InGame, items_system.system())
-            .on_state_update(Later, AppState::InGame, trigger_dialogue_system.system())
-            .on_state_update(Later,AppState::InGame, inventory_item_reveal_system.system());
+            .add_system_set(SystemSet::on_update(AppState::InGame)
+                .with_system(trigger_level_load_system.system())
+                .with_system(items_system.system())
+                .with_system(trigger_dialogue_system.system())
+                .with_system(inventory_item_reveal_system.system())
+            );
     }
 }
 
