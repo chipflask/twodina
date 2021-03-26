@@ -1,4 +1,4 @@
-A 2D game.
+A 2D game built with bevy.
 
 ### Usage
 
@@ -27,4 +27,4 @@ Build a release:
 ./build_release
 ```
 
-Output will be `game_2021.zip`.
+Output will be `twodina.zip`.

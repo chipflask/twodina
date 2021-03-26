@@ -1,5 +1,5 @@
 [package]
-name = "game_2021"
+name = "twodina"
 description = "A 2d game engine on top of Bevy."
 version = "0.2.1"
 authors = ["Jonathan Tran <jonnytran@gmail.com>", "Daniel Taub <dmtaub@gmail.com>"]

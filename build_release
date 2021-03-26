@@ -11,7 +11,7 @@ fi
 # This must be run from the repo root directory
 cd "$(dirname "$0")"
 
-NAME="game_2021"
+NAME="twodina"
 
 cargo build --release
 rm -rf "${NAME:-/tmp/foo}" "${NAME:-/tmp/foo}.zip"
