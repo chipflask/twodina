@@ -45,12 +45,6 @@ pub struct ItemInteraction {
     behaviors: HashSet<ColliderBehavior>,
 }
 
-// Transform to apply to an item when it's equipped.
-#[derive(Debug)]
-pub struct EquippedTransform {
-    pub transform: Transform,
-}
-
 impl ItemInteraction {
     pub fn new(actor: Entity, object: Entity, behaviors: HashSet<ColliderBehavior>) -> ItemInteraction {
         // An entity can't pick up itself.
@@ -102,7 +96,7 @@ pub fn trigger_level_load_system(
                     };
                 }
 
-                ColliderBehavior::Obstruct | ColliderBehavior::PickUp |
+                ColliderBehavior::Obstruct |
                 ColliderBehavior::Collect |
                 ColliderBehavior::Dialogue(_) => {}
             }
@@ -114,7 +108,7 @@ pub fn trigger_level_load_system(
 pub fn items_system(
     mut commands: Commands,
     mut interaction_reader: EventReader<ItemInteraction>,
-    mut query: Query<(&mut Transform, Option<&EquippedTransform>, Option<&mut Collider>)>,
+    mut collider_query: Query<&mut Collider>,
     mut inventory_query: Query<&mut Inventory>,
     object_query: Query<&Object>,
     asset_server: Res<AssetServer>,
@@ -140,30 +134,8 @@ pub fn items_system(
                         }
                     }
                     // Prevent getting collected again.
-                    if let Ok(mut object_collider) = query.get_component_mut::<Collider>(interaction.object) {
+                    if let Ok(mut object_collider) = collider_query.get_mut(interaction.object) {
                         object_collider.remove_behavior(&ColliderBehavior::Collect);
-                    }
-                }
-                ColliderBehavior::PickUp => {
-                    // this is a collectable
-                    let actor_scale = match query.get_mut(interaction.actor) {
-                        Ok((actor_transform, _, _)) => actor_transform.scale.clone(),
-                        Err(_) => continue,
-                    };
-                    if let Ok((mut object_transform, equipped_transform_option, object_collider_option)) = query.get_mut(interaction.object) {
-                        // An object can have a special transform applied when
-                        // equipped.
-                        if let Some(equipped) = equipped_transform_option {
-                            object_transform.translation = equipped.transform.translation;
-                            object_transform.rotation = equipped.transform.rotation;
-                            object_transform.scale = equipped.transform.scale;
-                        }
-                        object_transform.scale /= actor_scale;
-                        // Prevent getting picked up again.
-                        if let Some(mut object_collider) = object_collider_option {
-                            object_collider.remove_behavior(&ColliderBehavior::PickUp);
-                        }
-                        commands.push_children(interaction.actor, &[interaction.object]);
                     }
                 }
                 ColliderBehavior::Obstruct |
@@ -183,7 +155,6 @@ pub fn trigger_dialogue_system(
         for behavior in interaction.behaviors.iter() {
             match behavior {
                 ColliderBehavior::Obstruct => {}
-                ColliderBehavior::PickUp => {}
                 ColliderBehavior::Collect => {}
                 ColliderBehavior::Load { path: _ } => {}
                 ColliderBehavior::Dialogue(name) => {

@@ -13,8 +13,6 @@ pub struct Collider {
 pub enum ColliderBehavior {
     // Block movement.
     Obstruct,
-    // Picked up by character.
-    PickUp,
     // Collected by character.
     Collect,
     // open a new level
@@ -103,7 +101,6 @@ impl Collision {
         for behavior in self.behaviors.iter() {
             match behavior {
                 ColliderBehavior::Obstruct => return true,
-                ColliderBehavior::PickUp |
                 ColliderBehavior::Collect |
                 ColliderBehavior::Load { path: _ } |
                 ColliderBehavior::Dialogue(_) => {}
