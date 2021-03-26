@@ -2,6 +2,7 @@ use bevy::{math::Vec3Swizzles, prelude::*};
 
 use crate::{
     DEBUG_MODE_DEFAULT,
+    actions::DialogueActor,
     core::{
         character::{AnimatedSprite, Character},
         collider::{Collider, ColliderBehavior},
@@ -12,7 +13,6 @@ use crate::{
     items::Inventory,
     loading::LoadProgress,
     motion::z_from_y,
-    // todo: debug::{}
 };
 
 
@@ -67,6 +67,7 @@ pub fn setup_players_runonce(
             .with(Character::default())
             .with(Player { id: u32::from(i) })
             .with(Inventory::default())
+            .with(DialogueActor::default())
             .with(Collider::single(
                 ColliderBehavior::Obstruct,
                 collider_size * scale.xy(),

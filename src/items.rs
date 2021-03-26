@@ -7,7 +7,6 @@ use bevy_tiled_prototype::Object;
 use crate::{
     core::{
         collider::{Collider, ColliderBehavior},
-        dialogue::{Dialogue, DialogueEvent},
         game::Game,
         state::{AppState, TransientState},
     },
@@ -26,7 +25,6 @@ impl Plugin for ItemsPlugin {
                 .with_system(trigger_level_load_system.system()
                     .before("main"))
                 .with_system(items_system.system().label("main"))
-                .with_system(trigger_dialogue_system.system().label("main"))
                 .with_system(inventory_item_reveal_system.system().label("main"))
             );
     }
@@ -141,27 +139,6 @@ pub fn items_system(
                 ColliderBehavior::Obstruct |
                 ColliderBehavior::Load { path: _ } |
                 ColliderBehavior::Dialogue(_) => {}
-            }
-        }
-    }
-}
-
-pub fn trigger_dialogue_system(
-    mut interaction_reader: EventReader<ItemInteraction>,
-    mut dialogue_query: Query<&mut Dialogue>,
-    mut dialogue_events: EventWriter<DialogueEvent>,
-) {
-    for interaction in interaction_reader.iter() {
-        for behavior in interaction.behaviors.iter() {
-            match behavior {
-                ColliderBehavior::Obstruct => {}
-                ColliderBehavior::Collect => {}
-                ColliderBehavior::Load { path: _ } => {}
-                ColliderBehavior::Dialogue(name) => {
-                    for mut dialogue in dialogue_query.iter_mut() {
-                        dialogue.begin_optional(name.as_ref(), &mut dialogue_events);
-                    }
-                }
             }
         }
     }

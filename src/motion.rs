@@ -2,19 +2,17 @@ use std::marker::PhantomData;
 use std::convert::TryFrom;
 
 use crate::{
+    actions::DialogueActor,
     core::{
         character::{AnimatedSprite, Character, CharacterState, Direction},
-        collider::{Collider, Collision},
+        collider::{Collider, ColliderBehavior, Collision},
         game::Game,
     },
-    players::{Player, PLAYER_WIDTH},
     items::ItemInteraction,
+    players::{Player, PLAYER_WIDTH},
 };
 
-use bevy::{
-    prelude::*,
-    ecs::component::Component,
-};
+use bevy::{ecs::component::Component, prelude::*, utils::HashSet};
 use bevy_tiled_prototype::Map;
 
 
@@ -129,11 +127,11 @@ pub fn animate_sprite_system(
 pub fn continous_move_character_system(
     time: Res<Time>,
     mut interaction_event: EventWriter<ItemInteraction>,
-    mut char_query: Query<(Entity, &mut Character, &mut Transform, &GlobalTransform)>,
+    mut char_query: Query<(Entity, &mut Character, Option<&mut DialogueActor>, &mut Transform, &GlobalTransform)>,
     game_state: Res<Game>,
     mut collider_query: Query<(Entity, &mut Collider, &GlobalTransform, Option<&Handle<Map>>)>,
 ) {
-    for (char_entity, mut character, mut transform, char_global) in char_query.iter_mut() {
+    for (char_entity, mut character, dialogue_actor_option, mut transform, char_global) in char_query.iter_mut() {
         let char_collider = collider_query.get_component::<Collider>(char_entity).unwrap().clone();
         if character.velocity.abs_diff_eq(Vec2::ZERO, VELOCITY_EPSILON) {
             // Character has zero velocity.  Nothing to do.
@@ -144,6 +142,7 @@ pub fn continous_move_character_system(
         // check for collisions with objects in current map
         let char_aabb = char_collider.bounding_volume_with_translation(char_global, delta);
         let mut char_collision = Collision::empty();
+        let mut dialogue_collision = None;
         for (collider_entity, collider, collider_global, option_to_map) in collider_query.iter_mut() {
             // TODO: Use the entity instead of the map asset handle in case
             // In theory,  there can be multiple instances of the same map.
@@ -163,6 +162,9 @@ pub fn continous_move_character_system(
                         char_collision.insert_behavior(behavior.clone());
                     }
 
+                    dialogue_collision = dialogue_collision.or_else(||
+                        dialogue_behavior(&collision.behaviors)
+                    );
                     interaction_event.send(ItemInteraction::new(
                         char_entity,
                         collider_entity,
@@ -180,5 +182,23 @@ pub fn continous_move_character_system(
             transform.translation.z = z_from_y(transform.translation.y + char_collider.offset.y);
         }
         character.collision = char_collision;
+        if let Some(mut dialogue_actor) = dialogue_actor_option {
+            dialogue_actor.collider_dialogue = dialogue_collision;
+        }
     }
+}
+
+fn dialogue_behavior(behaviors: &HashSet<ColliderBehavior>) -> Option<String> {
+    for behavior in behaviors.iter() {
+        match behavior {
+            ColliderBehavior::Obstruct => {}
+            ColliderBehavior::Collect => {}
+            ColliderBehavior::Load { path: _ } => {}
+            ColliderBehavior::Dialogue(name) => {
+                return Some(name.clone());
+            }
+        }
+    }
+
+    None
 }
