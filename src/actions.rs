@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 
-
 use bevy_tiled_prototype::Map;
 use crate::{
     debug::Debuggable,
@@ -14,17 +13,20 @@ use crate::{
 };
 
 use crate::motion::VELOCITY_EPSILON;
-// use crate::items::Inventory;
 use crate::players::Player;
 
-// TODO: split between set_velocity_sys and advance_dialogue_sys ?
-pub fn handle_input_system(
+// Something that can trigger dialogue.
+#[derive(Debug, Default)]
+pub struct DialogueActor {
+    // Dialogue node name that the actor is currently colliding with.
+    pub collider_dialogue: Option<String>,
+}
+
+pub fn handle_movement_input_system(
     input_actions: Res<InputActionSet>,
     mut transient_state: ResMut<TransientState>,
     game_state: ResMut<Game>,
     mut query: Query<(&mut Character, &Player)>,
-    mut dialogue_query: Query<&mut Dialogue>,
-    mut dialogue_events: EventWriter<DialogueEvent>,
     mut debuggable: Query<(&mut Visible, Option<&Handle<Map>>), With<Debuggable>>,
 ) {
     // check for debug status flag differing from transient_state to determine when to hide/show debug stuff
@@ -92,11 +94,38 @@ pub fn handle_input_system(
         // Don't modify z if the character has a z velocity for some reason.
 
         character.set_state(new_state);
+    }
+}
 
+pub fn handle_dialogue_input_system(
+    input_actions: Res<InputActionSet>,
+    game_state: ResMut<Game>,
+    mut query: Query<&Player>,
+    dialogue_actor_query: Query<&DialogueActor>,
+    mut dialogue_query: Query<&mut Dialogue>,
+    mut dialogue_events: EventWriter<DialogueEvent>,
+) {
+    for player in query.iter_mut() {
         if let Some(entity) = game_state.current_dialogue {
             if input_actions.is_active(Action::Accept, player.id) {
                 let mut dialogue = dialogue_query.get_mut(entity).expect("Couldn't find current dialogue entity");
-                dialogue.advance(&mut dialogue_events);
+                if dialogue.in_progress() {
+                    dialogue.advance(&mut dialogue_events);
+                } else {
+                    for dialogue_actor in dialogue_actor_query.iter() {
+                        let mut began = false;
+                        if let Some(node_name) = &dialogue_actor.collider_dialogue {
+                            for mut dialogue in dialogue_query.iter_mut() {
+                                if dialogue.begin_optional(node_name.as_ref(), &mut dialogue_events) {
+                                    began = true;
+                                }
+                            }
+                        }
+                        if began {
+                            break;
+                        }
+                    }
+                }
             }
         }
     }

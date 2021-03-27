@@ -150,6 +150,10 @@ impl Dialogue {
         }
     }
 
+    pub fn in_progress(&self) -> bool {
+        !self.is_end
+    }
+
     // Start running dialogue from a given node.
     pub fn begin(
         &mut self,
@@ -167,11 +171,13 @@ impl Dialogue {
         &mut self,
         node_name: &str,
         dialogue_events: &mut EventWriter<DialogueEvent>,
-    ) {
+    ) -> bool {
         if !self.has_node(node_name) {
-            return;
+            return false;
         }
         self.begin(node_name, dialogue_events);
+
+        true
     }
 
     // Advance the flow of dialogue.  Call this when the player dismisses the
