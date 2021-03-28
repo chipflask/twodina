@@ -1,5 +1,5 @@
 use bevy::{asset::{Asset, HandleId}, prelude::*, utils::HashSet};
-use bevy_tiled_prototype::{MapReadyEvent, Object, ObjectReadyEvent, ObjectShape, PropertyValue};
+use bevy_tiled_prototype::{Map, MapReadyEvent, Object, ObjectReadyEvent, ObjectShape, PropertyValue};
 
 use crate::{
     core::{
@@ -80,21 +80,31 @@ pub fn wait_for_map_ready_system(
 
 pub fn setup_map_objects_system(
     mut commands: Commands,
-    mut new_item_query: Query<(&Object, &mut Visible), Without<Collider>>,
+    mut new_item_query: Query<(&Object, &mut Visible, &Handle<Map>), Without<Collider>>,
     mut game_state: ResMut<Game>,
     mut event_reader: EventReader<ObjectReadyEvent>,
     //mut map_container_query: Query<&mut MapContainer>,
 ) {
     for event in event_reader.iter() {
         debug!("created object {:?}, {:?}", event.map_handle, event.entity);
-        if let Ok((object, mut visible)) = new_item_query.get_mut(event.entity) {
-            // set default visibility for when map transitions
-            game_state
-                .entity_visibility
-                .insert(event.entity.clone(), object.visible && !object.is_shape());
-            // all objects SHOULD start invisible by default
-            commands.entity(event.entity).remove::<Draw>();
-            visible.is_visible = false;
+        if let Ok((object, mut visible, map_handle)) = new_item_query.get_mut(event.entity) {
+            // check if objects already in scene, get default visibility
+            let is_visible_option = game_state.entity_visibility.get(&event.entity);
+            let mut is_visible = object.visible && !object.is_shape(); // default
+
+            if is_visible_option.is_some() {
+                is_visible = is_visible_option.unwrap().clone();
+            } else {
+                // set default visibility for when map transitions
+                game_state
+                    .entity_visibility
+                    .insert(event.entity.clone(), is_visible);
+            }
+             // all objects from other maps (or according to last known) should spawn invisible
+            if *map_handle != game_state.current_map || !is_visible {
+                commands.entity(event.entity).remove::<Draw>();
+                visible.is_visible = false;
+            }
 
             let mut behaviors: HashSet<ColliderBehavior> = Default::default();
 
