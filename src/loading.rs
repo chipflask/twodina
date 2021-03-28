@@ -56,7 +56,7 @@ pub fn wait_for_asset_loading_system(
             }
             // block transition if there are any complicated load objects still in the queue
             if loading_map_query.iter().next().is_none() {
-                state.set_next(load_progress.next_state).expect("couldn't change state when assets finished loading");
+                state.set(load_progress.next_state).expect("couldn't change state when assets finished loading");
                 load_progress.reset();
             }
         }
@@ -74,7 +74,7 @@ pub fn wait_for_map_ready_system(
         let map_entity = event.map_entity_option.expect("why didn't you give this map an entity?");
         // commands.insert(map_entity, SpawnedMap);
         // Stop blocking the Loading state transition.
-        commands.remove::<ComplicatedLoad>(map_entity);
+        commands.entity(map_entity).remove::<ComplicatedLoad>();
     }
 }
 
@@ -93,7 +93,7 @@ pub fn setup_map_objects_system(
                 .entity_visibility
                 .insert(event.entity.clone(), object.visible && !object.is_shape());
             // all objects SHOULD start invisible by default
-            commands.remove::<Draw>(event.entity);
+            commands.entity(event.entity).remove::<Draw>();
             visible.is_visible = false;
 
             let mut behaviors: HashSet<ColliderBehavior> = Default::default();
@@ -121,7 +121,7 @@ pub fn setup_map_objects_system(
                         behaviors.insert(ColliderBehavior::Load { path: object.name[5..].to_string() });
                     } else {
                         if object.is_shape() { // allow hide/show objects without images
-                            commands.insert(event.entity, Debuggable::default());
+                            commands.entity(event.entity).insert(Debuggable::default());
                         }
                         behaviors.insert(ColliderBehavior::Obstruct);
                     }
@@ -136,7 +136,7 @@ pub fn setup_map_objects_system(
             };
 
             let collider_component = Collider::new(behaviors, collider_size, Vec2::new(0.0, 0.0));
-            commands.insert(event.entity, collider_component);
+            commands.entity(event.entity).insert(collider_component);
         }
     }
 }

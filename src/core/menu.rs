@@ -30,7 +30,7 @@ pub fn menu_system(
     transient_state: ResMut<TransientState>,
     mut interaction_query: Query<
         (&Interaction, &mut Handle<ColorMaterial>, &MenuButton),
-        (Mutated<Interaction>, With<Button>),
+        (Changed<Interaction>, With<Button>),
     >,
 ) -> MenuAction {
     let mut action = MenuAction::Nil;
@@ -66,7 +66,7 @@ fn setup_menu_system(
 ) {
     commands
         // Root
-        .spawn(NodeBundle {
+        .spawn_bundle(NodeBundle {
             style: Style {
                 size: Size::new(Val::Percent(100.0), Val::Percent(100.0)),
                 flex_direction: FlexDirection::ColumnReverse,
@@ -79,10 +79,10 @@ fn setup_menu_system(
             material: materials.add(Color::NONE.into()),
             ..Default::default()
         })
-        .with(MenuUi {})
+        .insert(MenuUi {})
         .with_children(|parent| {
             // Title
-            parent.spawn(TextBundle {
+            parent.spawn_bundle(TextBundle {
                 style: Style {
                     margin: Rect::all(Val::Px(5.0)),
                     ..Default::default()
@@ -104,7 +104,7 @@ fn setup_menu_system(
 
             // Start button 1 player.
             parent
-                .spawn(ButtonBundle {
+                .spawn_bundle(ButtonBundle {
                     style: Style {
                         size: Size::new(Val::Px(170.0), Val::Px(65.0)),
                         margin: Rect::all(Val::Px(5.0)),
@@ -117,9 +117,9 @@ fn setup_menu_system(
                     material: transient_state.button_color.clone(),
                     ..Default::default()
                 })
-                .with(MenuButton::OnePlayer)
+                .insert(MenuButton::OnePlayer)
                 .with_children(|parent| {
-                    parent.spawn(TextBundle {
+                    parent.spawn_bundle(TextBundle {
                         text: Text {
                             sections: vec![TextSection {
                                 value: "1 Player".to_string(),
@@ -139,7 +139,7 @@ fn setup_menu_system(
 
             // Start button 2 players.
             parent
-                .spawn(ButtonBundle {
+                .spawn_bundle(ButtonBundle {
                     style: Style {
                         size: Size::new(Val::Px(170.0), Val::Px(65.0)),
                         margin: Rect::all(Val::Px(5.0)),
@@ -152,9 +152,9 @@ fn setup_menu_system(
                     material: transient_state.button_color.clone(),
                     ..Default::default()
                 })
-                .with(MenuButton::TwoPlayers)
+                .insert(MenuButton::TwoPlayers)
                 .with_children(|parent| {
-                    parent.spawn(TextBundle {
+                    parent.spawn_bundle(TextBundle {
                         text: Text {
                             sections: vec![TextSection {
                                 value: "2 Players".to_string(),
@@ -179,6 +179,6 @@ fn cleanup_menu_system(
     query: Query<Entity, With<MenuUi>>,
 ) {
     for entity in query.iter() {
-        commands.despawn_recursive(entity);
+        commands.entity(entity).despawn_recursive();
     }
 }

@@ -81,7 +81,7 @@ pub fn trigger_level_load_system(
                     let level_fs_result = fs::metadata(asset_path.clone());
 
                     // if this file exists, we're going to want to try loading a state
-                    if level_fs_result.is_ok() && state.set_next(AppState::Loading).is_ok() {
+                    if level_fs_result.is_ok() && state.set(AppState::Loading).is_ok() {
                         debug!("Loading level... {}", level);
                         // eventually do preloading:
                         // game_state.next_map = Some(asset_server.load(level.as_str()));
@@ -116,7 +116,7 @@ pub fn items_system(
         for behavior in interaction.behaviors.iter() {
             match behavior {
                 ColliderBehavior::Collect => {
-                    commands.despawn_recursive(interaction.object);
+                    commands.entity(interaction.object).despawn_recursive();
                     if let Ok(mut inventory) = inventory_query.get_mut(interaction.actor) {
                         inventory.num_gems += 1;
                         // might wish to use type AND name eventually

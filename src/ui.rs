@@ -52,13 +52,13 @@ pub fn setup_dialogue_window_runonce (
         MenuAction::LoadPlayers { num_players } => num_players,
     };
 
-    state.set_next(AppState::Loading).expect("Set Next failed");
+    state.set(AppState::Loading).expect("Set Next failed");
     to_load.next_state = AppState::InGame;
 
     // Load dialogue.
     let level_dialogue = to_load.add(asset_server.load("dialogue/level1.dialogue"));
     // Root node.
-    commands.spawn(NodeBundle {
+    commands.spawn_bundle(NodeBundle {
         style: Style {
             size: Size::new(Val::Percent(100.0), Val::Percent(100.0)),
             flex_direction: FlexDirection::Column,
@@ -74,7 +74,7 @@ pub fn setup_dialogue_window_runonce (
     })
     .with_children(|parent| {
         // Dialogue window.
-        parent.spawn(NodeBundle {
+        parent.spawn_bundle(NodeBundle {
             style: Style {
                 size: Size::new(Val::Percent(95.0), Val::Px(80.0)),
                 flex_direction: FlexDirection::Column,
@@ -89,9 +89,9 @@ pub fn setup_dialogue_window_runonce (
             material: materials.add(Color::rgba(0.804, 0.522, 0.247, 0.9).into()),
             ..Default::default()
         })
-        .with(DialogueWindow {})
+        .insert(DialogueWindow {})
         .with_children(|parent| {
-            parent.spawn(TextBundle {
+            let dialogue = parent.spawn_bundle(TextBundle {
                 text: Text {
                     sections: vec![TextSection {
                         value: "".to_string(),
@@ -110,12 +110,14 @@ pub fn setup_dialogue_window_runonce (
                 },
                 ..Default::default()
             })
-            .with(DialoguePlaceholder {
+            .insert(DialoguePlaceholder {
                 handle: level_dialogue,
                 ..Default::default()
             })
-            .current_entity()
-            .map(|entity| game_state.current_dialogue = Some(entity));
+            .id();
+            // end: let dialogue = ...
+
+            game_state.current_dialogue = Some(dialogue);
             // todo: use event or look for placeholder tag appearance
         });
     });

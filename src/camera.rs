@@ -17,7 +17,7 @@ pub fn initialize_camera (
     let far = 2000.0;
     let near = -2000.0;
     commands
-        .spawn(OrthographicCameraBundle {
+        .spawn_bundle(OrthographicCameraBundle {
             camera: Camera {
                 name: Some(render_graph::base::camera::CAMERA_2D.to_string()),
                 ..Default::default()
@@ -32,8 +32,9 @@ pub fn initialize_camera (
             transform: Transform::from_xyz(0.0, 0.0, 0.0),
             global_transform: Default::default(),
         })
-        .with(PlayerCamera {})
-        .spawn(UiCameraBundle::default());
+        .insert(PlayerCamera {});
+    commands
+        .spawn_bundle(UiCameraBundle::default());
 }
 
 

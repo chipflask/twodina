@@ -56,27 +56,30 @@ pub fn setup_players_runonce(
         // This should match the move_character_system.
         let initial_z = z_from_y(collider_offset.y);
         commands
-            .spawn(SpriteSheetBundle {
+            .spawn()
+            .insert_bundle(SpriteSheetBundle {
                 texture_atlas: texture_atlas_handle,
                 transform: Transform::from_scale(scale)
                     .mul_transform(Transform::from_translation(
                         Vec3::new(PLAYER_WIDTH * i as f32 + 20.0, 0.0, initial_z))),
                 ..Default::default()
             })
-            .with(AnimatedSprite::with_frame_seconds(0.1))
-            .with(Character::default())
-            .with(Player { id: u32::from(i) })
-            .with(Inventory::default())
-            .with(DialogueActor::default())
-            .with(Collider::single(
-                ColliderBehavior::Obstruct,
-                collider_size * scale.xy(),
-                collider_offset * scale.xy(),
+            .insert_bundle((
+                AnimatedSprite::with_frame_seconds(0.1),
+                Character::default(),
+                Player { id: u32::from(i) },
+                Inventory::default(),
+                DialogueActor::default(),
+                Collider::single(
+                    ColliderBehavior::Obstruct,
+                    collider_size * scale.xy(),
+                    collider_offset * scale.xy(),
+                ),
             ))
             .with_children(|parent| {
                 // add a shadow sprite -- is there a more efficient way where we load this just once??
                 let shadow_handle = to_load.add(asset_server.load("sprites/shadow.png"));
-                parent.spawn(SpriteBundle {
+                parent.spawn_bundle(SpriteBundle {
                     transform: Transform {
                         translation: Vec3::new(0.0, -13.0, -0.01),
                         scale: Vec3::splat(0.7),
@@ -86,7 +89,7 @@ pub fn setup_players_runonce(
                     ..Default::default()
                 });
                 // collider debug indicator - TODO: refactor into Collider::new_with_debug(parent, collider_size, scale)
-                parent.spawn(SpriteBundle {
+                parent.spawn_bundle(SpriteBundle {
                     material: transient_state.default_blue.clone(),
                     // Don't scale here since the whole character will be scaled.
                     sprite: Sprite::new(collider_size),
@@ -98,9 +101,9 @@ pub fn setup_players_runonce(
                     },
                     ..Default::default()
                 })
-                .with(Debuggable::default());
+                .insert(Debuggable::default());
                 // Center debug indicator.
-                parent.spawn(SpriteBundle {
+                parent.spawn_bundle(SpriteBundle {
                     material: transient_state.default_red.clone(),
                     // Don't scale here since the whole character will be scaled.
                     sprite: Sprite::new(Vec2::new(5.0, 5.0)),
@@ -112,39 +115,42 @@ pub fn setup_players_runonce(
                     },
                     ..Default::default()
                 })
-                .with(Debuggable::default());
-            })
-            .spawn(TextBundle {
-                text: Text {
-                    sections: vec![TextSection {
-                        value: "Position:".to_string(),
-                        style: TextStyle {
-                            font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-                            font_size: 24.0,
-                            color: Color::rgb(0.7, 0.7, 0.7),
-                            ..Default::default()
-                        },
-                    }],
-                    ..Default::default()
-                },
-                style: Style {
-                    position_type: PositionType::Absolute,
-                    position: Rect {
-                        top: Val::Px(5.0 + i as f32 * 20.0),
-                        left: Val::Px(5.0),
+                .insert(Debuggable::default());
+            });
+
+
+        // debug display for player
+        commands.spawn_bundle(TextBundle {
+            text: Text {
+                sections: vec![TextSection {
+                    value: "Position:".to_string(),
+                    style: TextStyle {
+                        font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                        font_size: 24.0,
+                        color: Color::rgb(0.7, 0.7, 0.7),
                         ..Default::default()
                     },
-                    ..Default::default()
-                },
-                visible: Visible {
-                    is_transparent: true,
-                    is_visible: false,
+                }],
+                ..Default::default()
+            },
+            style: Style {
+                position_type: PositionType::Absolute,
+                position: Rect {
+                    top: Val::Px(5.0 + i as f32 * 20.0),
+                    left: Val::Px(5.0),
                     ..Default::default()
                 },
                 ..Default::default()
-            })
-            .with(PlayerPositionDisplay { player_id: u32::from(i) })
-            .with(Debuggable::default());
+            },
+            visible: Visible {
+                is_transparent: true,
+                is_visible: false,
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+        .insert(PlayerPositionDisplay { player_id: u32::from(i) })
+        .insert(Debuggable::default());
     }
     menu_action
 }

@@ -4,7 +4,7 @@ use bevy::{
     prelude::*,
     utils::{HashMap, HashSet},
 };
-use bevy_tiled_prototype::{DebugConfig, Map, Object, TileMapChunk, TiledMapComponents, TiledMapCenter};
+use bevy_tiled_prototype::{DebugConfig, Map, Object, TileMapChunk, TiledMapBundle, TiledMapCenter};
 
 use crate::{DEBUG_MODE_DEFAULT, core::{
         dialogue::{Dialogue, DialogueAsset, DialogueEvent, DialoguePlaceholder},
@@ -61,7 +61,7 @@ pub fn in_game_start_runonce(
             dialogue.begin("Start", &mut dialogue_events);
             game_state.start_dialogue_shown = true;
         }
-        commands.insert(entity, dialogue);
+        commands.entity(entity).insert(dialogue);
     }
 }
 
@@ -81,7 +81,7 @@ pub fn hide_non_map_objects_runonce(
             game_state
                 .entity_visibility
                 .insert(entity.clone(), visible_next_load);
-            commands.remove::<Draw>(entity); // for efficiency (and might help reduce textureId panick)
+            commands.entity(entity).remove::<Draw>(); // for efficiency (and might help reduce textureId panick)
             visible.is_visible = false;
         }
     }
@@ -112,7 +112,7 @@ pub fn show_map_and_objects_runonce(
                     target: entity,
                 });
             }
-            commands.insert(entity, Draw::default());
+            commands.entity(entity).insert(Draw::default());
             visible.is_visible = *is_visible;
         }
     }
@@ -131,7 +131,7 @@ pub fn load_next_map(
         return;
     }
 
-    let parent_option = commands.spawn((
+    let parent_option = Some(commands.spawn_bundle((
         MapContainer {
             asset: game_state.current_map.clone(),
             ..Default::default()
@@ -141,9 +141,9 @@ pub fn load_next_map(
         GlobalTransform::default(),
         // blocks exit from loading state until spawned
         ComplicatedLoad,
-    )).current_entity();
+    )).id());
 
-    commands.spawn(TiledMapComponents {
+    commands.spawn_bundle(TiledMapBundle {
         map_asset: game_state.current_map.clone(),
         center: TiledMapCenter(true),
         origin: Transform {
