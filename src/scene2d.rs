@@ -30,7 +30,7 @@ pub fn initialize_levels_onboot(
 ) {
     let mut game_state = Game {
         start_dialogue_shown: false,
-        current_map: to_load.add(asset_server.load("maps/sandyrocks.tmx")),
+        current_map: to_load.add(asset_server.load("maps/terraforming.tmx")),
         current_dialogue: None,
         next_map: None,
         loaded_maps: HashSet::default(),

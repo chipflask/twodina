@@ -8,7 +8,7 @@
             body: Text("You find yourself in an unfamiliar place.  [press Spacebar to advance]"),
         ),
         (
-            body: Text("What interesting things will you find here?"),
+            body: Text("What is that eerie glow from the south...?"),
         ),
         (
             // End this conversation.
@@ -31,6 +31,55 @@
         (
             name: "swirlyRock",
             body: Text("Nice rock."),
+        ),
+        (
+            body: End,
+        ),
+        // Start stuff for terra
+        (
+            name: "helpText",
+            body: Text("If you're wondering what to do. Look around for something shiny."),
+        ),
+        (
+            body: End,
+        ),
+        (
+            name: "stoneTablet",
+            body: Text("A tablet. It reads:"),
+        ),
+        (
+            body: Text("  This land was once lush and fertile ..."),
+        ),
+        (
+            body: Text("  The peopl .  were happ .  ..."),
+        ),
+        (
+            body: Text("  ... Over time, the green g . ddess seemed to a . . ndon us ..."),
+        ),
+        (
+            body: Text("  ... and af . . r many gen . . . tions  . . . re lost  . . . hope ..."),
+        ),
+        (
+            body: Text("  ... as we feared. Now the only thing that ..."),
+        ),
+        (
+            body: Text("  ... . . . save u .  . . w is the crv . . . l -"),
+        ),
+        (
+            body: Text(" . . . "),
+        ),
+        (
+            body: Text("The rest appears to have worn away."),
+        ),
+        (
+            body: End,
+        ),
+        (
+            name: "climbRock",
+            body: Text("Nice rock. \n You could try climb it..."),
+        ),
+        (
+            body: Text("...but you'd probably fall :-/"),
         ),
         (
             body: End,

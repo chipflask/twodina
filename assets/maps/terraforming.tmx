@@ -1,0 +1,227 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.5" tiledversion="1.5.0" orientation="orthogonal" renderorder="right-down" width="30" height="40" tilewidth="64" tileheight="64" infinite="0" nextlayerid="11" nextobjectid="111">
+ <tileset firstgid="1" name="stones_64" tilewidth="64" tileheight="64" tilecount="36" columns="6">
+  <image source="melle/stones_64.png" width="384" height="384"/>
+ </tileset>
+ <tileset firstgid="37" name="grassy_stones_64" tilewidth="64" tileheight="64" tilecount="36" columns="6">
+  <image source="melle/grassy_stones_64.png" width="384" height="384"/>
+ </tileset>
+ <tileset firstgid="73" name="runestones_0" tilewidth="155" tileheight="155" tilecount="3" columns="3">
+  <image source="melle/runestones_0.png" width="465" height="155"/>
+ </tileset>
+ <tileset firstgid="76" name="trees" tilewidth="54" tileheight="72" tilecount="3" columns="3">
+  <image source="trees.png" width="162" height="72"/>
+ </tileset>
+ <tileset firstgid="79" name="crystal_set" tilewidth="100" tileheight="100" tilecount="5" columns="5">
+  <image source="melle/crystal_set.png" width="500" height="100"/>
+ </tileset>
+ <tileset firstgid="84" name="rock_long" tilewidth="165" tileheight="90" tilecount="3" columns="3">
+  <image source="glitch/rock_long_sandy.png" width="495" height="90"/>
+ </tileset>
+ <tileset firstgid="87" name="rock_metal_sandy" tilewidth="137" tileheight="100" tilecount="5" columns="5">
+  <image source="glitch/rock_metal_sandy.png" width="685" height="100"/>
+ </tileset>
+ <tileset firstgid="92" name="misc_sprites" tilewidth="90" tileheight="155" tilecount="2" columns="2">
+  <image source="glitch/misc_sprites.png" width="180" height="155"/>
+ </tileset>
+ <tileset firstgid="94" name="forest1" tilewidth="64" tileheight="64" tilecount="72" columns="12">
+  <image source="layers/forest1_64.png" width="768" height="384"/>
+ </tileset>
+ <layer id="1" name="rockydesert" width="30" height="40">
+  <data encoding="base64" compression="zlib">
+   eJzFl49OE0EQxqdqECliUlAEKxWllQJCq3D4BzBCS/sYfbQ+Sh/N+W7n4+YOTMztRjf5su1du7+bmZ3ZOZH6I1PdiMwvVfg81PnQPvdFFvuqj6qeaqzXpqqB/S9m4P9gnhsLzG5Qfg9StjRUT1SPVU1VLwFX7Zp1w/qzzBhY/0R1ZJ/fqJZNq6qDBFyzU9Sfs4YxNlVnqs+O99bmluo2EVfjCt/Nnuq8pnqh2rZnIG9DtavakxDjFFyNr+i+mT+Xwj6vDePBvxqXZPbq3sJena9L2bb39h22L6kmEvbUMBFXcwm+m3d0fifBNsT8SvXSsZvuPym4sHVgudSw9Q/tXsexX0uwO9V+HhiX+3nHuGRvSdhfjHM3HXdR9TOusX7469yHKbjqt0W1Lj50zdfKFFz6FH5+plqRUKs+OR3bPd5PxWVs2xJq0q7pVEJcl+0etB3J9Wzk7po8XDe8Vux5UnEzWzf7S6Xk/gteXe7/sjeWyzw5Np38YX3s80cS6iNrxiSCizP9i4Q8gXDO960+XNiM7ziT2WeAdytx9n5VfQtafNf5h3EnlRpFbkvu+qK8ZtUdPOPAZr3PzMYsKP/OXmBHijNzFMFFfNlLwdZewVtcFlxhLwDu2LjjCC7j+6rCHTo+uR+kOP+mEudnxhf19qrs3xK3Y0yw0A9dS6jndQfitillP4+M3yueI/f1yHgjKWJcd8DPsBd7+cy49PW4vLfuevmmMWPz6NTYsPfccufa+BPH9f0GequYfhJ59NP0S0r2StVOvBuhnsHWqcT1dbDtyNZknRxLuUbCTvbRq5KuPiN/4Wf4G/nJvjwLz5XXYvYhrFexXOYvazTX9TbjGWjznqThuvosrj7nrL7cP4suHTOmXiF/0YujXvG9s3oGrttvEFvk7r4U7+J1B/3cdmuTN5T7+QMf8L1/KYJLP7NP5drenw0pzvsDKd6VWhFcnoM8871/Gd8tY/BdzdfrugP2to1r9TnPHcRuYmwyOIN7Yb+rO2hvdS9fSHlPe+F5eD78Bs1Fn7Y=
+  </data>
+ </layer>
+ <layer id="3" name="forestbg" width="30" height="40">
+  <data encoding="base64" compression="zlib">
+   eJztl+kKwkAMhPOk6it4IK14lha8fwgej+sUGlgD1e5mG0UNDGlhYfjanWabEFEKJR69A3WhHnSisMqhwqOXvlmlcaAnkR+n7BrfEN60urfkdf1/jTdT+Pryuv2b9nMfGkBDaFSzrg3eGTSHFtCyZl0bvBtoC+2gfc26NnjP0AW6QreadZb5zR1vq/0sM2zB6/pynyh8fb5TfM3S+DbhlVkuSP+cm/DKLPN5I/SsUVYTXpllDSdXE16Z5Ri+vnNXm1su3zmk3U9c1ucMLuu5y+WTWyteN7dTsuNdCd8Yc5frGa/0fTev5vzK9em8a7J7vwd6nAdWvHIeWPG+63vVxn8RVwhvjBz9eV/3YwTfOxJUJzY=
+  </data>
+ </layer>
+ <objectgroup id="4" name="trees">
+  <object id="5" gid="76" x="1079.46" y="1683.61" width="105.049" height="140.066"/>
+  <object id="7" gid="78" x="1712.94" y="1793.32" width="122.966" height="163.955"/>
+  <object id="8" gid="77" x="1352.8" y="1696.29" width="160.549" height="190.066"/>
+  <object id="9" gid="78" x="1510.63" y="1913.03" width="116.549" height="155.399"/>
+  <object id="10" gid="78" x="1649.62" y="1469.36" width="138.049" height="184.066"/>
+  <object id="11" gid="76" x="990.333" y="1997.33" width="130" height="173.333"/>
+  <object id="12" gid="76" x="1081.67" y="2424.67" width="131" height="174.667"/>
+  <object id="13" gid="76" x="1037.17" y="2534.5" width="137" height="172"/>
+  <object id="14" gid="76" x="1051.67" y="2082.67" width="126" height="168"/>
+  <object id="63" gid="76" x="1198.14" y="935.3" width="152.049" height="202.733"/>
+  <object id="99" gid="76" x="802.833" y="2368.67" width="137" height="172"/>
+  <object id="100" gid="76" x="689.076" y="2280.67" width="137" height="172"/>
+  <object id="101" gid="76" x="146.652" y="1947.33" width="137" height="172"/>
+  <object id="102" gid="76" x="519.379" y="1417.03" width="137" height="172"/>
+  <object id="103" gid="76" x="246.652" y="398.848" width="137" height="172"/>
+  <object id="104" gid="76" x="607.258" y="638.242" width="137" height="172"/>
+  <object id="105" gid="76" x="349.682" y="1629.15" width="137" height="172"/>
+  <object id="106" gid="76" x="13.3182" y="904.909" width="137" height="172"/>
+  <object id="107" gid="76" x="676.955" y="871.576" width="137" height="172"/>
+  <object id="109" gid="76" x="564.833" y="132.182" width="137" height="172"/>
+  <object id="110" gid="76" x="183.015" y="2159.45" width="137" height="172"/>
+ </objectgroup>
+ <objectgroup id="5" name="gems">
+  <object id="71" name="biggem" gid="79" x="1833.33" y="-893.333" width="226.667" height="226.667"/>
+ </objectgroup>
+ <objectgroup id="6" name="rocks">
+  <object id="29" name="southwall" gid="86" x="1201.5" y="2348" width="165" height="90">
+   <properties>
+    <property name="dialogue" value="climbRock"/>
+   </properties>
+  </object>
+  <object id="30" name="cliff" gid="89" x="1571.5" y="1220.5" width="137" height="323">
+   <properties>
+    <property name="dialogue" value="climbRock"/>
+   </properties>
+  </object>
+  <object id="32" name="cliff" gid="88" x="1578.5" y="1181" width="154.333" height="409">
+   <properties>
+    <property name="dialogue" value="climbRock"/>
+   </properties>
+  </object>
+  <object id="35" name="southwall" gid="86" x="1287.5" y="2314" width="165" height="90">
+   <properties>
+    <property name="dialogue" value="climbRock"/>
+   </properties>
+  </object>
+  <object id="36" name="southwall" gid="86" x="1350.5" y="2353" width="165" height="90">
+   <properties>
+    <property name="dialogue" value="climbRock"/>
+   </properties>
+  </object>
+  <object id="37" name="southwall" gid="86" x="1429.5" y="2392" width="165" height="90">
+   <properties>
+    <property name="dialogue" value="climbRock"/>
+   </properties>
+  </object>
+  <object id="38" name="southwall" gid="86" x="1511.5" y="2347" width="165" height="90">
+   <properties>
+    <property name="dialogue" value="climbRock"/>
+   </properties>
+  </object>
+  <object id="39" name="southwall" gid="86" x="1614.5" y="2306" width="165" height="90">
+   <properties>
+    <property name="dialogue" value="climbRock"/>
+   </properties>
+  </object>
+  <object id="40" name="southwall" gid="86" x="1628.5" y="2368" width="165" height="90">
+   <properties>
+    <property name="dialogue" value="climbRock"/>
+   </properties>
+  </object>
+  <object id="41" name="southwall" gid="86" x="1667.5" y="2411" width="165" height="90">
+   <properties>
+    <property name="dialogue" value="climbRock"/>
+   </properties>
+  </object>
+  <object id="42" name="cliff" gid="88" x="1673.5" y="1206.5" width="137" height="421">
+   <properties>
+    <property name="dialogue" value="climbRock"/>
+   </properties>
+  </object>
+  <object id="43" name="cliff" gid="88" x="1712.5" y="1193.17" width="137" height="421">
+   <properties>
+    <property name="dialogue" value="climbRock"/>
+   </properties>
+  </object>
+  <object id="44" name="cliff" gid="88" x="1492.5" y="1236.5" width="137" height="421">
+   <properties>
+    <property name="dialogue" value="climbRock"/>
+   </properties>
+  </object>
+  <object id="45" name="cliff" gid="88" x="1072.83" y="1183.83" width="183.667" height="421">
+   <properties>
+    <property name="dialogue" value="climbRock"/>
+   </properties>
+  </object>
+  <object id="52" name="cliff" gid="89" x="1330" y="1181.25" width="137" height="323">
+   <properties>
+    <property name="dialogue" value="climbRock"/>
+   </properties>
+  </object>
+  <object id="53" name="cliff" gid="88" x="1354.33" y="1141.75" width="137" height="369">
+   <properties>
+    <property name="dialogue" value="climbRock"/>
+   </properties>
+  </object>
+  <object id="54" name="cliff" gid="88" x="1432" y="1167.25" width="137" height="399.667">
+   <properties>
+    <property name="dialogue" value="climbRock"/>
+   </properties>
+  </object>
+  <object id="55" name="cliff" gid="88" x="1523" y="1213.25" width="137" height="421">
+   <properties>
+    <property name="dialogue" value="climbRock"/>
+   </properties>
+  </object>
+  <object id="56" name="cliff" gid="88" x="1283" y="1193.25" width="137" height="421">
+   <properties>
+    <property name="dialogue" value="climbRock"/>
+   </properties>
+  </object>
+  <object id="57" name="cliff" gid="88" x="1164.67" y="1272.58" width="193" height="442.333">
+   <properties>
+    <property name="dialogue" value="climbRock"/>
+   </properties>
+  </object>
+  <object id="58" name="cliff" gid="89" x="1774.17" y="1062.5" width="137" height="297.667">
+   <properties>
+    <property name="dialogue" value="climbRock"/>
+   </properties>
+  </object>
+  <object id="59" name="cliff" gid="89" x="1826.17" y="1115.83" width="137" height="323">
+   <properties>
+    <property name="dialogue" value="climbRock"/>
+   </properties>
+  </object>
+  <object id="62" name="cliff" gid="88" x="1714.16" y="1166.83" width="137" height="401">
+   <properties>
+    <property name="dialogue" value="climbRock"/>
+   </properties>
+  </object>
+  <object id="72" name="cliff" gid="88" x="964.166" y="1122.83" width="183.667" height="421">
+   <properties>
+    <property name="dialogue" value="climbRock"/>
+   </properties>
+  </object>
+  <object id="73" name="cliff" gid="88" x="920.167" y="1020.17" width="183.667" height="421">
+   <properties>
+    <property name="dialogue" value="climbRock"/>
+   </properties>
+  </object>
+  <object id="74" name="cliff" gid="88" x="932.166" y="842.833" width="183.667" height="421">
+   <properties>
+    <property name="dialogue" value="climbRock"/>
+   </properties>
+  </object>
+  <object id="75" name="cliff" gid="88" x="940.167" y="714.833" width="183.667" height="421">
+   <properties>
+    <property name="dialogue" value="climbRock"/>
+   </properties>
+  </object>
+ </objectgroup>
+ <objectgroup id="2" name="runes">
+  <object id="1" gid="74" x="1680.52" y="272.133" width="155" height="155"/>
+  <object id="97" gid="73" x="1243.25" y="379.389" width="155" height="155"/>
+  <object id="98" gid="75" x="1612.41" y="616.278" width="155" height="155"/>
+ </objectgroup>
+ <objectgroup id="10" name="signs">
+  <object id="93" name="sign" gid="93" x="1839.87" y="1252.34" width="90" height="155">
+   <properties>
+    <property name="dialogue" value="helpText"/>
+   </properties>
+  </object>
+  <object id="94" name="tablet" gid="92" x="1250.13" y="2536.66" width="90" height="155">
+   <properties>
+    <property name="dialogue" value="stoneTablet"/>
+   </properties>
+  </object>
+ </objectgroup>
+ <objectgroup id="8" name="intro">
+  <object id="79" name="spawn" x="1550.41" y="2018.58" width="81" height="78"/>
+  <object id="86" x="1922" y="3.335" width="36" height="2561.33"/>
+  <object id="87" x="-34" y="-4.665" width="36" height="2561.33"/>
+  <object id="88" x="-40" y="2557" width="1958" height="26"/>
+  <object id="90" x="-3" y="-27" width="1862" height="26"/>
+ </objectgroup>
+</map>

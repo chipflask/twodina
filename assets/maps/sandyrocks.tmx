@@ -1,20 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.5" tiledversion="1.5.0" orientation="orthogonal" renderorder="right-down" width="10" height="10" tilewidth="64" tileheight="64" infinite="0" nextlayerid="9" nextobjectid="40">
+<map version="1.5" tiledversion="1.5.0" orientation="orthogonal" renderorder="right-down" width="10" height="10" tilewidth="64" tileheight="64" infinite="0" nextlayerid="9" nextobjectid="41">
  <tileset firstgid="1" name="crystal_set" tilewidth="100" tileheight="100" tilecount="5" columns="5">
   <image source="melle/crystal_set.png" width="500" height="100"/>
  </tileset>
- <tileset firstgid="6" name="trees" tilewidth="54" tileheight="72" tilecount="2" columns="2">
-  <image source="trees.png" width="108" height="72"/>
+ <tileset firstgid="6" name="trees" tilewidth="54" tileheight="72" tilecount="3" columns="3">
+  <image source="trees.png" width="162" height="72"/>
  </tileset>
- <tileset firstgid="8" name="grassy_stones_64" tilewidth="64" tileheight="64" tilecount="36" columns="6">
+ <tileset firstgid="9" name="grassy_stones_64" tilewidth="64" tileheight="64" tilecount="36" columns="6">
   <image source="melle/grassy_stones_64.png" width="384" height="384"/>
  </tileset>
- <tileset firstgid="44" name="stones_64" tilewidth="64" tileheight="64" tilecount="36" columns="6">
+ <tileset firstgid="45" name="stones_64" tilewidth="64" tileheight="64" tilecount="36" columns="6">
   <image source="melle/stones_64.png" width="384" height="384"/>
  </tileset>
  <layer id="1" name="background" width="10" height="10" tintcolor="#ffd8bd">
   <data encoding="base64" compression="zlib">
-   eJx10LsKwkAQheFt1UWjGDUXYxREsdFOUhjRxlj5/m/jP3ACg2DxsQszO5c9hxCmmOGIA8YYyAQJSizxxkmxPYbIkaLBQnk3ZKqZuXqpcqzeGhWiYlH97V7giYfOlep4lr/FDi90uLr43PXu97DZ7vjofe3y+/ka5f32jO7eul0rvbW/GOl/onpe/uy6cTsXipsv0MAK6w==
+   eJx10LsKwkAQheGt1UWjGDUXYxREsdFOUhjRxlj5/k/jP3ACg2DxsQszO5c9hxCmmOGIA8YYyAQJSizxxkmxPYbIkaLBQnk3ZKqZuXqpcqzeGhWiYlH97V7giYfOlep4lr/FDi90uLr43PXu97DZ7vjofe3y+/ka5f32jO7eul0rvbW/GOl/onpe/uy6cTsXipsvH7cLTw==
   </data>
  </layer>
  <objectgroup id="2" name="items">
@@ -29,7 +29,7 @@
   <object id="19" gid="6" x="-19.5502" y="317.741" width="105.049" height="140.066"/>
   <object id="20" gid="6" x="575.474" y="239.696" width="81.7993" height="109.066"/>
   <object id="21" gid="6" x="574.428" y="434.892" width="78.7993" height="105.066"/>
-  <object id="22" name="load:ritualspace" gid="7" x="-25" y="42.55" width="160.549" height="190.066"/>
+  <object id="22" name="load:terraforming" gid="7" x="-25" y="42.55" width="160.549" height="190.066"/>
   <object id="23" gid="7" x="508.619" y="599.169" width="83.5493" height="111.399"/>
   <object id="24" gid="7" x="578.609" y="103.494" width="75.0493" height="100.066"/>
  </objectgroup>
