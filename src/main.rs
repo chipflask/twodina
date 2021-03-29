@@ -1,3 +1,4 @@
+use anyhow::Result;
 use bevy::{
     prelude::*,
     app::CoreStage::Update,
@@ -29,8 +30,11 @@ use crate::core::state::{
 
 const DEBUG_MODE_DEFAULT: bool = false;
 
-fn main() {
+fn main() -> Result<()> {
+    let config = core::config::load_asset_config("app.toml")?;
+
     App::build()
+        .insert_resource(config)
         .insert_resource(LoadProgress::default())
         .add_event::<motion::MoveEntityEvent<Player>>()
         .add_state(AppState::default())
@@ -83,6 +87,8 @@ fn main() {
             .with_system(ui::display_dialogue_system.system().after("early"))
         )
         .run();
+
+    Ok(())
 }
 
 fn setup_onboot(

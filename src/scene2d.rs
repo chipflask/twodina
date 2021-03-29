@@ -7,6 +7,7 @@ use bevy::{
 use bevy_tiled_prototype::{DebugConfig, Map, Object, TileMapChunk, TiledMapBundle, TiledMapCenter};
 
 use crate::{DEBUG_MODE_DEFAULT, core::{
+        config::Config,
         dialogue::{Dialogue, DialogueAsset, DialogueEvent, DialoguePlaceholder},
         game::Game,
         state::{AppState, TransientState},
@@ -25,12 +26,13 @@ pub fn initialize_levels_onboot(
     transient_state: Res<TransientState>,
     mut commands: Commands,
     asset_server: Res<AssetServer>,
+    config: Res<Config>,
     mut to_load: ResMut<LoadProgress>,
     // mut query: Query<(Entity, &Handle<Map>, &mut Visible, Option<&TileMapChunk>)>,
 ) {
     let mut game_state = Game {
         start_dialogue_shown: false,
-        current_map: to_load.add(asset_server.load("maps/sandyrocks.tmx")),
+        current_map: to_load.add(asset_server.load(config.start_map.as_path())),
         current_dialogue: None,
         next_map: None,
         loaded_maps: HashSet::default(),

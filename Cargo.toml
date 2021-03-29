@@ -13,7 +13,8 @@ bevy = { git = "https://github.com/bevyengine/bevy/", branch = "main", features 
 bevy_tiled_prototype = { git = "https://github.com/StarArawn/bevy_tiled", branch = "main" }
 ncollide2d = "0.27.0"
 ron = "0.6.4"
-serde = "^1.0.123"
+serde = { version = "^1.0.123", features = ["derive"] }
+toml = "0.5"
 
 # [patch.'https://github.com/StarArawn/bevy_tiled']
 # bevy_tiled_prototype = { path = "../bevy_tiled" }

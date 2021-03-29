@@ -1,0 +1,5 @@
+# Settings for a new game.
+
+# Path is relative to /assets and shouldn't start with a /.
+start_map = "maps/sandyrocks.tmx"
+start_dialogue = "dialogue/level1.dialogue"

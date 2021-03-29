@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use crate::{
     AppState,
     core::{
+        config::Config,
         dialogue::{Dialogue, DialogueEvent, DialoguePlaceholder},
         game::Game,
         menu::MenuAction
@@ -43,6 +44,7 @@ pub fn setup_dialogue_window_runonce (
     mut state: ResMut<State<AppState>>,
     mut game_state: ResMut<Game>,
     asset_server: Res<AssetServer>,
+    config: Res<Config>,
     mut to_load: ResMut<LoadProgress>,
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
@@ -56,7 +58,7 @@ pub fn setup_dialogue_window_runonce (
     to_load.next_state = AppState::InGame;
 
     // Load dialogue.
-    let level_dialogue = to_load.add(asset_server.load("dialogue/level1.dialogue"));
+    let level_dialogue = to_load.add(asset_server.load(config.start_dialogue.as_path()));
     // Root node.
     commands.spawn_bundle(NodeBundle {
         style: Style {

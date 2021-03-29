@@ -3666,6 +3666,7 @@ dependencies = [
  "ncollide2d",
  "ron",
  "serde",
+ "toml",
 ]
 
 [[package]]
