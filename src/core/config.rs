@@ -9,6 +9,10 @@ use serde::Deserialize;
 pub struct Config {
     pub start_map: PathBuf,
     pub start_dialogue: PathBuf,
+
+    pub char_template: String,
+    pub char_height: f32,
+    pub char_width: f32,
 }
 
 pub fn load_asset_config(name: &str) -> Result<Config> {

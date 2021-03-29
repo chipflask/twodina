@@ -1,30 +1,13 @@
 use bevy::{math::Vec3Swizzles, prelude::*};
 
-use crate::{
-    DEBUG_MODE_DEFAULT,
-    actions::DialogueActor,
-    core::{
-        character::{AnimatedSprite, Character},
-        collider::{Collider, ColliderBehavior},
-        menu::MenuAction,
-        state::TransientState,
-    },
-    debug::{PlayerPositionDisplay, Debuggable},
-    items::Inventory,
-    loading::LoadProgress,
-    motion::z_from_y,
-};
+use crate::{DEBUG_MODE_DEFAULT, actions::DialogueActor, core::{character::{AnimatedSprite, Character}, collider::{Collider, ColliderBehavior}, config::Config, menu::MenuAction, state::TransientState}, debug::{PlayerPositionDisplay, Debuggable}, items::Inventory, loading::LoadProgress, motion::z_from_y};
 
 
 pub struct Player {
     pub id: u32,
+    pub height: f32,
+    pub width: f32,
 }
-
-// for 'naked base'
-// const PLAYER_WIDTH: f32 = 26.0;
-// const PLAYER_HEIGHT: f32 = 36.0;
-pub const PLAYER_WIDTH: f32 = 31.0;
-pub const PLAYER_HEIGHT: f32 = 32.0;
 
 pub fn setup_players_runonce(
     In(menu_action): In<MenuAction>,
@@ -34,6 +17,7 @@ pub fn setup_players_runonce(
     mut materials: ResMut<Assets<ColorMaterial>>,
     transient_state: Res<TransientState>,
     mut to_load: ResMut<LoadProgress>,
+    config: Res<Config>,
 ) -> MenuAction {
     let num_players = match menu_action {
         MenuAction::Nil => return menu_action,
@@ -42,10 +26,11 @@ pub fn setup_players_runonce(
 
     // Players.
     for i in 0..num_players {
-        let texture_handle = to_load.add(asset_server.load(format!("sprites/azuna{}.png", i + 1).as_str()));
+        let path = config.char_template.replace("{}", &(i + 1).to_string());
+        let texture_handle: Handle<Texture> = to_load.add(asset_server.load(path.as_str()));
         let texture_atlas = TextureAtlas::from_grid(
             texture_handle,
-            Vec2::new(PLAYER_WIDTH, PLAYER_HEIGHT),
+            Vec2::new(config.char_height, config.char_width),
             4,
             8,
         );
@@ -61,13 +46,17 @@ pub fn setup_players_runonce(
                 texture_atlas: texture_atlas_handle,
                 transform: Transform::from_scale(scale)
                     .mul_transform(Transform::from_translation(
-                        Vec3::new(PLAYER_WIDTH * i as f32 + 20.0, 0.0, initial_z))),
+                        Vec3::new(config.char_width * i as f32 + 20.0, 0.0, initial_z))),
                 ..Default::default()
             })
             .insert_bundle((
                 AnimatedSprite::with_frame_seconds(0.1),
                 Character::default(),
-                Player { id: u32::from(i) },
+                Player {
+                    id: u32::from(i),
+                    height: config.char_height,
+                    width: config.char_width,
+                },
                 Inventory::default(),
                 DialogueActor::default(),
                 Collider::single(

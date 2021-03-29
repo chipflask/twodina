@@ -3,7 +3,7 @@ use bevy::{
     render::{camera::{self, Camera, CameraProjection, OrthographicProjection}, render_graph},
 };
 
-use crate::players::{PLAYER_WIDTH, PLAYER_HEIGHT, Player};
+use crate::players::Player;
 
 const CAMERA_BUFFER: f32 = 1.0;
 
@@ -113,7 +113,7 @@ fn is_rect_completely_inside(r1: &Rect<f32>, r2: &Rect<f32>) -> bool {
 
 pub fn update_camera_system(
     windows: Res<Windows>,
-    mut player_query: Query<&GlobalTransform, With<Player>>,
+    mut player_query: Query<(&GlobalTransform, &Player)>,
     mut camera_query: Query<(&mut Transform,
                             &GlobalTransform,
                             &mut OrthographicProjection,
@@ -128,12 +128,12 @@ pub fn update_camera_system(
     let mut full_bb = None;
     let mut num_players = 0;
     let mut player_translation = Vec3::ZERO;
-    for player_transform in player_query.iter_mut() {
+    for (player_transform, player) in player_query.iter_mut() {
         num_players += 1;
         // Is sprite in view frame?
         // println!("player translation {:?}", player_transform.translation);
         let char_translation = player_transform.translation;
-        let char_size = Vec2::new(PLAYER_WIDTH * player_transform.scale.x, PLAYER_HEIGHT * player_transform.scale.y);
+        let char_size = Vec2::new(player.width * player_transform.scale.x, player.height * player_transform.scale.y);
         let char_rect = bounding_box(char_translation, char_size);
         // println!("char_rect {:?}", char_rect);
         full_bb = match full_bb {

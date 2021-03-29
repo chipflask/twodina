@@ -3,3 +3,13 @@
 # Path is relative to /assets and shouldn't start with a /.
 start_map = "maps/sandyrocks.tmx"
 start_dialogue = "dialogue/level1.dialogue"
+
+# Characters to use - for multiple, {} will be replaced:
+char_template = "sprites/azuna{}.png"
+char_height = 31.0
+char_width = 32.0
+
+# char_template = "sprites/naked_base.png"
+# char_height = 26.0
+# char_width = 36.0
+

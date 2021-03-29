@@ -3,13 +3,10 @@ use std::convert::TryFrom;
 
 use crate::{
     actions::DialogueActor,
-    core::{
-        character::{AnimatedSprite, Character, CharacterState, Direction},
-        collider::{Collider, ColliderBehavior, Collision},
-        game::Game,
-    },
-    items::ItemInteraction,
-    players::{Player, PLAYER_WIDTH},
+    core::{character::{AnimatedSprite, Character, CharacterState, Direction},
+    collider::{Collider, ColliderBehavior, Collision},
+    config::Config, game::Game},
+    items::ItemInteraction, players::Player
 };
 
 use bevy::{ecs::component::Component, prelude::*, utils::HashSet};
@@ -34,8 +31,9 @@ pub struct MoveEntityEvent<T: Component> {
 pub fn instant_move_player_system(
     events: EventReader<MoveEntityEvent<Player>>,
     query: Query<(&mut Transform, Option<&Player>)>,
+    config: Res<Config>,
 ) {
-    instant_move_entity(events, query, Vec3::new(2.2 * PLAYER_WIDTH, 0.0, 0.0));
+    instant_move_entity(events, query, Vec3::new(2.2 * config.char_width, 0.0, 0.0));
 }
 
 // Currently used for warping between levels, but could be useful for many other things
