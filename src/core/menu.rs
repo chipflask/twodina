@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use super::state::{AppState, TransientState};
+use super::{config::Config, state::{AppState, TransientState}};
 
 // Tag for the menu system UI.
 struct MenuUi;
@@ -63,6 +63,7 @@ fn setup_menu_system(
     asset_server: Res<AssetServer>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     transient_state: Res<TransientState>,
+    config: Res<Config>,
 ) {
     commands
         // Root
@@ -89,7 +90,7 @@ fn setup_menu_system(
                 },
                 text: Text {
                     sections: vec![TextSection {
-                        value: "Celebration 2021".to_string(),
+                        value: config.title.clone(),
                         style: TextStyle {
                             font: asset_server.load("fonts/FiraSans-Bold.ttf"),
                             font_size: 60.0,

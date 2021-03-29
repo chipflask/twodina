@@ -7,6 +7,8 @@ use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
+    pub title: String,
+
     pub start_map: PathBuf,
     pub start_dialogue: PathBuf,
 

@@ -29,6 +29,40 @@
             body: End,
         ),
         (
+            name: "hiddenFeels",
+            body: Text("You sense something remains hidden..."),
+        ),
+        (
+            body: End,
+        ),
+        (
+            name: "invisibleStop",
+            body: Text("Try as you might, this route is impassable... [space]"),
+        ),
+        (
+            body: End,
+        ),
+        (
+            name: "gemTrap",
+            body: Text("Wow."),
+        ),
+        (
+            body: End,
+        ),
+        (
+            name: "astralChill",
+            body: Text("You've left the relative safety of the desert . . . "),
+        ),
+        (
+            body: Text(" . . . the floating tree just out of grasp . . . "),
+        ),
+        (
+            body: Text(" . . . where should you go now?"),
+        ),
+        (
+            body: End,
+        ),
+        (
             name: "swirlyRock",
             body: Text("Nice rock."),
         ),

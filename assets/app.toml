@@ -1,4 +1,5 @@
 # Settings for a new game.
+title = "Celebration 2021: Twodina"
 
 # Path is relative to /assets and shouldn't start with a /.
 start_map = "maps/sandyrocks.tmx"
