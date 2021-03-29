@@ -9,7 +9,7 @@ use bevy_tiled_prototype::{DebugConfig, Map, Object, TileMapChunk, TiledMapBundl
 use crate::{DEBUG_MODE_DEFAULT, core::{
         config::Config,
         dialogue::{Dialogue, DialogueAsset, DialogueEvent, DialoguePlaceholder},
-        game::Game,
+        game::{DialogueUiType, Game},
         state::{AppState, TransientState},
     }, loading::{ComplicatedLoad, LoadProgress}, motion::MoveEntityEvent, players::Player};
 
@@ -32,6 +32,7 @@ pub fn initialize_levels_onboot(
 ) {
     let mut game_state = Game {
         start_dialogue_shown: false,
+        dialogue_ui: None,
         current_map: to_load.add(asset_server.load(config.start_map.as_path())),
         current_dialogue: None,
         next_map: None,
@@ -62,6 +63,7 @@ pub fn in_game_start_runonce(
         if should_begin {
             dialogue.begin("Start", &mut dialogue_events);
             game_state.start_dialogue_shown = true;
+            game_state.dialogue_ui = Some(DialogueUiType::Notice);
         }
         commands.entity(entity).insert(dialogue);
     }

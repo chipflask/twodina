@@ -2,6 +2,8 @@ use bevy::prelude::*;
 use bevy::utils::HashSet;
 use ncollide2d::{self as nc, bounding_volume::BoundingVolume, shape::Cuboid};
 
+use crate::core::game::DialogueSpec;
+
 #[derive(Debug, Clone)]
 pub struct Collider {
     pub behaviors: HashSet<ColliderBehavior>,
@@ -18,7 +20,7 @@ pub enum ColliderBehavior {
     // open a new level
     Load { path: String },
     // Begin dialogue.
-    Dialogue(String),
+    Dialogue(DialogueSpec),
 }
 
 #[derive(Clone, Debug, Default)]

@@ -6,7 +6,7 @@ use crate::{
     core::{
         character::{RUN_SPEED, WALK_SPEED, Character, CharacterState, Direction},
         dialogue::{Dialogue, DialogueEvent},
-        game::Game,
+        game::{DialogueSpec, Game},
         input::{Action, Flag, InputActionSet},
         state::TransientState,
     },
@@ -18,8 +18,9 @@ use crate::players::Player;
 // Something that can trigger dialogue.
 #[derive(Debug, Default)]
 pub struct DialogueActor {
-    // Dialogue node name that the actor is currently colliding with.
-    pub collider_dialogue: Option<String>,
+    // Dialogue that the actor is currently colliding with that could be
+    // triggered.
+    pub collider_dialogue: Option<DialogueSpec>,
 }
 
 pub fn handle_movement_input_system(
@@ -27,6 +28,7 @@ pub fn handle_movement_input_system(
     mut transient_state: ResMut<TransientState>,
     game_state: ResMut<Game>,
     mut query: Query<(&mut Character, &Player)>,
+    dialogue_query: Query<&Dialogue>,
     mut debuggable: Query<(&mut Visible, Option<&Handle<Map>>), With<Debuggable>>,
 ) {
     // check for debug status flag differing from transient_state to determine when to hide/show debug stuff
@@ -39,6 +41,12 @@ pub fn handle_movement_input_system(
                 in_current_map = *map_handle == game_state.current_map;
             });
             visible.is_visible = in_current_map && transient_state.debug_mode;
+        }
+    }
+
+    for dialogue in dialogue_query.iter() {
+        if dialogue.in_progress() && game_state.is_in_dialogue() {
+            return;
         }
     }
 
@@ -99,7 +107,7 @@ pub fn handle_movement_input_system(
 
 pub fn handle_dialogue_input_system(
     input_actions: Res<InputActionSet>,
-    game_state: ResMut<Game>,
+    mut game_state: ResMut<Game>,
     mut query: Query<&Player>,
     dialogue_actor_query: Query<&DialogueActor>,
     mut dialogue_query: Query<&mut Dialogue>,
@@ -108,22 +116,25 @@ pub fn handle_dialogue_input_system(
     for player in query.iter_mut() {
         if let Some(entity) = game_state.current_dialogue {
             if input_actions.is_active(Action::Accept, player.id) {
+                // Advance the current dialogue.
                 let mut dialogue = dialogue_query.get_mut(entity).expect("Couldn't find current dialogue entity");
                 if dialogue.in_progress() {
                     dialogue.advance(&mut dialogue_events);
-                } else {
-                    for dialogue_actor in dialogue_actor_query.iter() {
-                        let mut began = false;
-                        if let Some(node_name) = &dialogue_actor.collider_dialogue {
-                            for mut dialogue in dialogue_query.iter_mut() {
-                                if dialogue.begin_optional(node_name.as_ref(), &mut dialogue_events) {
-                                    began = true;
-                                }
+                    continue;
+                }
+                // Trigger the dialogue that the player is colliding with.
+                for dialogue_actor in dialogue_actor_query.iter() {
+                    let mut began = false;
+                    if let Some(spec) = &dialogue_actor.collider_dialogue {
+                        for mut dialogue in dialogue_query.iter_mut() {
+                            if dialogue.begin_optional(spec.node_name.as_ref(), &mut dialogue_events) {
+                                game_state.dialogue_ui = Some(spec.ui_type);
+                                began = true;
                             }
                         }
-                        if began {
-                            break;
-                        }
+                    }
+                    if began {
+                        break;
                     }
                 }
             }

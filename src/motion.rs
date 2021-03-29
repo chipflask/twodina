@@ -3,10 +3,14 @@ use std::convert::TryFrom;
 
 use crate::{
     actions::DialogueActor,
-    core::{character::{AnimatedSprite, Character, CharacterState, Direction},
-    collider::{Collider, ColliderBehavior, Collision},
-    config::Config, game::Game},
-    items::ItemInteraction, players::Player
+    core::{
+        character::{AnimatedSprite, Character, CharacterState, Direction},
+        collider::{Collider, ColliderBehavior, Collision},
+        config::Config,
+        game::{DialogueSpec, Game},
+    },
+    items::ItemInteraction,
+    players::Player,
 };
 
 use bevy::{ecs::component::Component, prelude::*, utils::HashSet};
@@ -186,14 +190,14 @@ pub fn continous_move_character_system(
     }
 }
 
-fn dialogue_behavior(behaviors: &HashSet<ColliderBehavior>) -> Option<String> {
+fn dialogue_behavior(behaviors: &HashSet<ColliderBehavior>) -> Option<DialogueSpec> {
     for behavior in behaviors.iter() {
         match behavior {
             ColliderBehavior::Obstruct => {}
             ColliderBehavior::Collect => {}
             ColliderBehavior::Load { path: _ } => {}
-            ColliderBehavior::Dialogue(name) => {
-                return Some(name.clone());
+            ColliderBehavior::Dialogue(spec) => {
+                return Some(spec.clone());
             }
         }
     }

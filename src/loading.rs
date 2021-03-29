@@ -5,7 +5,7 @@ use crate::{
     core::{
         collider::{Collider, ColliderBehavior},
         dialogue::{Dialogue, DialogueEvent},
-        game::Game,
+        game::{DialogueSpec, DialogueUiType, Game},
         state::AppState,
     },
     debug::Debuggable,
@@ -111,7 +111,20 @@ pub fn setup_map_objects_system(
             for (k,v) in object.props.iter() {
                 if k == "dialogue" {
                     if let PropertyValue::StringValue(s) = v {
-                        behaviors.insert(ColliderBehavior::Dialogue(s.clone()));
+                        behaviors.insert(ColliderBehavior::Dialogue(
+                            DialogueSpec {
+                                node_name: s.clone(),
+                                ui_type: DialogueUiType::MovementDisabled,
+                            }));
+                        break;
+                    }
+                } else if k == "notice" {
+                    if let PropertyValue::StringValue(s) = v {
+                        behaviors.insert(ColliderBehavior::Dialogue(
+                            DialogueSpec {
+                                node_name: s.clone(),
+                                ui_type: DialogueUiType::Notice,
+                            }));
                         break;
                     }
                 }
