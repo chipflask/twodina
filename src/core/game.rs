@@ -28,14 +28,21 @@ impl Game {
     }
 }
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, Hash, PartialEq, Eq)]
 pub struct DialogueSpec {
     pub node_name: String,
     pub ui_type: DialogueUiType,
+    pub auto_display: bool,
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub enum DialogueUiType {
     MovementDisabled,
     Notice,
+}
+
+impl Default for DialogueUiType {
+    fn default() -> Self {
+        DialogueUiType::MovementDisabled
+    }
 }

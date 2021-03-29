@@ -108,26 +108,29 @@ pub fn setup_map_objects_system(
 
             let mut behaviors: HashSet<ColliderBehavior> = Default::default();
 
+            let mut has_dialogue = false;
+            let mut dialogue_spec = DialogueSpec::default();
             for (k,v) in object.props.iter() {
                 if k == "dialogue" {
                     if let PropertyValue::StringValue(s) = v {
-                        behaviors.insert(ColliderBehavior::Dialogue(
-                            DialogueSpec {
-                                node_name: s.clone(),
-                                ui_type: DialogueUiType::MovementDisabled,
-                            }));
-                        break;
+                        has_dialogue = true;
+                        dialogue_spec.node_name = s.clone();
+                        dialogue_spec.ui_type = DialogueUiType::MovementDisabled;
                     }
                 } else if k == "notice" {
                     if let PropertyValue::StringValue(s) = v {
-                        behaviors.insert(ColliderBehavior::Dialogue(
-                            DialogueSpec {
-                                node_name: s.clone(),
-                                ui_type: DialogueUiType::Notice,
-                            }));
-                        break;
+                        has_dialogue = true;
+                        dialogue_spec.node_name = s.clone();
+                        dialogue_spec.ui_type = DialogueUiType::Notice;
+                    }
+                } else if k == "autodisplay" {
+                    if let PropertyValue::BoolValue(b) = v {
+                        dialogue_spec.auto_display = *b;
                     }
                 }
+            }
+            if has_dialogue {
+                behaviors.insert(ColliderBehavior::Dialogue(dialogue_spec));
             }
 
             // we should have actual types based on object name
