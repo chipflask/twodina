@@ -4,16 +4,7 @@ use bevy::{asset::FileAssetIo, prelude::*};
 use bevy::utils::HashSet;
 use bevy_tiled_prototype::Object;
 
-use crate::{
-    core::{
-        collider::{Collider, ColliderBehavior},
-        dialogue::{Dialogue, DialogueEvent},
-        game::Game,
-        state::{AppState, TransientState},
-    },
-    loading::LoadProgress,
-    scene2d::load_next_map,
-};
+use crate::{core::{collider::{Collider, ColliderBehavior}, dialogue::{Dialogue, DialogueEvent}, game::{DialogueSpec, Game}, state::{AppState, TransientState}}, loading::LoadProgress, scene2d::load_next_map};
 
 #[derive(Debug, Default)]
 pub struct ItemsPlugin;
@@ -183,7 +174,14 @@ pub fn inventory_item_reveal_system(
             for (object, mut visible, mut collider) in object_query.iter_mut() {
                 if object.name == "biggem" {
                     visible.is_visible = true;
+                    collider.behaviors.clear();
                     collider.insert_behavior(ColliderBehavior::Collect);
+                    collider.insert_behavior(ColliderBehavior::Dialogue(
+                        DialogueSpec {
+                            node_name: "collectedBigGem".to_string(),
+                            ui_type: crate::core::game::DialogueUiType::Notice,
+                            auto_display: true,
+                    }));
                 }
             }
         }

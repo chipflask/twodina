@@ -136,7 +136,7 @@ pub fn setup_map_objects_system(
             // we should have actual types based on object name
             // and add components based on that
             match object.name.as_ref() {
-                "spawn" => {}
+                "spawn" | "trigger" => {}
                 "biggem" | "gem" => {
                     if object.visible {
                         behaviors.insert(ColliderBehavior::Collect);

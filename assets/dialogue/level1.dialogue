@@ -37,7 +37,7 @@
         ),
         (
             name: "invisibleStop",
-            body: Text("Try as you might, this route is impassable... [space]"),
+            body: Text("Try as you might, this route is impassable..."),
         ),
         (
             body: End,
@@ -45,6 +45,17 @@
         (
             name: "gemTrap",
             body: Text("Wow."),
+        ),
+        (
+            body: End,
+        ),
+        (
+            name: "collectedBigGem",
+            body: Text("The gem barely fits in your bag of holding, you won't be able to keep it for long..."),
+        ),
+        (
+            name: "exitWorld",
+            body: Text("In your heart, there is an inexorable tug towards the aether..."),
         ),
         (
             body: End,
