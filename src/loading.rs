@@ -134,7 +134,14 @@ pub fn setup_map_objects_system(
             }
             if has_dialogue {
                 if let Some(b) = auto_display_override {
-                    dialogue_spec.auto_display = b;
+                    match dialogue_spec.ui_type {
+                        DialogueUiType::MovementDisabled => {
+                            eprintln!("Warning: Auto-display of dialogue isn't currently supported")
+                        }
+                        DialogueUiType::Notice => {
+                            dialogue_spec.auto_display = b;
+                        }
+                    }
                 }
                 behaviors.insert(ColliderBehavior::Dialogue(dialogue_spec));
             }
