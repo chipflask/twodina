@@ -197,7 +197,11 @@ fn dialogue_behavior(behaviors: &HashSet<ColliderBehavior>) -> Option<DialogueSp
             ColliderBehavior::Collect => {}
             ColliderBehavior::Load { path: _ } => {}
             ColliderBehavior::Dialogue(spec) => {
-                return Some(spec.clone());
+                // If it should be auto-displayed, another system already
+                // displays it.
+                if !spec.auto_display {
+                    return Some(spec.clone());
+                }
             }
         }
     }

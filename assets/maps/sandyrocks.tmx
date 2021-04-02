@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.5" tiledversion="1.5.0" orientation="orthogonal" renderorder="right-down" width="22" height="22" tilewidth="64" tileheight="64" infinite="0" nextlayerid="10" nextobjectid="109">
+<map version="1.5" tiledversion="1.5.0" orientation="orthogonal" renderorder="right-down" width="22" height="22" tilewidth="64" tileheight="64" infinite="0" nextlayerid="10" nextobjectid="112">
  <tileset firstgid="1" name="crystal_set" tilewidth="100" tileheight="100" tilecount="5" columns="5">
   <image source="melle/crystal_set.png" width="500" height="100"/>
  </tileset>
@@ -14,7 +14,7 @@
  </tileset>
  <layer id="1" name="background" width="22" height="22" tintcolor="#ffd8bd">
   <data encoding="base64" compression="zlib">
-   eJyVlMlv01AQh9+xbhyzBFJsKAlLnA2x3JBoDyAQygHRhUVColCJA1AqJPj/JX4jvpEnVkrK4ZPt53nz5v1mmaWUBqIUHbHJ95S1StRiyLdxBZuuuCfuiwfiUbApgl+zz3nv8W9DZKxtwIjnWDwX++JA7LKnCv7KM6i5Q8H7mHvZ3onYEx/FkViEe14QF8Xlf/guuXMW4vfzvopv8Is146roi2tr/Doj9nXX2N0Sd8Tdc/o9L9PWt+ti+b2EPhN0LdAgC3Y7Ya/l2msp504d/rkuN8SWOBYzfLkGFXafxVti2MFvDz8WyxBby8l1fPbxuwh2ZYjXzz8UP8QpcXY5e0qssxXxboub3Mnu/QFdMs5/Iz4Rs+thNVsHXQzrnSN8HrLP6+SVeC9ec47l+7Y4wdbvVaamN+etWPvEYfrtpqZufqa/dRPz9g7b47S6HkZBW8/ZPrrlaXk+uL4vxBfxHbt2fdVgvXMQ/LZ7JQ/ve6nppzG6Fi17nyFRiy1ylpFfz63n8CHnL1q+4syrUlN3rkWsBfM94Jljsw2r+t/no2nyVDwTL9Hr5Iw9nkOrhXb/e2/5fLRYH5PXRdj7PzPDatTm+jys1fi1/D5Zs3+IbrH3S3J+igYVObD5Yv3gdTUll7Z3Qgwz1ub47gWfPgvyEK/nyXr8N2eNeA7wZXGNOc9zUqVmzvv5RWpqzXMQtfRzO9j30nJfjNOyNpvY5amZT38AZmlAQg==
+   eJyVlMlv01AQh9+xbpywBFJsKAlL7CyI5YZEewCBUA6ILiwnCpU4AKVCgv9f4jfqN/LESkk5fLL9PG/evN8ss5TSUBSiIzb5nrJWikqM+DauYdMVD8RD8Ug8CTa94Nfsc977/NsQGWsbMOZZi5diXxyIXfaUwV9xDhV36PFecy/bOxF74pM4Eotwz0visrj6D98Fd85C/H7eN/EdfrNmXBcDcWONX2fMvu4auzvinrh/Qb8XZdr6dl0sv1fQZ4KuPTTIgt1O2Gu59lrKuVOHf67LLbEljsUMX65Bid0X8Z4YdvDbx4/FMsLWcnITnwP8LoJdEeL18w/FT3FKnF3OnhLrbEW82+I2d7J7v0CXjPPfic/E7HpYzVZBF8N65wifh+zzOnkjPoq3nGP5vitOsPV7FanpzXkr1gFxmH67qambX+msbmLePmB7nFbXwzho6znbR7c8Lc8H1/eV+Cp+YNeurwqsdw6C33av5OF9LzX9VKNrr2XvMyRqsUXOMvLrufUcPub8RctXnHllaurOtYi1YL6HPHNstmFV//t8NE2ep7M6eo1eJ+fs8RxaLbT733vL56PF+pS8LsLe/5kZVqM21+dhrcKv5ffZmv0jdIu9X5DzUzQoyYHNF+sHr6spubS9E2KYsTbHdz/49FmQh3g9T9bjfzhrzHOIL4ur5jzPSZmaOe/n91JTa56DqKWf28G+n5b7ok7L2mxil6dmPv0F/zpAKg==
   </data>
  </layer>
  <objectgroup id="2" name="items">
@@ -55,7 +55,8 @@
   <object id="12" x="-15.1515" y="1411.36" width="1421.82" height="96"/>
   <object id="82" x="437.25" y="915.75" width="28" height="53">
    <properties>
-    <property name="dialogue" value="invisibleStop"/>
+    <property name="autodisplay" type="bool" value="true"/>
+    <property name="notice" value="invisibleStop"/>
    </properties>
   </object>
   <object id="39" name="spawn" x="797.666" y="1246.17" width="50" height="44.5"/>
@@ -162,6 +163,12 @@
   <object id="106" x="-1230.79" y="727.561" width="186" height="142">
    <properties>
     <property name="dialogue" value="astralChill"/>
+   </properties>
+  </object>
+  <object id="111" name="trigger" x="-106.561" y="57.7272" width="79.7879" height="108.788">
+   <properties>
+    <property name="autodisplay" type="bool" value="true"/>
+    <property name="notice" value="exitWorld"/>
    </properties>
   </object>
  </objectgroup>

@@ -108,32 +108,48 @@ pub fn setup_map_objects_system(
 
             let mut behaviors: HashSet<ColliderBehavior> = Default::default();
 
+            let mut has_dialogue = false;
+            let mut auto_display_override = None;
+            let mut dialogue_spec = DialogueSpec::default();
             for (k,v) in object.props.iter() {
                 if k == "dialogue" {
                     if let PropertyValue::StringValue(s) = v {
-                        behaviors.insert(ColliderBehavior::Dialogue(
-                            DialogueSpec {
-                                node_name: s.clone(),
-                                ui_type: DialogueUiType::MovementDisabled,
-                            }));
-                        break;
+                        has_dialogue = true;
+                        dialogue_spec.node_name = s.clone();
+                        dialogue_spec.ui_type = DialogueUiType::MovementDisabled;
+                        dialogue_spec.auto_display = false;
                     }
                 } else if k == "notice" {
                     if let PropertyValue::StringValue(s) = v {
-                        behaviors.insert(ColliderBehavior::Dialogue(
-                            DialogueSpec {
-                                node_name: s.clone(),
-                                ui_type: DialogueUiType::Notice,
-                            }));
-                        break;
+                        has_dialogue = true;
+                        dialogue_spec.node_name = s.clone();
+                        dialogue_spec.ui_type = DialogueUiType::Notice;
+                        dialogue_spec.auto_display = true;
+                    }
+                } else if k == "autodisplay" {
+                    if let PropertyValue::BoolValue(b) = v {
+                        auto_display_override = Some(*b);
                     }
                 }
+            }
+            if has_dialogue {
+                if let Some(b) = auto_display_override {
+                    match dialogue_spec.ui_type {
+                        DialogueUiType::MovementDisabled => {
+                            eprintln!("Warning: Auto-display of dialogue isn't currently supported")
+                        }
+                        DialogueUiType::Notice => {
+                            dialogue_spec.auto_display = b;
+                        }
+                    }
+                }
+                behaviors.insert(ColliderBehavior::Dialogue(dialogue_spec));
             }
 
             // we should have actual types based on object name
             // and add components based on that
             match object.name.as_ref() {
-                "spawn" => {}
+                "spawn" | "trigger" => {}
                 "biggem" | "gem" => {
                     if object.visible {
                         behaviors.insert(ColliderBehavior::Collect);
