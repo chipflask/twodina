@@ -25,7 +25,7 @@
   <object id="5" name="gem" gid="5" x="379.5" y="953" width="16" height="16"/>
   <object id="37" name="biggem" gid="1" x="697" y="725" width="100" height="100" visible="0">
    <properties>
-    <property name="notice" value="hiddenFeels"/>
+    <property name="dialogue" value="hiddenFeels"/>
    </properties>
   </object>
   <object id="108" gid="1" x="-1119.7" y="2195.45" width="560.606" height="560.606">
