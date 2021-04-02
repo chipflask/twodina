@@ -109,6 +109,7 @@ pub fn setup_map_objects_system(
             let mut behaviors: HashSet<ColliderBehavior> = Default::default();
 
             let mut has_dialogue = false;
+            let mut auto_display_override = None;
             let mut dialogue_spec = DialogueSpec::default();
             for (k,v) in object.props.iter() {
                 if k == "dialogue" {
@@ -116,20 +117,25 @@ pub fn setup_map_objects_system(
                         has_dialogue = true;
                         dialogue_spec.node_name = s.clone();
                         dialogue_spec.ui_type = DialogueUiType::MovementDisabled;
+                        dialogue_spec.auto_display = false;
                     }
                 } else if k == "notice" {
                     if let PropertyValue::StringValue(s) = v {
                         has_dialogue = true;
                         dialogue_spec.node_name = s.clone();
                         dialogue_spec.ui_type = DialogueUiType::Notice;
+                        dialogue_spec.auto_display = true;
                     }
                 } else if k == "autodisplay" {
                     if let PropertyValue::BoolValue(b) = v {
-                        dialogue_spec.auto_display = *b;
+                        auto_display_override = Some(*b);
                     }
                 }
             }
             if has_dialogue {
+                if let Some(b) = auto_display_override {
+                    dialogue_spec.auto_display = b;
+                }
                 behaviors.insert(ColliderBehavior::Dialogue(dialogue_spec));
             }
 
