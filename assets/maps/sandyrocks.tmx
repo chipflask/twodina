@@ -165,9 +165,8 @@
     <property name="dialogue" value="astralChill"/>
    </properties>
   </object>
-  <object id="111" name="trigger" x="-106.561" y="57.7272" width="79.7879" height="108.788">
+  <object id="111" name="trigger" x="-106.561" y="42.0605" width="94.7879" height="131.455">
    <properties>
-    <property name="autodisplay" type="bool" value="true"/>
     <property name="notice" value="exitWorld"/>
    </properties>
   </object>
