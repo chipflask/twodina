@@ -166,13 +166,18 @@ impl Dialogue {
     }
 
     // Start running dialogue from a given node.  If the node doesn't exist, do
-    // nothing.
+    // nothing. If the node name is a quoted string, just trigger the event.
     pub fn begin_optional(
         &mut self,
         node_name: &str,
         dialogue_events: &mut EventWriter<DialogueEvent>,
     ) -> bool {
         if !self.has_node(node_name) {
+            if node_name.starts_with("\"") && node_name.ends_with("\"") {
+                dialogue_events.send(DialogueEvent::Text(node_name.to_string()));
+                self.next_node_name = Some("/end".to_string());
+                self.is_end = false;
+            }
             return false;
         }
         self.begin(node_name, dialogue_events);
@@ -210,6 +215,14 @@ impl Dialogue {
         let dialogue_asset = &self.asset;
         // Override next node with name set in Dialogue::begin().
         if let Some(node_name) = &self.next_node_name {
+            if node_name == "/end" {
+                // special command to end immediately
+                self.is_end = true;
+                self.next_index = None;
+                self.next_node_name = None;
+                dialogue_events.send(DialogueEvent::End);
+                return;
+            }
             match dialogue_asset.nodes_by_name.get(node_name) {
                 None => {
                     panic!("Dialogue node with name not found: {}", node_name)
