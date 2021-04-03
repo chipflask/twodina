@@ -21,6 +21,10 @@ toml = "0.5"
 # [patch.'bevy_tiled_prototype']
 # bevy_tiled_prototype = { path = "../bevy_tiled" }
 
+[profile.dev]
+# Speed up dev build on macOS.
+split-debuginfo = "unpacked"
+
 [profile.dev.package."*"]
 # Optimize dependencies.
 opt-level = 3
