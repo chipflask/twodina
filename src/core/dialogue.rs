@@ -1,4 +1,7 @@
+use std::sync::{Arc, Mutex};
+
 use anyhow;
+use artichoke::prelude::*;
 use bevy::{
     asset::{AssetLoader, LoadContext, LoadedAsset},
     prelude::*,
@@ -36,7 +39,12 @@ pub struct Dialogue {
     pub next_index: Option<usize>,
     pub next_node_name: Option<String>,
     pub is_end: bool,
+    pub artichoke: Arc<Mutex<Artichoke>>,
 }
+
+// This is safe because we wrap the interpreter pointer in Arc<Mutex<T>>.
+unsafe impl Send for Dialogue {}
+unsafe impl Sync for Dialogue {}
 
 // Event fired by this module so that the app can handle dialogue changes.
 #[derive(Debug)]
@@ -72,6 +80,7 @@ pub enum NodeBody {
     // Command(String),
     End,
     GoTo(String),
+    Ruby(String),
     Text(String),
 }
 
@@ -140,6 +149,9 @@ impl Dialogue {
         placeholder: &DialoguePlaceholder,
         asset: DialogueAsset,
     ) -> Dialogue {
+        let interpreter = artichoke::interpreter()
+            .expect("Couldn't create dialogue interpreter");
+
         Dialogue {
             handle: placeholder.handle.clone(),
             asset,
@@ -147,6 +159,7 @@ impl Dialogue {
             next_index: placeholder.next_index,
             next_node_name: placeholder.next_node_name.clone(),
             is_end: placeholder.is_end,
+            artichoke: Arc::new(Mutex::new(interpreter)),
         }
     }
 
@@ -246,6 +259,16 @@ impl Dialogue {
                                 continue;
                             }
                         }
+                    }
+                    NodeBody::Ruby(code) => {
+                        let mut interpreter = self.artichoke.lock()
+                            .expect("failed to acquire interpreter lock; other thread probably panicked");
+                        let result = interpreter.eval(code.as_bytes());
+                        println!("Ruby result: {:?}", result);
+
+                        // Continue to next node.
+                        self.current_index = self.current_index.saturating_add(1);
+                        continue;
                     }
                     NodeBody::Text(text) => {
                         println!("Setting text to: {}", text);
