@@ -8,6 +8,12 @@
             body: Text("You find yourself in an unfamiliar place.  [press Spacebar to advance]"),
         ),
         (
+            body: Ruby("
+            require 'script_core'
+            p ScriptCore.inc 2
+            ")
+        ),
+        (
             body: Ruby("x = 1")
         ),
         (

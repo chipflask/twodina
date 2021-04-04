@@ -9,6 +9,8 @@ use bevy::{
     utils::{BoxedFuture, HashMap},
 };
 
+use crate::core::script_core;
+
 #[derive(Default)]
 pub struct DialoguePlugin;
 
@@ -149,8 +151,12 @@ impl Dialogue {
         placeholder: &DialoguePlaceholder,
         asset: DialogueAsset,
     ) -> Dialogue {
-        let interpreter = artichoke::interpreter()
+        let mut interpreter = artichoke::interpreter()
             .expect("Couldn't create dialogue interpreter");
+
+        // Add our custom patches.
+        script_core::mruby::init(&mut interpreter)
+            .expect("failed to initialize ScriptCore");
 
         Dialogue {
             handle: placeholder.handle.clone(),

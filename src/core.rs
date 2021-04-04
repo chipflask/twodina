@@ -5,4 +5,5 @@ pub mod dialogue;
 pub mod game;
 pub mod input;
 pub mod menu;
+pub mod script_core;
 pub mod state;
