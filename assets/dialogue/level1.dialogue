@@ -14,6 +14,9 @@
             body: Ruby("x += 1; puts 40 + x")
         ),
         (
+            body: Ruby("p ScriptCore.say 'Follow the white rabbit.', 2")
+        ),
+        (
             body: Ruby("
             if x > 1
               puts 'Unfortunately, no one can be told what the Matrix is.  You have to see it for yourself.'
