@@ -1,4 +1,60 @@
+use std::{error::Error as StdError, fmt::Display, path::PathBuf};
+
+use anyhow;
 use ruruby::{self, *};
+
+#[derive(Debug, Clone)]
+pub struct ScriptVm {
+    pub vm: ruruby::VMRef,
+    pub vm_context: ruruby::ContextRef,
+    pub parser: ruruby::Parser,
+}
+
+impl ScriptVm {
+    pub fn new() -> ScriptVm {
+        let vm = new_interpreter();
+
+        ScriptVm { vm,
+                   vm_context: context(vm),
+                   parser: ruruby::Parser::new() }
+    }
+
+    pub fn eval_repl_code(&mut self, code: &str) -> anyhow::Result<Value> {
+        let parse_result = self.parser
+                               .clone()
+                               .parse_program_repl(PathBuf::from("dialogue"),
+                                                   code.as_ref(),
+                                                   Some(self.vm_context))
+                               .map_err(|e| RubyStdError { source: e })?;
+        let value = self.vm
+                        .run_repl(parse_result, self.vm_context)
+                        .map_err(|e| RubyStdError { source: e })?;
+
+        Ok(value)
+    }
+}
+
+// Wrap RubyError so we can implement std::error::Error.
+#[derive(Debug)]
+pub struct RubyStdError {
+    source: RubyError,
+}
+
+impl StdError for RubyStdError {
+    fn source(&self) -> Option<&(dyn StdError + 'static)> {
+        None
+    }
+
+    fn cause(&self) -> Option<&dyn StdError> {
+        None
+    }
+}
+
+impl Display for RubyStdError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "RubyStdError: {:?}", self.source)
+    }
+}
 
 pub fn new_interpreter() -> VMRef {
     let mut globals = GlobalsRef::new_globals();

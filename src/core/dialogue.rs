@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use anyhow;
 use bevy::{
     asset::{AssetLoader, LoadContext, LoadedAsset},
@@ -7,9 +5,8 @@ use bevy::{
     reflect::TypeUuid,
     utils::{BoxedFuture, HashMap},
 };
-use ruruby;
 
-use crate::core::script;
+use crate::core::script::ScriptVm;
 
 #[derive(Default)]
 pub struct DialoguePlugin;
@@ -41,9 +38,7 @@ pub struct Dialogue {
     pub next_index: Option<usize>,
     pub next_node_name: Option<String>,
     pub is_end: bool,
-    pub vm: ruruby::VMRef,
-    pub vm_context: ruruby::ContextRef,
-    pub parser: ruruby::Parser,
+    pub script_vm: ScriptVm,
 }
 
 // Event fired by this module so that the app can handle dialogue changes.
@@ -149,8 +144,6 @@ impl Dialogue {
         placeholder: &DialoguePlaceholder,
         asset: DialogueAsset,
     ) -> Dialogue {
-        let vm = script::new_interpreter();
-
         Dialogue {
             handle: placeholder.handle.clone(),
             asset,
@@ -158,9 +151,7 @@ impl Dialogue {
             next_index: placeholder.next_index,
             next_node_name: placeholder.next_node_name.clone(),
             is_end: placeholder.is_end,
-            vm,
-            vm_context: script::context(vm),
-            parser: ruruby::Parser::new(),
+            script_vm: ScriptVm::new(),
         }
     }
 
@@ -262,16 +253,13 @@ impl Dialogue {
                         }
                     }
                     NodeBody::Ruby(code) => {
-                        match self.parser.clone().parse_program_repl(
-                                PathBuf::from("dialogue"),
-                                code.as_ref(),
-                                Some(self.vm_context)) {
-                            Ok(parse_result) => {
-                                let vm_result = self.vm.run_repl(parse_result, self.vm_context);
-                                eprintln!("VM Result: {:?}", vm_result);
+                        match self.script_vm.eval_repl_code(code) {
+                            Ok(value) => {
+                                eprintln!("result: {:?}", value);
                             },
-                            Err(ruby_error) => {
-                                eprintln!("parse error: {:?}", ruby_error);
+                            Err(error) => {
+                                // Could be a parse error or a Ruby error.
+                                eprintln!("error: {:?}", error);
                             },
                         }
 
