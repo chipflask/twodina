@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use anyhow;
 use bevy::{
     asset::{AssetLoader, LoadContext, LoadedAsset},
@@ -5,6 +7,9 @@ use bevy::{
     reflect::TypeUuid,
     utils::{BoxedFuture, HashMap},
 };
+use ruruby;
+
+use crate::core::script;
 
 #[derive(Default)]
 pub struct DialoguePlugin;
@@ -36,6 +41,9 @@ pub struct Dialogue {
     pub next_index: Option<usize>,
     pub next_node_name: Option<String>,
     pub is_end: bool,
+    pub vm: ruruby::VMRef,
+    pub vm_context: ruruby::ContextRef,
+    pub parser: ruruby::Parser,
 }
 
 // Event fired by this module so that the app can handle dialogue changes.
@@ -72,6 +80,7 @@ pub enum NodeBody {
     // Command(String),
     End,
     GoTo(String),
+    Ruby(String),
     Text(String),
 }
 
@@ -140,6 +149,8 @@ impl Dialogue {
         placeholder: &DialoguePlaceholder,
         asset: DialogueAsset,
     ) -> Dialogue {
+        let vm = script::new_interpreter();
+
         Dialogue {
             handle: placeholder.handle.clone(),
             asset,
@@ -147,6 +158,9 @@ impl Dialogue {
             next_index: placeholder.next_index,
             next_node_name: placeholder.next_node_name.clone(),
             is_end: placeholder.is_end,
+            vm,
+            vm_context: script::context(vm),
+            parser: ruruby::Parser::new(),
         }
     }
 
@@ -246,6 +260,24 @@ impl Dialogue {
                                 continue;
                             }
                         }
+                    }
+                    NodeBody::Ruby(code) => {
+                        match self.parser.clone().parse_program_repl(
+                                PathBuf::from("dialogue"),
+                                code.as_ref(),
+                                Some(self.vm_context)) {
+                            Ok(parse_result) => {
+                                let vm_result = self.vm.run_repl(parse_result, self.vm_context);
+                                eprintln!("VM Result: {:?}", vm_result);
+                            },
+                            Err(ruby_error) => {
+                                eprintln!("parse error: {:?}", ruby_error);
+                            },
+                        }
+
+                        // Continue to next dialogue node.
+                        self.current_index = self.current_index.saturating_add(1);
+                        continue;
                     }
                     NodeBody::Text(text) => {
                         println!("Setting text to: {}", text);

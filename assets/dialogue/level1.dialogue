@@ -8,6 +8,19 @@
             body: Text("You find yourself in an unfamiliar place.  [press Spacebar to advance]"),
         ),
         (
+            body: Ruby("x = 1")
+        ),
+        (
+            body: Ruby("x += 1; puts 40 + x")
+        ),
+        (
+            body: Ruby("
+            if x > 1
+              puts 'Unfortunately, no one can be told what the Matrix is.  You have to see it for yourself.'
+            end
+            ")
+        ),
+        (
             body: Text("What interesting things will you find here?"),
         ),
         (
