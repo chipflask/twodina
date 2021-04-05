@@ -25,10 +25,22 @@ pub fn context(vm: VMRef) -> ContextRef {
                          None)
 }
 
-fn say(_: &mut VM, _self_val: Value, args: &Args) -> VMResult {
+fn say(vm: &mut VM, _self_val: Value, args: &Args) -> VMResult {
     args.check_args_range(0, 2)?;
 
     eprintln!("Hello, from Rust.  Called with: {:?}", args);
+
+    match &args.block {
+        Block::None => {
+            // No block argument.
+        }
+        block => {
+            let mut args = Args::new(1);
+            let arg = Value::string("A string constructed in Rust.");
+            args[0] = arg;
+            vm.eval_block(block, &args)?;
+        }
+    }
 
     if args.len() >= 1 {
         // Extract first arg.

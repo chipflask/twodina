@@ -14,7 +14,13 @@
             body: Ruby("x += 1; puts 40 + x")
         ),
         (
-            body: Ruby("p ScriptCore.say 'Follow the white rabbit.', 2")
+            body: Ruby("
+            p ScriptCore.say 'Follow the white rabbit.', 2 do |s|
+              # Using %Q{} syntax since we're already in a double-quoted RON
+              # string.
+              puts %Q{Running block!  Got block parameter: #{s}}
+            end
+            ")
         ),
         (
             body: Ruby("
