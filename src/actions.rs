@@ -57,12 +57,12 @@ pub fn handle_movement_input_system(
         if input_actions.is_active(Action::Up, player.id) {
             new_direction = Some(Direction::North);
             new_velocity.y = 1.0;
-            new_state = CharacterState::Walking;
+            new_state = CharacterState::Running;
         }
         if input_actions.is_active(Action::Down, player.id) {
             new_direction = Some(Direction::South);
             new_velocity.y = -1.0;
-            new_state = CharacterState::Walking;
+            new_state = CharacterState::Running;
         }
 
         // Favor facing left or right when two directions are pressed simultaneously
@@ -70,12 +70,12 @@ pub fn handle_movement_input_system(
         if input_actions.is_active(Action::Left, player.id) {
             new_direction = Some(Direction::West);
             new_velocity.x = -1.0;
-            new_state = CharacterState::Walking;
+            new_state = CharacterState::Running;
         }
         if input_actions.is_active(Action::Right, player.id) {
             new_direction = Some(Direction::East);
             new_velocity.x = 1.0;
-            new_state = CharacterState::Walking;
+            new_state = CharacterState::Running;
         }
 
         // If the user is pressing two directions at once, go diagonally with
@@ -84,14 +84,14 @@ pub fn handle_movement_input_system(
             new_velocity = new_velocity.normalize();
         }
 
-        if input_actions.is_active(Action::Run, player.id) {
-            character.movement_speed = RUN_SPEED;
+        if input_actions.is_active(Action::Walk, player.id) {
+            character.movement_speed = WALK_SPEED;
             new_state = match new_state {
-                CharacterState::Walking => CharacterState::Running,
-                CharacterState::Idle | CharacterState::Running => new_state,
+                CharacterState::Running => CharacterState::Walking,
+                CharacterState::Idle | CharacterState::Walking => new_state,
             }
         } else {
-            character.movement_speed = WALK_SPEED;
+            character.movement_speed = RUN_SPEED;
         }
 
         if let Some(direction) = new_direction {

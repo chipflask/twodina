@@ -24,7 +24,8 @@ pub enum Action {
     Left,
     Right,
 
-    Run,
+    // Walk slowly, instead of running.
+    Walk,
 
     Accept,
 }
@@ -134,7 +135,7 @@ fn action_producer_system(
         input_action_set.activate(Action::Right, 0);
     }
     if keyboard_input.pressed(KeyCode::LShift) {
-        input_action_set.activate(Action::Run, 0);
+        input_action_set.activate(Action::Walk, 0);
     }
 
     if keyboard_input.pressed(KeyCode::Up) {
@@ -150,7 +151,7 @@ fn action_producer_system(
         input_action_set.activate(Action::Right, 1);
     }
     if keyboard_input.pressed(KeyCode::RShift) {
-        input_action_set.activate(Action::Run, 1);
+        input_action_set.activate(Action::Walk, 1);
     }
 
     for (i, gamepad) in gamepad_set.gamepads.iter().cloned().enumerate() {
@@ -196,7 +197,7 @@ fn action_producer_system(
         }
 
         if button_inputs.pressed(GamepadButton(gamepad, GamepadButtonType::West)) {
-            input_action_set.activate(Action::Run, player_num);
+            input_action_set.activate(Action::Walk, player_num);
         }
     }
 }

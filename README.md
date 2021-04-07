@@ -18,8 +18,8 @@ cargo run --features bevy/dynamic
 
 Gamepads and keyboard are supported.
 
-- Player 1: WASD keys to move, left shift to run
-- Player 2: Arrow keys to move, right shift to run
+- Player 1: WASD keys to move, left shift to walk
+- Player 2: Arrow keys to move, right shift to walk
 - Escape to exit
 
 ### Building
