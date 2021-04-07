@@ -3751,6 +3751,8 @@ dependencies = [
  "artichoke",
  "bevy",
  "bevy_tiled_prototype",
+ "cstr",
+ "lazy_static",
  "ncollide2d",
  "ron",
  "serde",

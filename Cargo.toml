@@ -12,6 +12,8 @@ anyhow = "^1.0.36"
 artichoke = { git = "https://github.com/artichoke/artichoke", branch = "trunk" }
 bevy = { version = "0.5.0", features=["vorbis"] }
 bevy_tiled_prototype = "0.2.2"
+cstr = "^0.2.8"
+lazy_static = "^1.4.0"
 ncollide2d = "0.27.0"
 ron = "0.6.4"
 serde = { version = "^1.0.123", features = ["derive"] }
