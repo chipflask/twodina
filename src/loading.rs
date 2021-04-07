@@ -1,16 +1,9 @@
-use bevy::{asset::{Asset, HandleId}, prelude::*, utils::HashSet};
-use bevy_tiled_prototype::{Map, MapReadyEvent, Object, ObjectReadyEvent, ObjectShape, PropertyValue};
+use std::ops::Mul;
 
-use crate::{
-    core::{
-        collider::{Collider, ColliderBehavior},
-        dialogue::{Dialogue, DialogueEvent},
-        game::{DialogueSpec, DialogueUiType, Game},
-        state::AppState,
-    },
-    debug::Debuggable,
-    scene2d::TILED_MAP_SCALE,
-};
+use bevy::{asset::{Asset, HandleId}, prelude::*, utils::{HashSet, HashMap}};
+use bevy_tiled_prototype::{Map, MapReadyEvent, Object, ObjectReadyEvent, ObjectShape, PropertyValue, LayerData};
+
+use crate::{core::{collider::{Collider, ColliderBehavior}, dialogue::{Dialogue, DialogueEvent}, game::{DialogueSpec, DialogueUiType, Game}, state::{AppState, TransientState}}, debug::Debuggable, scene2d::{TILED_MAP_SCALE, MapContainer}};
 
 #[derive(Debug, Default)]
 pub struct LoadProgress {
@@ -69,9 +62,73 @@ pub fn wait_for_asset_loading_system(
 pub fn wait_for_map_ready_system(
     mut commands: Commands,
     mut map_ready_events: EventReader<MapReadyEvent>,
+    query: Query<&MapContainer>,
+    maps: Res<Assets<Map>>,
+    transient_state: Res<TransientState>,
+    mut game_state: ResMut<Game>,
 ) {
     for event in map_ready_events.iter() {
         let map_entity = event.map_entity_option.expect("why didn't you give this map an entity?");
+        if let Ok(container) = query.get(map_entity) {
+            maps.get(container.asset.clone()).map(|map| {
+                let mut templates: HashMap<u32, Object> = Default::default();
+                // find all tiles with object layers
+                for tileset in map.map.tilesets.iter() {
+                    for tile in tileset.tiles.iter() {
+                        if let Some(group) = &tile.objectgroup {
+                            for obj in &group.objects {
+                                templates.insert(tileset.first_gid + tile.id, Object::new(&obj));
+                            }
+                        }
+                    }
+                }
+                // go through visibile layers for this map and add occlusion objects for tiles
+                // NOTE: for now this assumes the entire tile occludes
+                for layer in map.map.layers.iter() {
+                    if !layer.visible { continue; }
+                    if let LayerData::Finite(tiles) = &layer.tiles {
+                        for (tile_y, tilerow) in tiles.iter().enumerate() {
+                            for (tile_x, tile) in tilerow.iter().enumerate() {
+                                templates.get_mut(&tile.gid).map(|obj| {
+                                    obj.position.x = tile_x as f32 * map.tile_size.x;
+                                    obj.position.y = tile_y as f32 * map.tile_size.y;
+                                    obj.visible = false;
+                                    let mut entity_commands = obj.spawn(
+                                        &mut commands, None,
+                                        &map.map,
+                                        container.asset.clone(),
+                                        &map.center(
+                                        Transform {
+                                            translation: Vec3::new(0.0, 0.0, -100.0),
+                                            scale: Vec3::new(TILED_MAP_SCALE, TILED_MAP_SCALE, 1.0),
+                                            ..Default::default()
+                                        }),
+                                        &bevy_tiled_prototype::DebugConfig {
+                                            enabled: false,
+                                            material: Some(transient_state.default_blue.clone()),
+                                        }
+                                    );
+                                    entity_commands
+                                        .insert( // for now assume objects in tiles mean entire tile obstructs
+                                            Collider::single(
+                                                ColliderBehavior::Obstruct,
+                                                map.tile_size.clone().mul(TILED_MAP_SCALE),
+                                                Vec2::new(0.0, 0.0)
+                                            )
+                                        )
+                                        .insert(Debuggable::default());
+                                    // debug is
+                                    game_state.entity_visibility.insert(entity_commands.id(),false);
+                                });
+                            }
+                        }
+                    } else {
+                        panic!("Infinte maps not supported")
+                    }
+                }
+            });
+        }
+        // TODO: this system should really only do the following:
         // commands.insert(map_entity, SpawnedMap);
         // Stop blocking the Loading state transition.
         commands.entity(map_entity).remove::<ComplicatedLoad>();

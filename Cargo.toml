@@ -1,7 +1,7 @@
 [package]
 name = "twodina"
 description = "A 2d game engine on top of Bevy."
-version = "0.2.1"
+version = "0.2.2"
 authors = ["Jonathan Tran <jonnytran@gmail.com>", "Daniel Taub <dmtaub@gmail.com>"]
 edition = "2018"
 
@@ -10,15 +10,14 @@ edition = "2018"
 [dependencies]
 anyhow = "^1.0.36"
 bevy = { version = "0.5.0", features=["vorbis"] }
-bevy_tiled_prototype = "0.2.2"
+bevy_tiled_prototype = "0.2.3"
 ncollide2d = "0.27.0"
 ron = "0.6.4"
 serde = { version = "^1.0.123", features = ["derive"] }
 toml = "0.5"
 
-# [patch.bevy]
+#[patch.crates-io]
 # bevy = { git = "https://github.com/bevyengine/bevy/", branch = "main", features = ["vorbis"] }
-# [patch.'bevy_tiled_prototype']
 # bevy_tiled_prototype = { path = "../bevy_tiled" }
 
 [profile.dev]

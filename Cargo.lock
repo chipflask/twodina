@@ -633,9 +633,9 @@ dependencies = [
 
 [[package]]
 name = "bevy_tiled_prototype"
-version = "0.2.2"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a3235ac5b4111adb03e27ff545dfb1f10a0862a4b910b1a70ead567181c44457"
+checksum = "2dacba8f267900c1ac5aa35c667d1a5ff7cd7104f5bac1070bde9d48c723303c"
 dependencies = [
  "anyhow",
  "bevy",
@@ -3382,7 +3382,7 @@ checksum = "85e00391c1f3d171490a3f8bd79999b0002ae38d3da0d6a3a306c754b053d71b"
 
 [[package]]
 name = "twodina"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "anyhow",
  "bevy",
