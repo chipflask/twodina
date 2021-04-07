@@ -214,7 +214,9 @@ pub fn setup_map_objects_system(
                 },
                 _ => {
                     if object.name.starts_with("load:") {
-                        behaviors.insert(ColliderBehavior::Load { path: object.name[5..].to_string() });
+                        if object.visible {
+                            behaviors.insert(ColliderBehavior::Load { path: object.name[5..].to_string() });
+                        }
                     } else {
                         if object.is_shape() { // allow hide/show objects without images
                             commands.entity(event.entity).insert(Debuggable::default());

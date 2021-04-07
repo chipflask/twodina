@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.5" tiledversion="1.5.0" orientation="orthogonal" renderorder="right-down" width="32" height="32" tilewidth="64" tileheight="64" infinite="0" nextlayerid="16" nextobjectid="133">
+ <tileset firstgid="1" name="crystal_set" tilewidth="100" tileheight="100" tilecount="5" columns="5">
+  <image source="../melle/crystal_set.png" width="500" height="100"/>
+ </tileset>
+ <tileset firstgid="6" name="bush" tilewidth="64" tileheight="64" tilecount="2" columns="2">
+  <image source="bush.png" width="128" height="64"/>
+  <tile id="0">
+   <objectgroup draworder="index" id="4">
+    <object id="5" x="0.286065" y="0.286065" width="63.9356" height="63.7926"/>
+   </objectgroup>
+  </tile>
+ </tileset>
+ <tileset firstgid="8" name="trees" tilewidth="54" tileheight="72" tilecount="2" columns="2">
+  <image source="../trees.png" width="108" height="72"/>
+ </tileset>
+ <layer id="11" name="floor" width="32" height="32">
+  <data encoding="base64" compression="zlib">
+   eJztw8EJAAAMA6H7Zf+Nu0dRcNVUVVXV1w9VIBwB
+  </data>
+ </layer>
+ <layer id="14" name="maze" width="32" height="32">
+  <data encoding="base64" compression="zlib">
+   eJzFk8sKgEAIRWfV/39yqyDkPo6bGgjK0ftQu84518/Pc+a3O65+5lAchat43nHHlzBmrcprehOnylM1rX9Oc+uHy2s6XE3zoHS3mual1RA8h0H8tlmmHVC8KUY0kdmTfUh800uqTbn0+x0n81Oa2i4p3Y1v219Vl7SmR+G6k2bo7gm/8kP+M9qrrY6NJsV1RF7TSnKJVvWu7lKvZl7CdP1oMeUj5aS+b/w4HjKTtIspj3ibWicu9aXqHL/LT3h0rvR/TDz03yOzaNjqzsWcZpLf7miM9IPse/Iw79x+KtzGQ/aR4hJO5Y/uJO0F2VWV5/iJpuRjg+3wlT8VI7uT9tF52sx8am89Iofu8ea+7fQXzw1YUw3/
+  </data>
+ </layer>
+ <objectgroup id="5" name="gems">
+  <object id="119" name="gem" gid="2" x="1921.61" y="127.13" width="62.4164" height="63.333"/>
+  <object id="120" name="gem" gid="3" x="1921.06" y="1985.89" width="62.8542" height="66.3096"/>
+  <object id="122" name="gem" gid="4" x="66.6006" y="1983.92" width="60.2626" height="64.5819"/>
+  <object id="123" name="gem" gid="5" x="64.6537" y="127.973" width="62.27" height="65.6973"/>
+  <object id="127" name="biggem" gid="1" x="962.395" y="1086.86" width="125.171" height="127.775" visible="0"/>
+  <object id="132" name="load:sandyrocks" gid="9" x="1029" y="902.667" width="54" height="72" visible="0"/>
+ </objectgroup>
+ <objectgroup id="8" name="border &amp; spawn">
+  <object id="86" x="1986" y="67.335" width="36" height="1951.14"/>
+  <object id="87" x="30" y="59.335" width="36" height="1954.44"/>
+  <object id="88" x="47.2235" y="1986.09" width="1958" height="26"/>
+  <object id="90" x="61" y="37" width="1961.3" height="26"/>
+  <object id="130" name="spawn" x="1023.22" y="1023.78"/>
+ </objectgroup>
+</map>

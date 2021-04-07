@@ -50,6 +50,13 @@
             body: End,
         ),
         (
+            name: "liam/maze",
+            body: Text("How incredibly verdent!"),
+        ),
+        (
+            body: End,
+        ),
+        (
             name: "collectedBigGem",
             body: Text("The gem barely fits in your bag of holding, you won't be able to keep it for long..."),
         ),

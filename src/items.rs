@@ -2,7 +2,7 @@ use std::fs;
 
 use bevy::{asset::FileAssetIo, prelude::*};
 use bevy::utils::HashSet;
-use bevy_tiled_prototype::Object;
+use bevy_tiled_prototype::{Map, Object};
 
 use crate::{core::{collider::{Collider, ColliderBehavior}, dialogue::{Dialogue, DialogueEvent}, game::{DialogueSpec, Game}, state::{AppState, TransientState}}, loading::LoadProgress, scene2d::load_next_map};
 
@@ -165,24 +165,44 @@ pub fn trigger_dialogue_system(
 
 // ideally this returns early if this level has no items that need monitoring
 pub fn inventory_item_reveal_system(
-    inventory_query: Query<&Inventory>,
-    mut object_query: Query<(&Object, &mut Visible, &mut Collider)>,
+    mut inventory_query: Query<&mut Inventory>,
+    mut object_query: Query<(&Object, &mut Visible, &mut Collider, &Handle<Map>)>,
+    game: Res<Game>,
 ) {
-    for inventory in inventory_query.iter() {
-        // if any one character has at least 3 gems, make the big one appear
-        if inventory.num_gems >= 3 {
-            for (object, mut visible, mut collider) in object_query.iter_mut() {
-                if object.name == "biggem" {
-                    visible.is_visible = true;
-                    collider.behaviors.clear();
-                    collider.insert_behavior(ColliderBehavior::Collect);
-                    collider.insert_behavior(ColliderBehavior::Dialogue(
-                        DialogueSpec {
-                            node_name: "collectedBigGem".to_string(),
-                            ui_type: crate::core::game::DialogueUiType::Notice,
-                            auto_display: true,
-                    }));
+    let mut do_reveal = false;
+    let mut total_gems = 0;
+    for inventory in inventory_query.iter_mut() {
+        total_gems += inventory.num_gems;
+    }
+    if total_gems >= 4 {
+        do_reveal = true;
+    }
+    if do_reveal {
+        for (object, mut visible, mut collider, map_handle) in object_query.iter_mut() {
+            // only reveal if it's invisible
+            if visible.is_visible {
+                continue;
+            }
+            if total_gems >= 8 && object.name.starts_with("load:") {
+                // show hidden portals when you have enough gems
+                visible.is_visible = true;
+                collider.insert_behavior(ColliderBehavior::Load { path: object.name[5..].to_string() });
+                // clear inventory for new map
+                for mut items in inventory_query.iter_mut() {
+                    items.num_gems = 0;
                 }
+            }
+
+            if object.name == "biggem" && *map_handle == game.current_map {
+                visible.is_visible = true;
+                collider.behaviors.clear();
+                collider.insert_behavior(ColliderBehavior::Collect);
+                collider.insert_behavior(ColliderBehavior::Dialogue(
+                    DialogueSpec {
+                        node_name: "collectedBigGem".to_string(),
+                        ui_type: crate::core::game::DialogueUiType::Notice,
+                        auto_display: true,
+                }));
             }
         }
     }
