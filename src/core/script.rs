@@ -1,6 +1,7 @@
 use std::{error::Error as StdError, fmt::Display, path::PathBuf};
 
 use anyhow;
+use bevy::prelude::info;
 use ruruby::{self, *};
 
 #[derive(Debug, Clone)]
@@ -31,6 +32,18 @@ impl ScriptVm {
                         .map_err(|e| RubyStdError { source: e })?;
 
         Ok(value)
+    }
+
+    pub fn eval_repl_code_logging_result(&mut self, code: &str) {
+        match self.eval_repl_code(code) {
+            Ok(value) => {
+                info!("result: {:?}", value);
+            },
+            Err(error) => {
+                // Could be a parse error or a Ruby error.
+                info!("error: {:?}", error);
+            },
+        }
     }
 
     pub fn require_file(&mut self, path: &PathBuf) -> anyhow::Result<()> {

@@ -254,15 +254,7 @@ impl Dialogue {
                         }
                     }
                     NodeBody::Ruby(code) => {
-                        match script_vm.eval_repl_code(code) {
-                            Ok(value) => {
-                                eprintln!("result: {:?}", value);
-                            },
-                            Err(error) => {
-                                // Could be a parse error or a Ruby error.
-                                eprintln!("error: {:?}", error);
-                            },
-                        }
+                        script_vm.eval_repl_code_logging_result(code);
 
                         // Continue to next dialogue node.
                         self.current_index = self.current_index.saturating_add(1);
