@@ -28,7 +28,7 @@ impl Plugin for ItemsPlugin {
                 .with_system(trigger_level_load_system.system()
                     .before("main"))
                 .with_system(items_system.system().label("main"))
-                .with_system(trigger_dialogue_system.system().label("main"))
+                .with_system(trigger_dialogue_or_script_system.system().label("main"))
                 .with_system(inventory_item_reveal_system.system().label("main"))
             );
     }
@@ -101,7 +101,8 @@ pub fn trigger_level_load_system(
 
                 ColliderBehavior::Obstruct |
                 ColliderBehavior::Collect |
-                ColliderBehavior::Dialogue(_) => {}
+                ColliderBehavior::Dialogue(_) |
+                ColliderBehavior::Ruby(_) => {}
             }
         }
     }
@@ -143,13 +144,14 @@ pub fn items_system(
                 }
                 ColliderBehavior::Obstruct |
                 ColliderBehavior::Load { path: _ } |
-                ColliderBehavior::Dialogue(_) => {}
+                ColliderBehavior::Dialogue(_) |
+                ColliderBehavior::Ruby(_) => {}
             }
         }
     }
 }
 
-pub fn trigger_dialogue_system(
+pub fn trigger_dialogue_or_script_system(
     mut interaction_reader: EventReader<ItemInteraction>,
     mut dialogue_query: Query<&mut Dialogue>,
     mut dialogue_events: EventWriter<DialogueEvent>,
@@ -169,6 +171,17 @@ pub fn trigger_dialogue_system(
                                 game.dialogue_ui = Some(spec.ui_type);
                             }
                         }
+                    }
+                }
+                ColliderBehavior::Ruby(code) => {
+                    match script_vm.eval_repl_code(code) {
+                        Ok(value) => {
+                            eprintln!("result: {:?}", value);
+                        },
+                        Err(error) => {
+                            // Could be a parse error or a Ruby error.
+                            eprintln!("error: {:?}", error);
+                        },
                     }
                 }
             }

@@ -21,6 +21,8 @@ pub enum ColliderBehavior {
     Load { path: String },
     // Begin dialogue.
     Dialogue(DialogueSpec),
+    // Execute Ruby script.
+    Ruby(String),
 }
 
 #[derive(Clone, Debug, Default)]
@@ -105,7 +107,8 @@ impl Collision {
                 ColliderBehavior::Obstruct => return true,
                 ColliderBehavior::Collect |
                 ColliderBehavior::Load { path: _ } |
-                ColliderBehavior::Dialogue(_) => {}
+                ColliderBehavior::Dialogue(_) |
+                ColliderBehavior::Ruby(_) => {}
             }
         }
 

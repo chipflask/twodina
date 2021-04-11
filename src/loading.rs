@@ -163,6 +163,10 @@ pub fn setup_map_objects_system(
                         if let PropertyValue::BoolValue(b) = v {
                             auto_display_override = Some(*b);
                         }
+                    } else if k == "ruby" {
+                        if let PropertyValue::StringValue(s) = v {
+                            behaviors.insert(ColliderBehavior::Ruby(s.clone()));
+                        }
                     }
                 }
                 if has_dialogue {

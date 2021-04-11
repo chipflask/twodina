@@ -214,6 +214,7 @@ fn dialogue_behavior(behaviors: &HashSet<ColliderBehavior>) -> Option<DialogueSp
                     return Some(spec.clone());
                 }
             }
+            ColliderBehavior::Ruby(_) => {}
         }
     }
 
