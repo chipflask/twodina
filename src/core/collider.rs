@@ -98,7 +98,7 @@ impl Collision {
     pub fn insert_behavior(&mut self, behavior: ColliderBehavior) {
         self.behaviors.insert(behavior);
     }
-    
+
     pub fn is_obstruction(&self) -> bool {
         for behavior in self.behaviors.iter() {
             match behavior {
