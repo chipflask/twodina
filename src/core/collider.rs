@@ -1,13 +1,13 @@
 use bevy::prelude::*;
 use bevy::utils::HashSet;
-use ncollide2d::{self as nc, bounding_volume::BoundingVolume, shape::Cuboid};
+use parry2d::{self as parry, bounding_volume::BoundingVolume, shape::Cuboid};
 
 use crate::core::game::DialogueSpec;
 
 #[derive(Debug, Clone)]
 pub struct Collider {
     pub behaviors: HashSet<ColliderBehavior>,
-    pub shape: Cuboid<f32>,
+    pub shape: Cuboid,
     pub offset: Vec2,
 }
 
@@ -31,7 +31,7 @@ pub struct Collision {
 impl Collider {
     pub fn new(behaviors: HashSet<ColliderBehavior>, width_height: Vec2, offset: Vec2) -> Collider {
         let half_extent = width_height / 2.0;
-        let v2 = nc::math::Vector::new(half_extent.x, half_extent.y);
+        let v2 = parry::math::Vector::new(half_extent.x, half_extent.y);
         Collider {
             behaviors,
             shape: Cuboid::new(v2),
@@ -54,24 +54,24 @@ impl Collider {
         self.behaviors.remove(behavior);
     }
 
-    pub fn bounding_volume(&self, global_trans: &GlobalTransform) -> nc::bounding_volume::AABB<f32> {
+    pub fn bounding_volume(&self, global_trans: &GlobalTransform) -> parry::bounding_volume::AABB {
         self.bounding_volume_with_translation(global_trans, Vec2::ZERO)
     }
 
     pub fn bounding_volume_with_translation(&self,
         global_trans: &GlobalTransform,
         delta: Vec2,
-    ) -> nc::bounding_volume::AABB<f32> {
+    ) -> parry::bounding_volume::AABB {
 
         // TODO: Handle scale and rotation.
-        let isometry = nc::math::Isometry::translation(
+        let isometry = parry::math::Isometry::translation(
             global_trans.translation.x + delta.x + self.offset.x,
             global_trans.translation.y + delta.y + self.offset.y);
 
-        nc::bounding_volume::aabb(&self.shape, &isometry)
+        self.shape.aabb(&isometry)
     }
 
-    pub fn intersect(&self, global_transform: &GlobalTransform, other: &nc::bounding_volume::AABB<f32>) -> Option<Collision> {
+    pub fn intersect(&self, global_transform: &GlobalTransform, other: &parry::bounding_volume::AABB) -> Option<Collision> {
         if self.behaviors.is_empty() {
             return None;
         }
