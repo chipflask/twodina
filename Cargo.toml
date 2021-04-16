@@ -13,7 +13,7 @@ bevy = { version = "0.5.0", features=["vorbis"] }
 bevy_tiled_prototype = "0.2.5"
 parry2d = "^0.3.0"
 ron = "0.6.4"
-ruruby = { git = "https://github.com/sisshiki1969/ruruby", branch = "master" }
+ruruby = { git = "https://github.com/jtran/ruruby", branch = "windows-slow-coroutines" }
 serde = { version = "^1.0.123", features = ["derive"] }
 toml = "0.5"
 

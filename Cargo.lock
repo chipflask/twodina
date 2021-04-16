@@ -2987,18 +2987,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "24d5f089152e60f62d28b835fbff2cd2e8dc0baf1ac13343bef92ab7eed84548"
 
 [[package]]
-name = "region"
-version = "2.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "877e54ea2adcd70d80e9179344c97f93ef0dffd6b03e1f4529e6e83ab2fa9ae0"
-dependencies = [
- "bitflags",
- "libc",
- "mach 0.3.2",
- "winapi 0.3.9",
-]
-
-[[package]]
 name = "rle-decode-fast"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3029,7 +3017,7 @@ dependencies = [
 [[package]]
 name = "ruruby"
 version = "0.2.0"
-source = "git+https://github.com/sisshiki1969/ruruby?branch=master#c8fdbb70675fd9588b3a57afabcf2fdcbb7acaaa"
+source = "git+https://github.com/jtran/ruruby?branch=windows-slow-coroutines#7d9702ee07dbbdf0c257562a52828eed17f803ce"
 dependencies = [
  "ansi_term 0.12.1",
  "arraystring",
@@ -3040,9 +3028,9 @@ dependencies = [
  "divrem",
  "fancy-regex",
  "fxhash",
+ "once_cell",
  "rand",
  "regex",
- "region",
  "rustyline",
  "smallvec",
  "term_size",
@@ -3434,9 +3422,8 @@ checksum = "f764005d11ee5f36500a149ace24e00e3da98b0158b3e2d53a7495660d3f4d60"
 
 [[package]]
 name = "term_size"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e4129646ca0ed8f45d09b929036bafad5377103edd06e50bf574b353d2b08d9"
+version = "1.0.0-beta.2"
+source = "git+https://github.com/clap-rs/term_size-rs?rev=e714b6a83f988b784ba4240c892a0edb2d0a5ae2#e714b6a83f988b784ba4240c892a0edb2d0a5ae2"
 dependencies = [
  "libc",
  "winapi 0.3.9",
