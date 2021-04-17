@@ -88,7 +88,7 @@ pub fn new_interpreter() -> VMRef {
     globals.set_toplevel_constant("ARGV", argv);
 
     // Patch with custom functions.
-    let class = Module::class_under(BuiltinClass::object());
+    let class = Module::class_under_object();
     // BuiltinClass::set_toplevel_constant() is private.
     BuiltinClass::object().set_const_by_str("ScriptCore", class.into());
     class.add_builtin_class_method("say", say);
