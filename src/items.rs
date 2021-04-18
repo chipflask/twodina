@@ -14,6 +14,7 @@ use crate::{
         state::{AppState, TransientState},
     },
     loading::LoadProgress,
+    players::Player,
     scene2d::load_next_map,
 };
 
@@ -113,6 +114,7 @@ pub fn items_system(
     mut commands: Commands,
     mut interaction_reader: EventReader<ItemInteraction>,
     mut collider_query: Query<&mut Collider>,
+    player_query: Query<&Player>,
     mut inventory_query: Query<&mut Inventory>,
     mut script_vm: NonSendMut<ScriptVm>,
     object_query: Query<&Object>,
@@ -127,17 +129,20 @@ pub fn items_system(
                     if let Ok(mut inventory) = inventory_query.get_mut(interaction.actor) {
                         inventory.num_gems += 1;
 
-                        // TODO: Move this to dialogue and script assets.
-                        let code = "@inventory.collect_gem";
-                        script_vm.eval_repl_code_logging_result(code);
-
                         // might wish to use type AND name eventually
                         if let Ok(obj) = object_query.get(interaction.object) {
+                            if let Ok(player) = player_query.get(interaction.actor) {
+                                let code = format!("
+                                    player = game.player_by_id!({})
+                                    player.trigger(:collect, MapObject.new(name: :{:?}))
+                                ", player.id, obj.name);
+                                eprintln!("{}", code);
+                                script_vm.eval_repl_code_logging_result(code.as_ref());
+                            }
+
                             let sfx_path = match obj.name.as_str() {
                                 "biggem" => {
                                     inventory.num_gems += 4; // big gems worth 5 - should be param..
-                                    let code = "@inventory.collect_gem 4";
-                                    script_vm.eval_repl_code_logging_result(code);
                                     "sfx/gem_big.ogg"
                                 },
                                 _ => "sfx/gem_small.ogg"
@@ -217,7 +222,7 @@ pub fn inventory_item_reveal_system(
                 // clear inventory for new map
                 for mut items in inventory_query.iter_mut() {
                     items.num_gems = 0;
-                    let code = "@inventory.num_gems = 0";
+                    let code = "game.players.each {|pl| pl.num_gems = 0 }";
                     script_vm.eval_repl_code_logging_result(code);
                 }
             }

@@ -47,6 +47,8 @@ game do
     on_load do
       say @filename # dialogue file reference for this map
       # @total_gems = objects_by_name('gem').length
+      # Clear inventory for new map.
+      players.each {|pl| pl.num_gems = 0 }
     end
 
     # on_enter { say "here again?!?" }

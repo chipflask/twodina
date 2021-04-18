@@ -52,6 +52,7 @@ pub fn in_game_start_runonce(
     mut commands: Commands,
     mut game_state: ResMut<Game>,
     config: Res<Config>,
+    player_query: Query<&Player>,
     mut script_vm: NonSendMut<ScriptVm>,
     mut dialogue_events: EventWriter<DialogueEvent>,
     dialogue_assets: Res<Assets<DialogueAsset>>,
@@ -74,6 +75,18 @@ pub fn in_game_start_runonce(
                 panic!("failed to load startup script: {:?}: {:?}", script_path.as_os_str(), e));
 
         if should_begin {
+            let player_str_ids = player_query.iter()
+                .map(|player| player.id.to_string())
+                .collect::<Vec<String>>()
+                .join(", ");
+            let code = format!("
+                unless defined?(game)
+                  game = Game.new
+                end
+                game.trigger_new_game([{}])
+            ", player_str_ids);
+            script_vm.eval_repl_code_logging_result(code.as_ref());
+
             dialogue.begin("Start", &mut script_vm, &mut dialogue_events);
             game_state.start_dialogue_shown = true;
             game_state.dialogue_ui = Some(DialogueUiType::Notice);

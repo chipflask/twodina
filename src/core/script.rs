@@ -29,7 +29,10 @@ impl ScriptVm {
                                .map_err(|e| RubyStdError { source: e })?;
         let value = self.vm
                         .run_repl(parse_result, self.vm_context)
-                        .map_err(|e| RubyStdError { source: e })?;
+                        .map_err(|e| {
+                            print_error(&e);
+                            RubyStdError { source: e }
+                        })?;
 
         Ok(value)
     }
@@ -76,6 +79,13 @@ impl Display for RubyStdError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "RubyStdError: {:?}", self.source)
     }
+}
+
+fn print_error(err: &RubyError) {
+    for (info, loc) in &err.info {
+        info.show_loc(loc);
+    }
+    err.show_err();
 }
 
 pub fn new_interpreter() -> VMRef {
