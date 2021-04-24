@@ -61,8 +61,9 @@ fn main() -> Result<()> {
         // loading
         .add_system_set(SystemSet::on_update(AppState::Loading)
             .with_system(loading::wait_for_map_ready_system.system().before("main")) // this just removes Complicated tag
-            .with_system(loading::wait_for_asset_loading_system.system().label("main")))
-        .add_system_set(SystemSet::on_exit(AppState::Loading).with_system(scene2d::hide_non_map_objects_runonce.system()))
+            .with_system(loading::wait_for_asset_loading_system.system().label("main"))
+            .with_system(scene2d::create_tile_objects_system.system().after("main"))
+        ).add_system_set(SystemSet::on_exit(AppState::Loading).with_system(scene2d::hide_non_map_objects_runonce.system()))
 
         // menu
         .add_system_set(SystemSet::on_update(AppState::Menu)

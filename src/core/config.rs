@@ -10,6 +10,7 @@ pub struct Config {
     pub title: String,
 
     pub start_map: PathBuf,
+    pub map_scale: f32,
     pub start_dialogue: PathBuf,
 
     pub char_template: String,

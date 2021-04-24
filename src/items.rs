@@ -4,7 +4,7 @@ use bevy::{asset::FileAssetIo, prelude::*};
 use bevy::utils::HashSet;
 use bevy_tiled_prototype::{Map, Object};
 
-use crate::{core::{collider::{Collider, ColliderBehavior}, dialogue::{Dialogue, DialogueEvent}, game::{DialogueSpec, Game}, state::{AppState, TransientState}}, loading::LoadProgress, scene2d::load_next_map};
+use crate::{core::{config::Config,collider::{Collider, ColliderBehavior}, dialogue::{Dialogue, DialogueEvent}, game::{DialogueSpec, Game}, state::{AppState, TransientState}}, loading::LoadProgress, scene2d::load_next_map};
 
 #[derive(Debug, Default)]
 pub struct ItemsPlugin;
@@ -59,6 +59,7 @@ pub fn trigger_level_load_system(
     // mut entity_query: Query<(Entity, &Handle<Map>, &mut Visible, Option<&TileMapChunk>)>,
     // Todo: probably removed when level worflow improved
     transient_state: Res<TransientState>,
+    config: Res<Config>,
 ) {
     for interaction in interaction_reader.iter() {
         for behavior in interaction.behaviors.iter() {
@@ -79,7 +80,7 @@ pub fn trigger_level_load_system(
                         // eventually do preloading:
                         // game_state.next_map = Some(asset_server.load(level.as_str()));
                         game_state.current_map = to_load.add(asset_server.load(format!("maps/{}", level).as_str()));
-                        load_next_map(&mut commands, &mut game_state, &transient_state);
+                        load_next_map(&mut commands, &mut game_state, &transient_state, &config);
                         to_load.next_state = AppState::InGame;
                         to_load.next_dialogue = Some(path.clone());
                     } else {
