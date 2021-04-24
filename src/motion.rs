@@ -125,13 +125,14 @@ pub fn animate_sprite_system(
 }
 
 // This system applies a velocity and checks for collisions.
-// If the collision is occluding, it stops movement
+// If the collision is obstructing, it stops movement
 pub fn continous_move_character_system(
     time: Res<Time>,
     mut interaction_event: EventWriter<ItemInteraction>,
     mut char_query: Query<(Entity, &mut Character, Option<&mut DialogueActor>, &mut Transform, &GlobalTransform)>,
     game_state: Res<Game>,
-    mut collider_query: Query<(Entity, &mut Collider, &GlobalTransform, Option<&Handle<Map>>)>,
+    mut collider_query: Query<(Entity, &mut Collider, &GlobalTransform, Option<&Parent>)>,
+    object_children_query: Query<&Handle<Map>>,
 ) {
     for (char_entity, mut character, dialogue_actor_option, mut transform, char_global) in char_query.iter_mut() {
         let char_collider = collider_query.get_component::<Collider>(char_entity).unwrap().clone();
@@ -145,14 +146,24 @@ pub fn continous_move_character_system(
         let char_aabb = char_collider.bounding_volume_with_translation(char_global, delta);
         let mut char_collision = Collision::empty();
         let mut dialogue_collision = None;
-        for (collider_entity, collider, collider_global, option_to_map) in collider_query.iter_mut() {
+
+        for (collider_entity, collider, collider_global, maybe_parent) in collider_query.iter_mut() {
             // TODO: Use the entity instead of the map asset handle in case
             // In theory,  there can be multiple instances of the same map.
-            if let Some(owner_map) = option_to_map  {
+
+            if let Ok(owner_map) = object_children_query.get(collider_entity.clone())  {
                 if *owner_map != game_state.current_map {
                     continue;
                 }
             }
+            if let Some(parent) = maybe_parent {
+                if let Ok(owner_map) = object_children_query.get(parent.0.clone())  {
+                    if *owner_map != game_state.current_map {
+                        continue;
+                    }
+                }
+            }
+
             // Shouldn't collide with itself.
             if collider_entity == char_entity {
                 continue;

@@ -1,10 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.5" tiledversion="1.5.0" orientation="orthogonal" renderorder="right-down" width="22" height="22" tilewidth="64" tileheight="64" infinite="0" nextlayerid="10" nextobjectid="113">
+<map version="1.5" tiledversion="1.5.0" orientation="orthogonal" renderorder="right-down" width="22" height="22" tilewidth="64" tileheight="64" infinite="0" nextlayerid="10" nextobjectid="115">
  <tileset firstgid="1" name="crystal_set" tilewidth="100" tileheight="100" tilecount="5" columns="5">
   <image source="melle/crystal_set.png" width="500" height="100"/>
  </tileset>
  <tileset firstgid="6" name="trees" tilewidth="54" tileheight="72" tilecount="2" columns="2">
   <image source="trees.png" width="108" height="72"/>
+  <tile id="0">
+   <objectgroup draworder="index" id="2">
+    <object id="1" x="15.125" y="52.5625" width="24.75" height="19.25"/>
+   </objectgroup>
+  </tile>
+  <tile id="1">
+   <objectgroup draworder="index" id="2">
+    <object id="1" x="16.125" y="52.625" width="24.875" height="19.5"/>
+   </objectgroup>
+  </tile>
  </tileset>
  <tileset firstgid="8" name="grassy_stones_64" tilewidth="64" tileheight="64" tilecount="36" columns="6">
   <image source="melle/grassy_stones_64.png" width="384" height="384"/>
@@ -43,14 +53,15 @@
   <object id="20" gid="6" x="959.474" y="623.696" width="81.7993" height="109.066"/>
   <object id="21" gid="6" x="916.095" y="1008.23" width="78.7993" height="105.066"/>
   <object id="22" name="load:ritualspace" gid="7" x="-225.848" y="-58.2985" width="160.549" height="190.066"/>
-  <object id="23" gid="7" x="285.619" y="935.169" width="83.5493" height="111.399"/>
+  <object id="23" gid="7" x="295.619" y="978.836" width="83.5493" height="111.399"/>
   <object id="24" gid="7" x="962.609" y="487.494" width="75.0493" height="100.066"/>
-  <object id="40" gid="7" x="390.225" y="911.55" width="83.5493" height="111.399"/>
-  <object id="42" gid="7" x="439.475" y="1083.05" width="83.5493" height="111.399"/>
-  <object id="43" gid="7" x="287.725" y="1057.3" width="83.5493" height="111.399"/>
+  <object id="40" gid="7" x="372.892" y="925.217" width="83.5493" height="111.399"/>
+  <object id="42" gid="7" x="407.475" y="1040.38" width="83.5493" height="111.399"/>
+  <object id="43" gid="7" x="305.725" y="1043.63" width="83.5493" height="111.399"/>
   <object id="44" gid="7" x="1005.14" y="851.3" width="75.0493" height="100.066"/>
   <object id="78" gid="7" x="180.225" y="1113.8" width="83.5493" height="111.399"/>
   <object id="84" gid="7" x="260.225" y="1305.3" width="83.5493" height="111.399"/>
+  <object id="113" gid="7" x="325.892" y="937.967" width="83.5493" height="111.399"/>
  </objectgroup>
  <objectgroup id="4" name="walls">
   <object id="9" x="-129.242" y="174.879" width="120" height="1245.27"/>

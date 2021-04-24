@@ -3,7 +3,10 @@ title = "Celebration 2021: Twodina"
 
 # Path is relative to /assets and shouldn't start with a /.
 start_map = "maps/sandyrocks.tmx"
+map_scale = 2.0
 start_dialogue = "dialogue/level1.dialogue"
+#start_map = "../../bevy_tiled/assets/ortho-debug.tmx"
+#map_scale = 4.0
 
 # Characters to use - for multiple, {} will be replaced:
 char_template = "sprites/azuna{}.png"

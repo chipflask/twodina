@@ -1,9 +1,8 @@
-use std::ops::Mul;
 
-use bevy::{asset::{Asset, HandleId}, prelude::*, utils::{HashSet, HashMap}};
-use bevy_tiled_prototype::{Map, MapReadyEvent, Object, ObjectReadyEvent, ObjectShape, PropertyValue, LayerData};
+use bevy::{asset::{Asset, HandleId}, prelude::*, utils::HashSet};
+use bevy_tiled_prototype::{MapReadyEvent, Object, ObjectReadyEvent, ObjectShape, PropertyValue};
 
-use crate::{core::{collider::{Collider, ColliderBehavior}, dialogue::{Dialogue, DialogueEvent}, game::{DialogueSpec, DialogueUiType, Game}, state::{AppState, TransientState}}, debug::Debuggable, scene2d::{TILED_MAP_SCALE, MapContainer}};
+use crate::{core::{config::Config, collider::{Collider, ColliderBehavior}, dialogue::{Dialogue, DialogueEvent}, game::{DialogueSpec, DialogueUiType, Game}, state::AppState}, debug::Debuggable, motion::z_from_y};
 
 #[derive(Debug, Default)]
 pub struct LoadProgress {
@@ -62,74 +61,10 @@ pub fn wait_for_asset_loading_system(
 pub fn wait_for_map_ready_system(
     mut commands: Commands,
     mut map_ready_events: EventReader<MapReadyEvent>,
-    query: Query<&MapContainer>,
-    maps: Res<Assets<Map>>,
-    transient_state: Res<TransientState>,
-    mut game_state: ResMut<Game>,
 ) {
     for event in map_ready_events.iter() {
         let map_entity = event.map_entity_option.expect("why didn't you give this map an entity?");
-        if let Ok(container) = query.get(map_entity) {
-            maps.get(container.asset.clone()).map(|map| {
-                let mut templates: HashMap<u32, Object> = Default::default();
-                // find all tiles with object layers
-                for tileset in map.map.tilesets.iter() {
-                    for tile in tileset.tiles.iter() {
-                        if let Some(group) = &tile.objectgroup {
-                            for obj in &group.objects {
-                                templates.insert(tileset.first_gid + tile.id, Object::new(&obj));
-                            }
-                        }
-                    }
-                }
-                // go through visibile layers for this map and add occlusion objects for tiles
-                // NOTE: for now this assumes the entire tile occludes
-                for layer in map.map.layers.iter() {
-                    if !layer.visible { continue; }
-                    if let LayerData::Finite(tiles) = &layer.tiles {
-                        for (tile_y, tilerow) in tiles.iter().enumerate() {
-                            for (tile_x, tile) in tilerow.iter().enumerate() {
-                                templates.get_mut(&tile.gid).map(|obj| {
-                                    obj.position.x = tile_x as f32 * map.tile_size.x;
-                                    obj.position.y = tile_y as f32 * map.tile_size.y;
-                                    obj.visible = false;
-                                    let mut entity_commands = obj.spawn(
-                                        &mut commands, None,
-                                        &map.map,
-                                        container.asset.clone(),
-                                        &map.center(
-                                        Transform {
-                                            translation: Vec3::new(0.0, 0.0, -100.0),
-                                            scale: Vec3::new(TILED_MAP_SCALE, TILED_MAP_SCALE, 1.0),
-                                            ..Default::default()
-                                        }),
-                                        &bevy_tiled_prototype::DebugConfig {
-                                            enabled: false,
-                                            material: Some(transient_state.default_blue.clone()),
-                                        }
-                                    );
-                                    entity_commands
-                                        .insert( // for now assume objects in tiles mean entire tile obstructs
-                                            Collider::single(
-                                                ColliderBehavior::Obstruct,
-                                                map.tile_size.clone().mul(TILED_MAP_SCALE),
-                                                Vec2::new(0.0, 0.0)
-                                            )
-                                        )
-                                        .insert(Debuggable::default());
-                                    // debug is
-                                    game_state.entity_visibility.insert(entity_commands.id(),false);
-                                });
-                            }
-                        }
-                    } else {
-                        panic!("Infinte maps not supported")
-                    }
-                }
-            });
-        }
-        // TODO: this system should really only do the following:
-        // commands.insert(map_entity, SpawnedMap);
+        // eventually can be as simple as: commands.insert(map_entity, SpawnedMap);
         // Stop blocking the Loading state transition.
         commands.entity(map_entity).remove::<ComplicatedLoad>();
     }
@@ -137,104 +72,143 @@ pub fn wait_for_map_ready_system(
 
 pub fn setup_map_objects_system(
     mut commands: Commands,
-    mut new_item_query: Query<(&Object, &mut Visible, &Handle<Map>), Without<Collider>>,
+    mut new_item_query: Query<(&Object, &mut Visible), Without<Collider>>,
+    object_children_query: Query<(&Object, &Children)>,
+    mut object_transform_query: Query<(&mut Transform, &Object)>,
     mut game_state: ResMut<Game>,
     mut event_reader: EventReader<ObjectReadyEvent>,
+    config: Res<Config>,
     //mut map_container_query: Query<&mut MapContainer>,
 ) {
     for event in event_reader.iter() {
-        debug!("created object {:?}, {:?}", event.map_handle, event.entity);
-        if let Ok((object, mut visible, map_handle)) = new_item_query.get_mut(event.entity) {
-            // check if objects already in scene, get default visibility
-            let is_visible_option = game_state.entity_visibility.get(&event.entity);
-            let mut is_visible = object.visible && !object.is_shape(); // default
-
-            if is_visible_option.is_some() {
-                is_visible = is_visible_option.unwrap().clone();
-            } else {
-                // set default visibility for when map transitions
-                game_state
-                    .entity_visibility
-                    .insert(event.entity.clone(), is_visible);
-            }
-             // all objects from other maps (or according to last known) should spawn invisible
-            if *map_handle != game_state.current_map || !is_visible {
-                commands.entity(event.entity).remove::<Draw>();
-                visible.is_visible = false;
-            }
-
-            let mut behaviors: HashSet<ColliderBehavior> = Default::default();
-
-            let mut has_dialogue = false;
-            let mut auto_display_override = None;
-            let mut dialogue_spec = DialogueSpec::default();
-            for (k,v) in object.props.iter() {
-                if k == "dialogue" {
-                    if let PropertyValue::StringValue(s) = v {
-                        has_dialogue = true;
-                        dialogue_spec.node_name = s.clone();
-                        dialogue_spec.ui_type = DialogueUiType::MovementDisabled;
-                        dialogue_spec.auto_display = false;
-                    }
-                } else if k == "notice" {
-                    if let PropertyValue::StringValue(s) = v {
-                        has_dialogue = true;
-                        dialogue_spec.node_name = s.clone();
-                        dialogue_spec.ui_type = DialogueUiType::Notice;
-                        dialogue_spec.auto_display = true;
-                    }
-                } else if k == "autodisplay" {
-                    if let PropertyValue::BoolValue(b) = v {
-                        auto_display_override = Some(*b);
+        let mut objects_to_process: Vec<(Entity, bool)> = vec![(event.entity, false)];
+        debug!("created object event received {:?}, {:?}", event.map_handle, event.entity);
+        let mut has_kids = false;
+        if let Ok((_, children)) = object_children_query.get(event.entity) {
+            debug!("found children {:?}", children);
+            let mut max_z = f32::MIN;
+            for &child in children.iter() {
+                if new_item_query.get_mut(child).is_ok() {
+                    let parent_transform = object_transform_query.get_mut(event.entity).expect("Need transform for parent").0.clone();
+                    let (transform, object) = object_transform_query.get_mut(child).expect("Need transform for child");
+                    // println!("{:?}  {:?}", object.size, parent_transform.scale);
+                    let maybe_max_z = z_from_y(
+                        transform.translation.y + parent_transform.translation.y -
+                        object.size.y * parent_transform.scale.y // bottom of the collider
+                    );
+                    objects_to_process.push((child, true));
+                    has_kids = true;
+                    if maybe_max_z > max_z {
+                        max_z = maybe_max_z;
                     }
                 }
             }
-            if has_dialogue {
-                if let Some(b) = auto_display_override {
-                    match dialogue_spec.ui_type {
-                        DialogueUiType::MovementDisabled => {
-                            eprintln!("Warning: Auto-display of dialogue isn't currently supported")
+            if max_z > f32::MIN {
+                let mut parent_transform = object_transform_query.get_mut(event.entity).expect("Need mutable transform for parent").0;
+                parent_transform.translation.z = max_z;
+            }
+        }
+        debug!("processing new entities {:?}", objects_to_process);
+        for &(entity, is_child) in objects_to_process.iter() {
+            if let Ok((object, mut visible)) = new_item_query.get_mut(entity) {
+                // check if objects already in scene, get default visibility
+                let previous_is_visible = game_state.entity_visibility.get(&entity);
+
+                if !previous_is_visible.is_some() {
+                    // set default visibility for when map transitions
+                    game_state
+                        .entity_visibility
+                        .insert(entity.clone(), object.visible && !object.is_shape() // default
+                    );
+                }
+                // all objects from other maps (or according to last known) should spawn invisible
+                if event.map_handle != game_state.current_map { // || !is_visible {
+                    commands.entity(entity.clone()).remove::<Draw>();
+                    visible.is_visible = false;
+                }
+
+                let mut behaviors: HashSet<ColliderBehavior> = Default::default();
+
+                let mut has_dialogue = false;
+                let mut auto_display_override = None;
+                let mut dialogue_spec = DialogueSpec::default();
+                for (k,v) in object.props.iter() {
+                    if k == "dialogue" {
+                        if let PropertyValue::StringValue(s) = v {
+                            has_dialogue = true;
+                            dialogue_spec.node_name = s.clone();
+                            dialogue_spec.ui_type = DialogueUiType::MovementDisabled;
+                            dialogue_spec.auto_display = false;
                         }
-                        DialogueUiType::Notice => {
-                            dialogue_spec.auto_display = b;
+                    } else if k == "notice" {
+                        if let PropertyValue::StringValue(s) = v {
+                            has_dialogue = true;
+                            dialogue_spec.node_name = s.clone();
+                            dialogue_spec.ui_type = DialogueUiType::Notice;
+                            dialogue_spec.auto_display = true;
+                        }
+                    } else if k == "autodisplay" {
+                        if let PropertyValue::BoolValue(b) = v {
+                            auto_display_override = Some(*b);
                         }
                     }
                 }
-                behaviors.insert(ColliderBehavior::Dialogue(dialogue_spec));
-            }
-
-            // we should have actual types based on object name
-            // and add components based on that
-            match object.name.as_ref() {
-                "spawn" | "trigger" => {}
-                "biggem" | "gem" => {
-                    if object.visible {
-                        behaviors.insert(ColliderBehavior::Collect);
+                if has_dialogue {
+                    if let Some(b) = auto_display_override {
+                        match dialogue_spec.ui_type {
+                            DialogueUiType::MovementDisabled => {
+                                eprintln!("Warning: Auto-display of dialogue isn't currently supported")
+                            }
+                            DialogueUiType::Notice => {
+                                dialogue_spec.auto_display = b;
+                            }
+                        }
                     }
-                },
-                _ => {
-                    if object.name.starts_with("load:") {
+                    behaviors.insert(ColliderBehavior::Dialogue(dialogue_spec));
+                }
+
+                // we should have actual types based on object name
+                // and add components based on that
+                match object.name.as_ref() {
+                    "spawn" | "trigger" => {}
+                    "biggem" | "gem" => {
                         if object.visible {
-                            behaviors.insert(ColliderBehavior::Load { path: object.name[5..].to_string() });
+                            behaviors.insert(ColliderBehavior::Collect);
                         }
-                    } else {
-                        if object.is_shape() { // allow hide/show objects without images
-                            commands.entity(event.entity).insert(Debuggable::default());
+                    },
+                    _ => {
+                        if object.name.starts_with("load:") {
+                            if object.visible {
+                                behaviors.insert(ColliderBehavior::Load { path: object.name[5..].to_string() });
+                            }
+                        } else {
+                            if object.is_shape() { // allow hide/show objects without images
+                                commands.entity(entity).insert(Debuggable::default());
+                                behaviors.insert(ColliderBehavior::Obstruct);
+                            } else if !has_kids {
+                                // sprites with no inner objects fully obstruct
+                                // we may opt to change this behavior eventually
+                                behaviors.insert(ColliderBehavior::Obstruct);
+                            }
                         }
-                        behaviors.insert(ColliderBehavior::Obstruct);
                     }
                 }
+
+                let mut collider_size = config.map_scale * match object.shape {
+                    ObjectShape::Rect { width, height } | ObjectShape::Ellipse { width, height } =>
+                        Vec2::new(width, height),
+                    ObjectShape::Polyline { points: _ } | ObjectShape::Polygon { points: _ } | ObjectShape::Point(_, _) =>
+                        Vec2::new(40.0, 40.0),
+                };
+                if is_child {
+                    let parent = object_transform_query.get_mut(event.entity).expect("Need object for child scale").1;
+                    let parent_scale = parent.tile_scale.expect("Need valid scale for child collider");
+                    collider_size *= parent_scale;
+                }
+
+                let collider_component = Collider::new(behaviors, collider_size, Vec2::new(0.0, 0.0));
+                commands.entity(entity).insert(collider_component);
             }
-
-            let collider_size = TILED_MAP_SCALE * match object.shape {
-                ObjectShape::Rect { width, height } | ObjectShape::Ellipse { width, height } =>
-                    Vec2::new(width, height),
-                ObjectShape::Polyline { points: _ } | ObjectShape::Polygon { points: _ } | ObjectShape::Point(_, _) =>
-                    Vec2::new(40.0, 40.0),
-            };
-
-            let collider_component = Collider::new(behaviors, collider_size, Vec2::new(0.0, 0.0));
-            commands.entity(event.entity).insert(collider_component);
         }
     }
 }
