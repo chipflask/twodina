@@ -3029,7 +3029,7 @@ dependencies = [
 [[package]]
 name = "ruruby"
 version = "0.2.0"
-source = "git+https://github.com/jtran/ruruby?branch=windows#5bfd6d2b79ab48dedb179063f737fa212b27577f"
+source = "git+https://github.com/jtran/ruruby?branch=master#9fe92707f2e9bf5b0e07199d076b67659cc7ff69"
 dependencies = [
  "ansi_term 0.12.1",
  "arraystring",
@@ -3040,6 +3040,7 @@ dependencies = [
  "divrem",
  "fancy-regex",
  "fxhash",
+ "indexmap",
  "rand",
  "regex",
  "region",
