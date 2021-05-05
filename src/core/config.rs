@@ -16,6 +16,9 @@ pub struct Config {
     pub char_template: String,
     pub char_height: f32,
     pub char_width: f32,
+    pub walk_speed: f32,
+    pub run_speed: f32,
+
 }
 
 pub fn load_asset_config(name: &str) -> Result<Config> {

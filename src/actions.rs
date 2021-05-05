@@ -1,16 +1,7 @@
 use bevy::prelude::*;
 
 use bevy_tiled_prototype::Map;
-use crate::{
-    debug::Debuggable,
-    core::{
-        character::{RUN_SPEED, WALK_SPEED, Character, CharacterState, Direction},
-        dialogue::{Dialogue, DialogueEvent},
-        game::{DialogueSpec, Game},
-        input::{Action, Flag, InputActionSet},
-        state::TransientState,
-    },
-};
+use crate::{core::{character::{Character, CharacterState, Direction}, config::Config, dialogue::{Dialogue, DialogueEvent}, game::{DialogueSpec, Game}, input::{Action, Flag, InputActionSet}, state::TransientState}, debug::Debuggable};
 
 use crate::motion::VELOCITY_EPSILON;
 use crate::players::Player;
@@ -30,6 +21,7 @@ pub fn handle_movement_input_system(
     mut query: Query<(&mut Character, &Player)>,
     dialogue_query: Query<&Dialogue>,
     mut debuggable: Query<(&mut Visible, Option<&Handle<Map>>), With<Debuggable>>,
+    config: Res<Config>,
 ) {
     // check for debug status flag differing from transient_state to determine when to hide/show debug stuff
     if input_actions.has_flag(Flag::Debug) != transient_state.debug_mode {
@@ -85,13 +77,13 @@ pub fn handle_movement_input_system(
         }
 
         if input_actions.is_active(Action::Walk, player.id) {
-            character.movement_speed = WALK_SPEED;
+            character.movement_speed = config.walk_speed;
             new_state = match new_state {
                 CharacterState::Running => CharacterState::Walking,
                 CharacterState::Idle | CharacterState::Walking => new_state,
             }
         } else {
-            character.movement_speed = RUN_SPEED;
+            character.movement_speed = config.run_speed;
         }
 
         if let Some(direction) = new_direction {

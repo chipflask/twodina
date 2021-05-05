@@ -17,3 +17,5 @@ char_width = 32.0
 # char_height = 26.0
 # char_width = 36.0
 
+walk_speed = 175.0
+run_speed = 400.0
