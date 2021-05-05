@@ -30,7 +30,7 @@
   <object id="122" name="gem" gid="4" x="66.6006" y="1983.92" width="60.2626" height="64.5819"/>
   <object id="123" name="gem" gid="5" x="64.6537" y="127.973" width="62.27" height="65.6973"/>
   <object id="127" name="biggem" gid="1" x="962.395" y="1086.86" width="125.171" height="127.775" visible="0"/>
-  <object id="132" name="load:sandyrocks" gid="9" x="1029" y="902.667" width="54" height="72" visible="0"/>
+  <object id="132" name="load:sandyrocks" gid="9" x="1031" y="1155.67" width="54" height="72" visible="0"/>
  </objectgroup>
  <objectgroup id="8" name="border &amp; spawn">
   <object id="86" x="1986" y="67.335" width="36" height="1951.14"/>

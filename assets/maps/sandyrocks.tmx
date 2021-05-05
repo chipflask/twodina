@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.5" tiledversion="1.5.0" orientation="orthogonal" renderorder="right-down" width="22" height="22" tilewidth="64" tileheight="64" infinite="0" nextlayerid="10" nextobjectid="115">
+<map version="1.5" tiledversion="1.5.0" orientation="orthogonal" renderorder="right-down" width="22" height="22" tilewidth="64" tileheight="64" infinite="0" nextlayerid="10" nextobjectid="121">
  <tileset firstgid="1" name="crystal_set" tilewidth="100" tileheight="100" tilecount="5" columns="5">
   <image source="melle/crystal_set.png" width="500" height="100"/>
  </tileset>
@@ -31,11 +31,14 @@
   </data>
  </layer>
  <objectgroup id="2" name="items">
-  <object id="1" name="gem" gid="1" x="68.047" y="283.027" width="16" height="16"/>
-  <object id="2" name="gem" gid="4" x="485" y="685" width="16" height="16"/>
-  <object id="3" name="gem" gid="2" x="1214.33" y="1162.67" width="16" height="16"/>
-  <object id="4" name="gem" gid="3" x="1145" y="130.667" width="16" height="16"/>
-  <object id="5" name="gem" gid="5" x="379.5" y="953" width="16" height="16"/>
+  <object id="2" name="gem" gid="4" x="451.729" y="667.582" width="16" height="16"/>
+  <object id="3" name="gem" gid="2" x="1210.84" y="1156" width="16" height="16"/>
+  <object id="4" name="gem" gid="3" x="1148.59" y="131.994" width="16" height="16"/>
+  <object id="5" name="gem" gid="5" x="368.22" y="954.36" width="16" height="16"/>
+  <object id="117" name="gem" gid="2" x="304" y="897" width="16" height="16"/>
+  <object id="118" name="gem" gid="3" x="970" y="543" width="16" height="16"/>
+  <object id="119" name="gem" gid="5" x="67.6667" y="283" width="16" height="16"/>
+  <object id="120" name="gem" gid="4" x="-489.788" y="507.182" width="16" height="16"/>
   <object id="37" name="biggem" gid="1" x="697" y="725" width="100" height="100" visible="0">
    <properties>
     <property name="dialogue" value="hiddenFeels"/>
@@ -64,7 +67,7 @@
   <object id="113" gid="7" x="325.892" y="937.967" width="83.5493" height="111.399"/>
  </objectgroup>
  <objectgroup id="4" name="walls">
-  <object id="9" x="-129.242" y="174.879" width="120" height="1245.27"/>
+  <object id="9" x="-136.742" y="175.879" width="120" height="1245.27"/>
   <object id="10" x="1408.67" y="-20.1212" width="118" height="1446.97"/>
   <object id="11" x="-54.1212" y="-133.333" width="1450.06" height="123.333"/>
   <object id="12" x="-15.1515" y="1411.36" width="1421.82" height="96"/>
