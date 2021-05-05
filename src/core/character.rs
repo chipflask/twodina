@@ -2,10 +2,6 @@ use bevy::math::Vec2;
 use bevy::prelude::Timer;
 
 use super::collider::Collision;
-
-pub const WALK_SPEED: f32 = 175.0;
-pub const RUN_SPEED: f32 = 400.0;
-
 #[derive(Debug)]
 pub struct Character {
     pub direction: Direction,
@@ -67,7 +63,7 @@ impl Default for Character {
             state: CharacterState::Idle,
             previous_state: CharacterState::Idle,
             velocity: Vec2::ZERO,
-            movement_speed: WALK_SPEED,
+            movement_speed: 0.0,
             collision: Collision::default(),
         }
     }
