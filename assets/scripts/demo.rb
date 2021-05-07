@@ -25,7 +25,11 @@ game do
         total = players.map {|p| p.num_gems }.sum # or game.shared_score
         map.gems_found += 1
         map.show :secret_door if total > 8
-        #map.show :secret_door if total / map.total_gems.to_f > 0.5
+        # if total / map.total_gems.to_f > 0.5
+        #   map.show :secret_door
+        #   # Clear inventory for new map.
+        #   players.each {|pl| pl.num_gems = 0 }
+        # end
       end
       #on_collide ?
     end
@@ -47,8 +51,6 @@ game do
     on_load do
       say @filename # dialogue file reference for this map
       # @total_gems = objects_by_name('gem').length
-      # Clear inventory for new map.
-      players.each {|pl| pl.num_gems = 0 }
     end
 
     # on_enter { say "here again?!?" }

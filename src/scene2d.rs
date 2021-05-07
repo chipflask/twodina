@@ -29,6 +29,7 @@ pub fn initialize_levels_onboot(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     config: Res<Config>,
+    mut script_vm: NonSendMut<ScriptVm>,
     mut to_load: ResMut<LoadProgress>,
     // mut query: Query<(Entity, &Handle<Map>, &mut Visible, Option<&TileMapChunk>)>,
 ) {
@@ -42,6 +43,23 @@ pub fn initialize_levels_onboot(
         entity_visibility: HashMap::default(),
     };
 
+    // Load startup script.
+    let mut script_path = FileAssetIo::get_root_path();
+    script_path.push("assets");
+    script_path.push(&config.start_script);
+    debug!("Loading script: {:?}", script_path.as_os_str());
+    script_vm.require_file(&script_path)
+        .unwrap_or_else(|e|
+            panic!("failed to load startup script: {:?}: {:?}", script_path.as_os_str(), e));
+
+    // Instantiate the game.
+    let code = format!("
+        unless defined?(game)
+          game = Game.new
+        end
+    ");
+    script_vm.eval_repl_code_logging_result(code.as_ref());
+
     to_load.next_state = AppState::Menu;
     load_next_map(&mut commands, &mut game_state, &transient_state, &config);
 
@@ -51,7 +69,6 @@ pub fn initialize_levels_onboot(
 pub fn in_game_start_runonce(
     mut commands: Commands,
     mut game_state: ResMut<Game>,
-    config: Res<Config>,
     player_query: Query<&Player>,
     mut script_vm: NonSendMut<ScriptVm>,
     mut dialogue_events: EventWriter<DialogueEvent>,
@@ -66,23 +83,12 @@ pub fn in_game_start_runonce(
             .expect("Couldn't find dialogue asset from placeholder handle");
         let mut dialogue = Dialogue::new(placeholder, dialogue_asset.clone());
 
-        let mut script_path = FileAssetIo::get_root_path();
-        script_path.push("assets");
-        script_path.push(&config.start_script);
-        debug!("Loading script: {:?}", script_path.as_os_str());
-        script_vm.require_file(&script_path)
-            .unwrap_or_else(|e|
-                panic!("failed to load startup script: {:?}: {:?}", script_path.as_os_str(), e));
-
         if should_begin {
             let player_str_ids = player_query.iter()
                 .map(|player| player.id.to_string())
                 .collect::<Vec<String>>()
                 .join(", ");
             let code = format!("
-                unless defined?(game)
-                  game = Game.new
-                end
                 game.trigger_new_game([{}])
             ", player_str_ids);
             script_vm.eval_repl_code_logging_result(code.as_ref());
@@ -288,6 +294,41 @@ pub fn create_tile_objects_system(
                     }
                 }
             });
+        }
+    }
+}
+
+pub fn trigger_map_enter_script_event_system(
+    mut map_ready_events: EventReader<MapReadyEvent>,
+    query: Query<&MapContainer>,
+    game_state: Res<Game>,
+    mut script_vm: NonSendMut<ScriptVm>,
+    asset_server: Res<AssetServer>,
+) {
+    for event in map_ready_events.iter() {
+        let map_entity = event.map_entity_option.expect("expected map ready event to have a map entity");
+        if let Ok(container) = query.get(map_entity) {
+            // Notify the script that the map has loaded and set the current
+            // map.
+            //
+            // TODO: This always returns None, and I don't know why.
+            let map_path = asset_server.get_handle_path(container.asset.clone());
+            let code = format!("
+                    map = game.find_or_create_map(id: {}, filename: {})
+                    map.trigger(:load)
+                    game.trigger_enter_map(map) if {}
+                ",
+                map_entity.to_bits(),
+                match map_path {
+                    None => "nil".to_string(),
+                    Some(asset_path) => {
+                        format!("{:?}", asset_path.path().to_string_lossy())
+                    }
+                },
+                game_state.current_map == container.asset,
+            );
+            eprintln!("running:\n{}", code);
+            script_vm.eval_repl_code_logging_result(code.as_ref());
         }
     }
 }

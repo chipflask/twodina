@@ -1,10 +1,16 @@
 require_relative 'prelude'
 
+# An example of using classes without the DSL.
 class Game < BaseGame
   attr_accessor :shared_score
 
-  def initialize
+  def initialize()
+    super
     @shared_score = 0
+  end
+
+  on_new_game do
+    puts "new game: self=#{self.inspect}"
   end
 
 end
@@ -12,8 +18,8 @@ end
 # class Player < BasePlayer
 #   attr_accessor :num_gems
 
-#   def initialize(**kwargs)
-#     super(**kwargs)
+#   def initialize()
+#     super
 #     @num_gems = 0
 #   end
 # end
@@ -32,6 +38,27 @@ player do
   on_collect :any do
     total = players.map {|pl| pl.num_gems }.sum
     puts "total gems: #{total}"
+  end
+end
+
+map do
+  define :gems_found, :total_gems
+
+  setup do
+    @gems_found = 0
+    @total_gems = 0
+  end
+
+  on_load do
+    puts "loaded map: self=#{self.inspect}"
+  end
+
+  on_enter do
+    puts "entered map: self=#{self.inspect}"
+  end
+
+  on_exit do
+    puts "exited map: self=#{self.inspect}"
   end
 end
 

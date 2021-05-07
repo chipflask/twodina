@@ -80,12 +80,6 @@ class BasePlayer
         end
       end
     end
-
-    %i[spawn].each do |name|
-      define_method "on_#{name}" do |&block|
-        on(name, &block)
-      end
-    end
     
   end
 
@@ -95,9 +89,7 @@ class BasePlayer
   def initialize(id:, game:)
     @id = id
     @game = game
-    (self.class.setup_blocks || []).each do |block|
-      self.instance_exec(&block)
-    end
+    run_setup
   end
 
 end
@@ -118,19 +110,20 @@ class BaseMap
   @handlers = Handlers.new
 
   class << self
-    %i[load enter exit].each do |name|
-      define_method "on_#{name}" do |&block|
-        on(name, &block)
-      end
-    end
+    def on_enter(&block); on(:enter, &block); end
+    def on_exit(&block);  on(:exit,  &block); end
+    def on_load(&block);  on(:load,  &block); end
   end
 
+  attr_reader :id
   attr_reader :filename
   attr_reader :game
 
-  def initialize(filename:, game:)
+  def initialize(id:, filename:, game:)
+    @id = id
     @filename = filename
     @game = game
+    run_setup
   end
 
 end
@@ -140,17 +133,29 @@ class BaseGame
   include Eventable
 
   class << self
-    %i[load new_game quit].each do |name|
-      define_method "on_#{name}" do |&block|
-        on(name, &block)
-      end
-    end
+    # TODO: load, quit
+    def on_new_game(&block); on(:new_game, &block); end
   end
 
+  attr_reader :map
   attr_reader :players
+
+  def initialize()
+    @map = nil
+    @maps = {}
+    @players = []
+    run_setup
+  end
 
   def trigger_new_game(player_ids)
     @players = player_ids.map {|id| Player.new(id: id, game: self) }
+    trigger(:new_game)
+  end
+
+  def trigger_enter_map(map)
+    @map.trigger(:exit) if @map
+    @map = map
+    @map.trigger(:enter) if @map
   end
 
   def player_by_id(id)
@@ -162,6 +167,16 @@ class BaseGame
     raise "player not found: id=#{id.inspect}" unless player
 
     player
+  end
+
+  def find_or_create_map(id:, filename:)
+    map = @maps[id]
+    unless map
+      map = Map.new(id: id, filename: filename, game: self)
+      @maps[id] = map
+    end
+
+    map
   end
 
 end
@@ -195,6 +210,12 @@ end
 
   end
 
+  def run_setup
+    (self.class.setup_blocks || []).each do |block|
+      self.instance_exec(&block)
+    end
+  end
+
 end
 
 class Game < BaseGame; end
@@ -209,4 +230,8 @@ end
 
 def player(&block)
   Player.class_eval(&block)
+end
+
+def map(&block)
+  Map.class_eval(&block)
 end
