@@ -92,6 +92,8 @@ class BasePlayer
     run_setup
   end
 
+  def map(); game.map; end
+
 end
 
 class MapObject
@@ -124,6 +126,10 @@ class BaseMap
     @filename = filename
     @game = game
     run_setup
+  end
+
+  def show(object_name)
+    ScriptCore.show_map_objects_by_name(@id, object_name.to_sym)
   end
 
 end

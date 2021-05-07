@@ -38,6 +38,7 @@ player do
   on_collect :any do
     total = players.map {|pl| pl.num_gems }.sum
     puts "total gems: #{total}"
+    map.show :secret_door if total > 8
   end
 end
 

@@ -1,8 +1,22 @@
 use std::{error::Error as StdError, fmt::Display, path::PathBuf};
+use std::convert::TryFrom;
+use std::sync::Mutex;
 
 use anyhow;
 use bevy::prelude::info;
 use ruruby::{self, *};
+use lazy_static::lazy_static;
+
+lazy_static! {
+    // Output of script.
+    pub static ref SCRIPT_COMMANDS: Mutex<Vec<ScriptCommand>> = {
+        Mutex::new(Vec::new())
+    };
+}
+
+pub enum ScriptCommand {
+    SetVisible(String, bool),
+}
 
 #[derive(Debug, Clone)]
 pub struct ScriptVm {
@@ -102,6 +116,7 @@ pub fn new_interpreter() -> VMRef {
     // BuiltinClass::set_toplevel_constant() is private.
     BuiltinClass::object().set_const_by_str("ScriptCore", class.into());
     class.add_builtin_class_method("say", say);
+    class.add_builtin_class_method("show_map_objects_by_name", show_map_objects_by_name);
 
     vm
 }
@@ -111,6 +126,18 @@ pub fn context(vm: VMRef) -> ContextRef {
                          Block::None,
                          ISeqRef::default(),
                          None)
+}
+
+fn show_map_objects_by_name(_: &mut VM, _self_val: Value, args: &Args) -> VMResult {
+    args.check_args_num(2)?;
+    let map_id = args[0].expect_integer("1st arg")?;
+    let _map_id = u64::try_from(map_id).expect("map id overflowed range");
+    // TODO: Constrain to the given map.
+    let mut arg1 = args[1];
+    let name = arg1.expect_string("2nd arg")?;
+    let mut commands = SCRIPT_COMMANDS.lock().expect("mutex poisoned");
+    commands.push(ScriptCommand::SetVisible(name.to_string(), true));
+    Ok(Value::nil())
 }
 
 fn say(vm: &mut VM, _self_val: Value, args: &Args) -> VMResult {

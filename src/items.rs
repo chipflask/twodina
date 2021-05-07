@@ -10,7 +10,7 @@ use crate::{
         collider::{Collider, ColliderBehavior},
         dialogue::{Dialogue, DialogueEvent},
         game::{DialogueSpec, Game},
-        script::ScriptVm,
+        script::{ScriptCommand, ScriptVm, SCRIPT_COMMANDS},
         state::{AppState, TransientState},
     },
     loading::LoadProgress,
@@ -117,7 +117,7 @@ pub fn items_system(
     player_query: Query<&Player>,
     mut inventory_query: Query<&mut Inventory>,
     mut script_vm: NonSendMut<ScriptVm>,
-    object_query: Query<&Object>,
+    mut object_query: Query<(&Object, &mut Visible)>,
     asset_server: Res<AssetServer>,
     audio: Res<Audio>,
 ) {
@@ -130,7 +130,7 @@ pub fn items_system(
                         inventory.num_gems += 1;
 
                         // might wish to use type AND name eventually
-                        if let Ok(obj) = object_query.get(interaction.object) {
+                        if let Ok((obj, _)) = object_query.get_mut(interaction.object) {
                             if let Ok(player) = player_query.get(interaction.actor) {
                                 let code = format!("
                                     player = game.player_by_id!({})
@@ -148,6 +148,20 @@ pub fn items_system(
                                 _ => "sfx/gem_small.ogg"
                             };
                             audio.play(asset_server.load(sfx_path));
+
+                            // Process commands output from the script.
+                            let mut commands = SCRIPT_COMMANDS.lock().expect("mutex was poisoned");
+                            for command in commands.drain(..) {
+                                match command {
+                                    ScriptCommand::SetVisible(name, new_visible) => {
+                                        for (object, mut visible) in object_query.iter_mut() {
+                                            if object.name == name {
+                                                visible.is_visible = new_visible;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                     // Prevent getting collected again.
