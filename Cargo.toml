@@ -11,6 +11,7 @@ edition = "2018"
 anyhow = "^1.0.36"
 bevy = { version = "0.5.0", features=["vorbis"] }
 bevy_tiled_prototype = "0.2.5"
+lazy_static = "1.4.0"
 parry2d = "^0.3.0"
 ron = "0.6.4"
 ruruby = { git = "https://github.com/jtran/ruruby", branch = "master" }

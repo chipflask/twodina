@@ -3640,6 +3640,7 @@ dependencies = [
  "anyhow",
  "bevy",
  "bevy_tiled_prototype",
+ "lazy_static",
  "parry2d",
  "ron",
  "ruruby",
