@@ -12,6 +12,7 @@ pub struct Config {
     pub start_map: PathBuf,
     pub map_scale: f32,
     pub start_dialogue: PathBuf,
+    pub start_script: PathBuf,
 
     pub char_template: String,
     pub char_height: f32,

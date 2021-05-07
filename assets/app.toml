@@ -5,6 +5,7 @@ title = "Celebration 2021: Twodina"
 start_map = "maps/sandyrocks.tmx"
 map_scale = 2.0
 start_dialogue = "dialogue/level1.dialogue"
+start_script = "scripts/startup.rb"
 #start_map = "../../bevy_tiled/assets/ortho-debug.tmx"
 #map_scale = 4.0
 

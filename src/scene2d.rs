@@ -1,6 +1,7 @@
 use std::{marker::PhantomData, ops::Mul};
 
 use bevy::{
+    asset::FileAssetIo,
     prelude::*,
     utils::{HashMap, HashSet},
 };
@@ -41,6 +42,7 @@ pub fn initialize_levels_onboot(
 pub fn in_game_start_runonce(
     mut commands: Commands,
     mut game_state: ResMut<Game>,
+    config: Res<Config>,
     mut dialogue_events: EventWriter<DialogueEvent>,
     dialogue_assets: Res<Assets<DialogueAsset>>,
     query: Query<(Entity, &DialoguePlaceholder), Without<Dialogue>>,
@@ -52,6 +54,15 @@ pub fn in_game_start_runonce(
             .get(&placeholder.handle)
             .expect("Couldn't find dialogue asset from placeholder handle");
         let mut dialogue = Dialogue::new(placeholder, dialogue_asset.clone());
+
+        let mut script_path = FileAssetIo::get_root_path();
+        script_path.push("assets");
+        script_path.push(&config.start_script);
+        debug!("Loading script: {:?}", script_path.as_os_str());
+        dialogue.require_script(&script_path)
+            .unwrap_or_else(|e|
+                panic!("failed to load startup script: {:?}: {:?}", script_path.as_os_str(), e));
+
         if should_begin {
             dialogue.begin("Start", &mut dialogue_events);
             game_state.start_dialogue_shown = true;

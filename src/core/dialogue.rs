@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use anyhow;
 use bevy::{
     asset::{AssetLoader, LoadContext, LoadedAsset},
@@ -204,6 +206,10 @@ impl Dialogue {
 
     pub fn has_node(&self, name: &str) -> bool {
         self.asset.nodes_by_name.contains_key(name)
+    }
+
+    pub fn require_script(&mut self, path: &PathBuf) -> anyhow::Result<()> {
+        self.script_vm.require_file(path)
     }
 
     // Run and send events so that the app can display text in the UI.

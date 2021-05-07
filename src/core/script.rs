@@ -32,6 +32,15 @@ impl ScriptVm {
 
         Ok(value)
     }
+
+    pub fn require_file(&mut self, path: &PathBuf) -> anyhow::Result<()> {
+        let abs_path = path.canonicalize()?;
+        let program = self.vm
+                          .load_file(&abs_path)
+                          .map_err(|e| RubyStdError { source: e })?;
+        self.vm.exec_program(abs_path, program.as_ref());
+        Ok(())
+    }
 }
 
 // Wrap RubyError so we can implement std::error::Error.
