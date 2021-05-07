@@ -4,7 +4,18 @@ use bevy::{asset::FileAssetIo, prelude::*};
 use bevy::utils::HashSet;
 use bevy_tiled_prototype::{Map, Object};
 
-use crate::{core::{config::Config,collider::{Collider, ColliderBehavior}, dialogue::{Dialogue, DialogueEvent}, game::{DialogueSpec, Game}, state::{AppState, TransientState}}, loading::LoadProgress, scene2d::load_next_map};
+use crate::{
+    core::{
+        config::Config,
+        collider::{Collider, ColliderBehavior},
+        dialogue::{Dialogue, DialogueEvent},
+        game::{DialogueSpec, Game},
+        script::ScriptVm,
+        state::{AppState, TransientState},
+    },
+    loading::LoadProgress,
+    scene2d::load_next_map,
+};
 
 #[derive(Debug, Default)]
 pub struct ItemsPlugin;
@@ -142,6 +153,7 @@ pub fn trigger_dialogue_system(
     mut interaction_reader: EventReader<ItemInteraction>,
     mut dialogue_query: Query<&mut Dialogue>,
     mut dialogue_events: EventWriter<DialogueEvent>,
+    mut script_vm: NonSendMut<ScriptVm>,
     mut game: ResMut<Game>,
 ) {
     for interaction in interaction_reader.iter() {
@@ -153,7 +165,7 @@ pub fn trigger_dialogue_system(
                 ColliderBehavior::Dialogue(spec) => {
                     if spec.auto_display {
                         for mut dialogue in dialogue_query.iter_mut() {
-                            if dialogue.begin_optional(spec.node_name.as_ref(), &mut dialogue_events) {
+                            if dialogue.begin_optional(spec.node_name.as_ref(), &mut script_vm, &mut dialogue_events) {
                                 game.dialogue_ui = Some(spec.ui_type);
                             }
                         }

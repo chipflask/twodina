@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use anyhow;
 use bevy::{
     asset::{AssetLoader, LoadContext, LoadedAsset},
@@ -40,7 +38,6 @@ pub struct Dialogue {
     pub next_index: Option<usize>,
     pub next_node_name: Option<String>,
     pub is_end: bool,
-    pub script_vm: ScriptVm,
 }
 
 // Event fired by this module so that the app can handle dialogue changes.
@@ -153,7 +150,6 @@ impl Dialogue {
             next_index: placeholder.next_index,
             next_node_name: placeholder.next_node_name.clone(),
             is_end: placeholder.is_end,
-            script_vm: ScriptVm::new(),
         }
     }
 
@@ -165,11 +161,12 @@ impl Dialogue {
     pub fn begin(
         &mut self,
         node_name: &str,
+        script_vm: &mut ScriptVm,
         dialogue_events: &mut EventWriter<DialogueEvent>,
     ) {
         self.next_node_name = Some(node_name.to_string());
         self.is_end = false;
-        self.execute(dialogue_events);
+        self.execute(script_vm, dialogue_events);
     }
 
     // Start running dialogue from a given node.  If the node doesn't exist, do
@@ -177,12 +174,13 @@ impl Dialogue {
     pub fn begin_optional(
         &mut self,
         node_name: &str,
+        script_vm: &mut ScriptVm,
         dialogue_events: &mut EventWriter<DialogueEvent>,
     ) -> bool {
         if !self.has_node(node_name) {
             return false;
         }
-        self.begin(node_name, dialogue_events);
+        self.begin(node_name, script_vm, dialogue_events);
 
         true
     }
@@ -191,6 +189,7 @@ impl Dialogue {
     // current dialogue.
     pub fn advance(
         &mut self,
+        script_vm: &mut ScriptVm,
         dialogue_events: &mut EventWriter<DialogueEvent>,
     ) {
         if self.is_end {
@@ -201,19 +200,15 @@ impl Dialogue {
             .next_index
             .unwrap_or_else(|| self.current_index.saturating_add(1));
         self.next_index = None;
-        self.execute(dialogue_events);
+        self.execute(script_vm, dialogue_events);
     }
 
     pub fn has_node(&self, name: &str) -> bool {
         self.asset.nodes_by_name.contains_key(name)
     }
 
-    pub fn require_script(&mut self, path: &PathBuf) -> anyhow::Result<()> {
-        self.script_vm.require_file(path)
-    }
-
     // Run and send events so that the app can display text in the UI.
-    fn execute(&mut self, dialogue_events: &mut EventWriter<DialogueEvent>) {
+    fn execute(&mut self, script_vm: &mut ScriptVm, dialogue_events: &mut EventWriter<DialogueEvent>) {
         if self.is_end {
             return;
         }
@@ -259,7 +254,7 @@ impl Dialogue {
                         }
                     }
                     NodeBody::Ruby(code) => {
-                        match self.script_vm.eval_repl_code(code) {
+                        match script_vm.eval_repl_code(code) {
                             Ok(value) => {
                                 eprintln!("result: {:?}", value);
                             },

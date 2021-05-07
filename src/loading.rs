@@ -2,7 +2,18 @@
 use bevy::{asset::{Asset, HandleId}, prelude::*, utils::HashSet};
 use bevy_tiled_prototype::{MapReadyEvent, Object, ObjectReadyEvent, ObjectShape, PropertyValue};
 
-use crate::{core::{config::Config, collider::{Collider, ColliderBehavior}, dialogue::{Dialogue, DialogueEvent}, game::{DialogueSpec, DialogueUiType, Game}, state::AppState}, debug::Debuggable, motion::z_from_y};
+use crate::{
+    core::{
+        collider::{Collider, ColliderBehavior},
+        config::Config,
+        dialogue::{Dialogue, DialogueEvent},
+        game::{DialogueSpec, DialogueUiType, Game},
+        script::ScriptVm,
+        state::AppState,
+    },
+    debug::Debuggable,
+    motion::z_from_y,
+};
 
 #[derive(Debug, Default)]
 pub struct LoadProgress {
@@ -34,6 +45,7 @@ pub fn wait_for_asset_loading_system(
     loading_map_query: Query<Entity, With<ComplicatedLoad>>,
     mut dialogue_query: Query<&mut Dialogue>,
     mut dialogue_events: EventWriter<DialogueEvent>,
+    mut script_vm: NonSendMut<ScriptVm>,
 ) {
     let handle_ids = load_progress.handles.iter()
         .map(|handle| HandleId::from(handle));
@@ -43,7 +55,7 @@ pub fn wait_for_asset_loading_system(
         bevy::asset::LoadState::Loaded => {
             if let Some(node_name) = &load_progress.next_dialogue {
                 for mut dialogue in dialogue_query.iter_mut() {
-                    dialogue.begin_optional(node_name.as_ref(), &mut dialogue_events);
+                    dialogue.begin_optional(node_name.as_ref(), &mut script_vm, &mut dialogue_events);
                 }
             }
             // block transition if there are any complicated load objects still in the queue

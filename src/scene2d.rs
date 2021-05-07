@@ -7,7 +7,16 @@ use bevy::{
 };
 use bevy_tiled_prototype::{CreatedMapEntities, DebugConfig, LayerData, Map, MapReadyEvent, Object, TileMapChunk, TiledMapBundle, TiledMapCenter};
 
-use crate::{DEBUG_MODE_DEFAULT, core::{collider::{Collider, ColliderBehavior}, config::Config, dialogue::{Dialogue, DialogueAsset, DialogueEvent, DialoguePlaceholder}, game::{DialogueUiType, Game}, state::{AppState, TransientState}}, debug::Debuggable, loading::{ComplicatedLoad, LoadProgress}, motion::MoveEntityEvent, players::Player};
+use crate::{DEBUG_MODE_DEFAULT, core::{
+        collider::{Collider, ColliderBehavior},
+        config::Config,
+        dialogue::{Dialogue, DialogueAsset, DialogueEvent, DialoguePlaceholder},
+        game::{DialogueUiType, Game},
+        script::ScriptVm,
+        state::{AppState, TransientState},
+    },
+    debug::Debuggable,
+    loading::{ComplicatedLoad, LoadProgress}, motion::MoveEntityEvent, players::Player};
 
 #[derive(Default)]
 pub struct MapContainer {
@@ -43,6 +52,7 @@ pub fn in_game_start_runonce(
     mut commands: Commands,
     mut game_state: ResMut<Game>,
     config: Res<Config>,
+    mut script_vm: NonSendMut<ScriptVm>,
     mut dialogue_events: EventWriter<DialogueEvent>,
     dialogue_assets: Res<Assets<DialogueAsset>>,
     query: Query<(Entity, &DialoguePlaceholder), Without<Dialogue>>,
@@ -59,12 +69,12 @@ pub fn in_game_start_runonce(
         script_path.push("assets");
         script_path.push(&config.start_script);
         debug!("Loading script: {:?}", script_path.as_os_str());
-        dialogue.require_script(&script_path)
+        script_vm.require_file(&script_path)
             .unwrap_or_else(|e|
                 panic!("failed to load startup script: {:?}: {:?}", script_path.as_os_str(), e));
 
         if should_begin {
-            dialogue.begin("Start", &mut dialogue_events);
+            dialogue.begin("Start", &mut script_vm, &mut dialogue_events);
             game_state.start_dialogue_shown = true;
             game_state.dialogue_ui = Some(DialogueUiType::Notice);
         }

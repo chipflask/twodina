@@ -21,11 +21,14 @@ mod ui; // in-game ui
 use loading::LoadProgress;
 use players::Player;
 
-use crate::core::state::{
-    AppState,
-    StageLabels::Early, // only used for startup systems now
-    StageLabels::Later,
-    TransientState,
+use crate::core::{
+    script::ScriptVm,
+    state::{
+        AppState,
+        StageLabels::Early, // only used for startup systems now
+        StageLabels::Later,
+        TransientState,
+    },
 };
 
 const DEBUG_MODE_DEFAULT: bool = false;
@@ -36,6 +39,7 @@ fn main() -> Result<()> {
     App::build()
         .insert_resource(config)
         .insert_resource(LoadProgress::default())
+        .insert_non_send_resource(ScriptVm::new())
         .add_event::<motion::MoveEntityEvent<Player>>()
         .add_state(AppState::default())
         // add stages to run loop

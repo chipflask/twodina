@@ -1,7 +1,18 @@
 use bevy::prelude::*;
 
 use bevy_tiled_prototype::Map;
-use crate::{core::{character::{Character, CharacterState, Direction}, config::Config, dialogue::{Dialogue, DialogueEvent}, game::{DialogueSpec, Game}, input::{Action, Flag, InputActionSet}, state::TransientState}, debug::Debuggable};
+use crate::{
+    debug::Debuggable,
+    core::{
+        character::{Character, CharacterState, Direction},
+        config::Config,
+        dialogue::{Dialogue, DialogueEvent},
+        game::{DialogueSpec, Game},
+        input::{Action, Flag, InputActionSet},
+        script::ScriptVm,
+        state::TransientState,
+    },
+};
 
 use crate::motion::VELOCITY_EPSILON;
 use crate::players::Player;
@@ -104,6 +115,7 @@ pub fn handle_dialogue_input_system(
     dialogue_actor_query: Query<&DialogueActor>,
     mut dialogue_query: Query<&mut Dialogue>,
     mut dialogue_events: EventWriter<DialogueEvent>,
+    mut script_vm: NonSendMut<ScriptVm>,
 ) {
     for player in query.iter_mut() {
         if let Some(entity) = game_state.current_dialogue {
@@ -111,7 +123,7 @@ pub fn handle_dialogue_input_system(
                 // Advance the current dialogue.
                 let mut dialogue = dialogue_query.get_mut(entity).expect("Couldn't find current dialogue entity");
                 if dialogue.in_progress() {
-                    dialogue.advance(&mut dialogue_events);
+                    dialogue.advance(&mut script_vm, &mut dialogue_events);
                     continue;
                 }
                 // Trigger the dialogue that the player is colliding with.
@@ -119,7 +131,7 @@ pub fn handle_dialogue_input_system(
                     let mut began = false;
                     if let Some(spec) = &dialogue_actor.collider_dialogue {
                         for mut dialogue in dialogue_query.iter_mut() {
-                            if dialogue.begin_optional(spec.node_name.as_ref(), &mut dialogue_events) {
+                            if dialogue.begin_optional(spec.node_name.as_ref(), &mut script_vm, &mut dialogue_events) {
                                 game_state.dialogue_ui = Some(spec.ui_type);
                                 began = true;
                             }
