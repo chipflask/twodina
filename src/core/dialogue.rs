@@ -238,7 +238,7 @@ impl Dialogue {
                         panic!("Branches aren't implemented yet");
                     }
                     NodeBody::End => {
-                        println!("End");
+                        debug!("End");
                         self.is_end = true;
                         self.next_index = None;
                         dialogue_events.send(DialogueEvent::End);
@@ -247,7 +247,7 @@ impl Dialogue {
                         match dialogue_asset.nodes_by_name.get(name) {
                             None => panic!("Dialogue node not found: {}", name),
                             Some(index) => {
-                                println!("Going to: {} {}", index, name);
+                                debug!("Going to: {} {}", index, name);
                                 self.current_index = *index;
                                 continue;
                             }
@@ -261,7 +261,7 @@ impl Dialogue {
                         continue;
                     }
                     NodeBody::Text(text) => {
-                        println!("Setting text to: {}", text);
+                        debug!("Setting text to: {}", text);
                         dialogue_events.send(DialogueEvent::Text(text.clone()));
                     }
                 },
