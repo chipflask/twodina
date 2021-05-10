@@ -116,7 +116,7 @@ pub fn new_interpreter() -> VMRef {
     let class = Module::class_under_object();
     // BuiltinClass::set_toplevel_constant() is private.
     BuiltinClass::object().set_const_by_str("ScriptCore", class.into());
-    class.add_builtin_class_method("say", say);
+    class.add_builtin_class_method("example", example);
     class.add_builtin_class_method("show_map_objects_by_name", show_map_objects_by_name);
     class.add_builtin_class_method("start_dialogue", start_dialogue);
 
@@ -151,7 +151,7 @@ fn start_dialogue(_: &mut VM, _self_val: Value, args: &Args) -> VMResult {
     Ok(Value::nil())
 }
 
-fn say(vm: &mut VM, _self_val: Value, args: &Args) -> VMResult {
+fn example(vm: &mut VM, _self_val: Value, args: &Args) -> VMResult {
     args.check_args_range(0, 2)?;
 
     eprintln!("Hello, from Rust.  Called with: {:?}", args);
