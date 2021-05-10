@@ -185,6 +185,10 @@ class BaseGame
     map
   end
 
+  def dialogue(node_name)
+    ScriptCore.start_dialogue(node_name.to_s)
+  end
+
 end
 
 # To use this, you must define @handlers = Handlers.new

@@ -11,7 +11,7 @@ use crate::{DEBUG_MODE_DEFAULT, core::{
         collider::{Collider, ColliderBehavior},
         config::Config,
         dialogue::{Dialogue, DialogueAsset, DialogueEvent, DialoguePlaceholder},
-        game::{DialogueUiType, Game},
+        game::{DialogueUiType, Game, process_script_commands},
         script::ScriptVm,
         state::{AppState, TransientState},
     },
@@ -71,6 +71,8 @@ pub fn in_game_start_runonce(
     mut game_state: ResMut<Game>,
     player_query: Query<&Player>,
     mut script_vm: NonSendMut<ScriptVm>,
+    mut object_query: Query<(&Object, &mut Visible)>,
+    mut dialogue_query: Query<&mut Dialogue>,
     mut dialogue_events: EventWriter<DialogueEvent>,
     dialogue_assets: Res<Assets<DialogueAsset>>,
     query: Query<(Entity, &DialoguePlaceholder), Without<Dialogue>>,
@@ -93,7 +95,13 @@ pub fn in_game_start_runonce(
             ", player_str_ids);
             script_vm.eval_repl_code_logging_result(code.as_ref());
 
-            dialogue.begin("Start", &mut script_vm, &mut dialogue_events);
+            process_script_commands(
+                &mut script_vm,
+                &mut object_query,
+                &mut dialogue_query,
+                Some(&mut dialogue),
+                &mut dialogue_events);
+
             game_state.start_dialogue_shown = true;
             game_state.dialogue_ui = Some(DialogueUiType::Notice);
         }

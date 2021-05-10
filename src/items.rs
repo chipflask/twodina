@@ -9,8 +9,8 @@ use crate::{
         config::Config,
         collider::{Collider, ColliderBehavior},
         dialogue::{Dialogue, DialogueEvent},
-        game::{DialogueSpec, Game},
-        script::{ScriptCommand, ScriptVm, SCRIPT_COMMANDS},
+        game::{DialogueSpec, Game, process_script_commands},
+        script::ScriptVm,
         state::{AppState, TransientState},
     },
     loading::LoadProgress,
@@ -118,6 +118,8 @@ pub fn items_system(
     mut inventory_query: Query<&mut Inventory>,
     mut script_vm: NonSendMut<ScriptVm>,
     mut object_query: Query<(&Object, &mut Visible)>,
+    mut dialogue_query: Query<&mut Dialogue>,
+    mut dialogue_events: EventWriter<DialogueEvent>,
     asset_server: Res<AssetServer>,
     audio: Res<Audio>,
 ) {
@@ -150,18 +152,12 @@ pub fn items_system(
                             audio.play(asset_server.load(sfx_path));
 
                             // Process commands output from the script.
-                            let mut commands = SCRIPT_COMMANDS.lock().expect("mutex was poisoned");
-                            for command in commands.drain(..) {
-                                match command {
-                                    ScriptCommand::SetVisible(name, new_visible) => {
-                                        for (object, mut visible) in object_query.iter_mut() {
-                                            if object.name == name {
-                                                visible.is_visible = new_visible;
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                            process_script_commands(
+                                &mut script_vm,
+                                &mut object_query,
+                                &mut dialogue_query,
+                                None,
+                                &mut dialogue_events);
                         }
                     }
                     // Prevent getting collected again.

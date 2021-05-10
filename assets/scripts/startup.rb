@@ -11,6 +11,7 @@ class Game < BaseGame
 
   on_new_game do
     puts "new game: self=#{self.inspect}"
+    dialogue :Start
   end
 
 end

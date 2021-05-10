@@ -16,6 +16,7 @@ lazy_static! {
 
 pub enum ScriptCommand {
     SetVisible(String, bool),
+    StartDialogueIfExists(String),
 }
 
 #[derive(Debug, Clone)]
@@ -117,6 +118,7 @@ pub fn new_interpreter() -> VMRef {
     BuiltinClass::object().set_const_by_str("ScriptCore", class.into());
     class.add_builtin_class_method("say", say);
     class.add_builtin_class_method("show_map_objects_by_name", show_map_objects_by_name);
+    class.add_builtin_class_method("start_dialogue", start_dialogue);
 
     vm
 }
@@ -137,6 +139,15 @@ fn show_map_objects_by_name(_: &mut VM, _self_val: Value, args: &Args) -> VMResu
     let name = arg1.expect_string("2nd arg")?;
     let mut commands = SCRIPT_COMMANDS.lock().expect("mutex poisoned");
     commands.push(ScriptCommand::SetVisible(name.to_string(), true));
+    Ok(Value::nil())
+}
+
+fn start_dialogue(_: &mut VM, _self_val: Value, args: &Args) -> VMResult {
+    args.check_args_num(1)?;
+    let mut arg0 = args[0];
+    let node_name = arg0.expect_string("1st arg")?;
+    let mut commands = SCRIPT_COMMANDS.lock().expect("mutex poisoned");
+    commands.push(ScriptCommand::StartDialogueIfExists(node_name.to_string()));
     Ok(Value::nil())
 }
 
