@@ -2,14 +2,14 @@ use std::fs;
 
 use bevy::{asset::FileAssetIo, prelude::*};
 use bevy::utils::HashSet;
-use bevy_tiled_prototype::{Map, Object};
+use bevy_tiled_prototype::{Object};
 
 use crate::{
     core::{
         config::Config,
         collider::{Collider, ColliderBehavior},
         dialogue::{Dialogue, DialogueEvent},
-        game::{DialogueSpec, Game, process_script_commands},
+        game::{Game, process_script_commands},
         script::ScriptVm,
         state::{AppState, TransientState},
     },
@@ -113,11 +113,10 @@ pub fn trigger_level_load_system(
 pub fn items_system(
     mut commands: Commands,
     mut interaction_reader: EventReader<ItemInteraction>,
-    mut collider_query: Query<&mut Collider>,
     player_query: Query<&Player>,
     mut inventory_query: Query<&mut Inventory>,
     mut script_vm: NonSendMut<ScriptVm>,
-    mut object_query: Query<(&Object, &mut Visible)>,
+    mut object_query: Query<(&Object, &mut Visible, &mut Collider)>,
     mut dialogue_query: Query<&mut Dialogue>,
     mut dialogue_events: EventWriter<DialogueEvent>,
     asset_server: Res<AssetServer>,
@@ -132,7 +131,7 @@ pub fn items_system(
                         inventory.num_gems += 1;
 
                         // might wish to use type AND name eventually
-                        if let Ok((obj, _)) = object_query.get_mut(interaction.object) {
+                        if let Ok((obj, _, _)) = object_query.get_mut(interaction.object) {
                             if let Ok(player) = player_query.get(interaction.actor) {
                                 let code = format!("
                                     player = game.player_by_id!({})
@@ -161,7 +160,7 @@ pub fn items_system(
                         }
                     }
                     // Prevent getting collected again.
-                    if let Ok(mut object_collider) = collider_query.get_mut(interaction.object) {
+                    if let Ok((_, _, mut object_collider)) = object_query.get_mut(interaction.object) {
                         object_collider.remove_behavior(&ColliderBehavior::Collect);
                     }
                 }
@@ -204,8 +203,8 @@ pub fn trigger_dialogue_or_script_system(
     }
 }
 
-// ideally this returns early if this level has no items that need monitoring
-pub fn inventory_item_reveal_system(
+pub fn inventory_item_reveal_system() {
+    /* ideally this returns early if this level has no items that need monitoring
     mut inventory_query: Query<&mut Inventory>,
     mut object_query: Query<(&Object, &mut Visible, &mut Collider, &Handle<Map>)>,
     mut script_vm: NonSendMut<ScriptVm>,
@@ -249,5 +248,5 @@ pub fn inventory_item_reveal_system(
                 }));
             }
         }
-    }
+    }*/
 }

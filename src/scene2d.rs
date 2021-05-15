@@ -71,7 +71,7 @@ pub fn in_game_start_runonce(
     mut game_state: ResMut<Game>,
     player_query: Query<&Player>,
     mut script_vm: NonSendMut<ScriptVm>,
-    mut object_query: Query<(&Object, &mut Visible)>,
+    mut object_query: Query<(&Object, &mut Visible, &mut Collider)>,
     mut dialogue_query: Query<&mut Dialogue>,
     mut dialogue_events: EventWriter<DialogueEvent>,
     dialogue_assets: Res<Assets<DialogueAsset>>,

@@ -1,10 +1,7 @@
 use bevy::{prelude::*, utils::{HashMap, HashSet}};
 use bevy_tiled_prototype::{Map, Object};
 
-use super::{
-    dialogue::{Dialogue, DialogueEvent},
-    script::{SCRIPT_COMMANDS, ScriptVm, ScriptCommand},
-};
+use super::{collider::{Collider, ColliderBehavior}, dialogue::{Dialogue, DialogueEvent}, script::{SCRIPT_COMMANDS, ScriptVm, ScriptCommand}};
 
 // Game state that shouldn't be saved.
 #[derive(Clone, Debug)]
@@ -54,7 +51,7 @@ impl Default for DialogueUiType {
 
 pub fn process_script_commands(
     script_vm: &mut ScriptVm,
-    object_query: &mut Query<(&Object, &mut Visible)>,
+    object_query: &mut Query<(&Object, &mut Visible, &mut Collider)>,
     dialogue_query: &mut Query<&mut Dialogue>,
     mut dialogue: Option<&mut Dialogue>,
     dialogue_events: &mut EventWriter<DialogueEvent>,
@@ -63,9 +60,16 @@ pub fn process_script_commands(
     for command in commands.drain(..) {
         match command {
             ScriptCommand::SetVisible(name, new_visible) => {
-                for (object, mut visible) in object_query.iter_mut() {
+                for (object, mut visible, _) in object_query.iter_mut() {
                     if object.name == name {
                         visible.is_visible = new_visible;
+                    }
+                }
+            }
+            ScriptCommand::SetCollectable(name, _add_or_remove_todo ) => {
+                for (object, _, mut collider) in object_query.iter_mut() {
+                    if object.name == name {
+                        collider.insert_behavior(ColliderBehavior::Collect);
                     }
                 }
             }

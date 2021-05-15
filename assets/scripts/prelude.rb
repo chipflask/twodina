@@ -129,7 +129,11 @@ class BaseMap
   end
 
   def show(object_name)
-    ScriptCore.show_map_objects_by_name(@id, object_name.to_sym)
+    ScriptCore.show_map_objects_by_name(@id, object_name)
+  end
+
+  def make_collectable(object_name)
+    ScriptCore.make_collectable_map_objects_by_name(@id, object_name)
   end
 
 end
