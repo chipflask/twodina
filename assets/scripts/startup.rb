@@ -39,11 +39,10 @@ player do
   on_collect :any do
     total = players.map {|pl| pl.num_gems }.sum
     puts "total gems: #{total}"
-    if total > 0 #4
-      map.show "biggem"
-      map.make_collectable "biggem"
+    if total > 0 # 4
+      map.update_object "biggem", visible: true, collectable: true, dialogue: "collectedBigGem"
     end
-    map.show "load:liam/maze" if total > 3 # 8
+    map.show "load:liam/maze" if total > 3 # 8  # todo: make loadable
 
   end
 end

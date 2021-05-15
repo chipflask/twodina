@@ -118,8 +118,10 @@ pub fn new_interpreter() -> VMRef {
     // BuiltinClass::set_toplevel_constant() is private.
     BuiltinClass::object().set_const_by_str("ScriptCore", class.into());
     class.add_builtin_class_method("example", example);
-    class.add_builtin_class_method("show_map_objects_by_name", show_map_objects_by_name);
-    class.add_builtin_class_method("make_collectable_map_objects_by_name", make_collectable_map_objects_by_name);
+    // class.add_builtin_class_method("show_map_objects_by_name", show_map_objects_by_name);
+    // class.add_builtin_class_method("make_collectable_map_objects_by_name", make_collectable_map_objects_by_name);
+    class.add_builtin_class_method("update_map_objects_by_name", update_map_objects_by_name);
+    // class.add_builtin_class_method("make_collectable_map_objects_by_name", make_collectable_map_objects_by_name);
     class.add_builtin_class_method("start_dialogue", start_dialogue);
 
     vm
@@ -132,27 +134,38 @@ pub fn context(vm: VMRef) -> ContextRef {
                          None)
 }
 
-fn show_map_objects_by_name(_: &mut VM, _self_val: Value, args: &Args) -> VMResult {
-    args.check_args_num(2)?;
+fn update_map_objects_by_name(vm: &mut VM, _self_val: Value, args: &Args) -> VMResult {
+    args.check_args_num(3)?;
     let map_id = args[0].expect_integer("1st arg")?;
     let _map_id = u64::try_from(map_id).expect("map id overflowed range");
     // TODO: Constrain to the given map.
     let mut arg1 = args[1];
     let name = arg1.expect_string("2nd arg")?;
     let mut commands = SCRIPT_COMMANDS.lock().expect("mutex poisoned");
-    commands.push(ScriptCommand::SetVisible(name.to_string(), true));
-    Ok(Value::nil())
-}
+    let hash = args[2].expect_hash("3rd arg")?;
+    for (property, value) in hash.iter() {
+        if let Ok(prop_name) = property.val_to_s(vm) {
+            if prop_name == "visible" {
+                commands.push(ScriptCommand::SetVisible(name.to_string(), value.to_bool()));
+            }
 
-fn make_collectable_map_objects_by_name(_: &mut VM, _self_val: Value, args: &Args) -> VMResult {
-    args.check_args_num(2)?;
-    let map_id = args[0].expect_integer("1st arg")?;
-    let _map_id = u64::try_from(map_id).expect("map id overflowed range");
-    // TODO: Constrain to the given map.
-    let mut arg1 = args[1];
-    let name = arg1.expect_string("2nd arg")?;
-    let mut commands = SCRIPT_COMMANDS.lock().expect("mutex poisoned");
-    commands.push(ScriptCommand::SetCollectable(name.to_string(), true));
+            // might be nice to have a script comment to update colliders in bulk...
+            if prop_name == "collectable" && value.to_bool() {
+                // // for now this is inside if until we fix collider removal
+                commands.push(ScriptCommand::SetCollectable(name.to_string(), true));
+            }
+            if prop_name == "dialogue" {
+                // let mut value = value.expect_string("dialog value not string");
+                // commands.push(.... , value.len() > 0)
+            }
+            // if prop_name == "loadable" && value.to_string().len() > 0 {
+            //     //...
+            // }
+        }
+    }
+
+
+    // visible: true, collectable: true, dialog: "collectedBigGem"
     Ok(Value::nil())
 }
 

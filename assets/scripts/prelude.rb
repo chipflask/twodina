@@ -129,11 +129,15 @@ class BaseMap
   end
 
   def show(object_name)
-    ScriptCore.show_map_objects_by_name(@id, object_name)
+    update_object(object_name, visible: true)
   end
 
   def make_collectable(object_name)
-    ScriptCore.make_collectable_map_objects_by_name(@id, object_name)
+    update_object(object_name, collectable: true)
+  end
+
+  def update_object(object_name, **kwargs)
+    ScriptCore.update_map_objects_by_name(@id, object_name, kwargs)
   end
 
 end
