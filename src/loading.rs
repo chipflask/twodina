@@ -6,7 +6,7 @@ use crate::{
     core::{
         collider::{Collider, ColliderBehavior},
         config::Config,
-        dialogue::{Dialogue, DialogueEvent},
+        dialogue::{Dialogue, DialogueAsset, DialogueEvent, DialoguePlaceholder},
         game::{DialogueSpec, DialogueUiType, Game},
         script::ScriptVm,
         state::AppState,
@@ -69,6 +69,23 @@ pub fn wait_for_asset_loading_system(
     }
 }
 
+// When a dialogue asset loads, clone it, and insert it into the Dialogue
+// component.  The DialoguePlaceholder component doesn't have the asset.
+pub fn wait_for_dialogue_load_system(
+    mut commands: Commands,
+    query: Query<(Entity, &DialoguePlaceholder), Without<Dialogue>>,
+    dialogue_assets: Res<Assets<DialogueAsset>>,
+) {
+    for (entity, placeholder) in query.iter() {
+        match dialogue_assets.get(&placeholder.handle) {
+            Some(dialogue_asset) => {
+                let dialogue = Dialogue::new(placeholder, dialogue_asset.clone());
+                commands.entity(entity).insert(dialogue);
+            }
+            None => {}
+        }
+    }
+}
 
 pub fn wait_for_map_ready_system(
     mut commands: Commands,

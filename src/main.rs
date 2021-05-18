@@ -22,7 +22,7 @@ use loading::LoadProgress;
 use players::Player;
 
 use crate::core::{
-    script::ScriptVm,
+    script::{self, ScriptVm},
     state::{
         AppState,
         StageLabels::Early, // only used for startup systems now
@@ -41,6 +41,7 @@ fn main() -> Result<()> {
         .insert_resource(LoadProgress::default())
         .insert_non_send_resource(ScriptVm::new())
         .add_event::<motion::MoveEntityEvent<Player>>()
+        .add_event::<script::ScriptCommandEvent>()
         .add_state(AppState::default())
         // add stages to run loop
         .add_startup_stage_before(Startup, Early, SystemStage::parallel())
@@ -65,6 +66,7 @@ fn main() -> Result<()> {
         // loading
         .add_system_set(SystemSet::on_update(AppState::Loading)
             .with_system(loading::wait_for_map_ready_system.system().before("main")) // this just removes Complicated tag
+            .with_system(loading::wait_for_dialogue_load_system.system().before("main"))
             .with_system(loading::wait_for_asset_loading_system.system().label("main"))
             .with_system(scene2d::create_tile_objects_system.system().after("main").label("create_tile_objects"))
             .with_system(scene2d::trigger_map_enter_script_event_system.system().after("create_tile_objects"))
@@ -91,6 +93,7 @@ fn main() -> Result<()> {
             .with_system(motion::animate_sprite_system.system().after("early"))
             .with_system(motion::continous_move_character_system.system().after("early"))
             .with_system(ui::display_dialogue_system.system().after("early"))
+            .with_system(scene2d::process_script_commands_system.system().after("early"))
         )
         .run();
 

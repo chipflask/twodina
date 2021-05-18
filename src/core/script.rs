@@ -14,10 +14,16 @@ lazy_static! {
     };
 }
 
+#[derive(Debug)]
 pub enum ScriptCommand {
     SetVisible(String, bool),
     SetCollectable(String, bool),
     StartDialogueIfExists(String),
+}
+
+#[derive(Debug)]
+pub struct ScriptCommandEvent {
+    pub command: ScriptCommand,
 }
 
 #[derive(Debug, Clone)]
@@ -94,6 +100,12 @@ impl StdError for RubyStdError {
 impl Display for RubyStdError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "RubyStdError: {:?}", self.source)
+    }
+}
+
+impl ScriptCommandEvent {
+    pub fn new(command: ScriptCommand) -> Self {
+        ScriptCommandEvent { command }
     }
 }
 

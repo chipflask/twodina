@@ -2,15 +2,15 @@ use std::fs;
 
 use bevy::{asset::FileAssetIo, prelude::*};
 use bevy::utils::HashSet;
-use bevy_tiled_prototype::{Object};
+use bevy_tiled_prototype::Object;
 
 use crate::{
     core::{
         config::Config,
         collider::{Collider, ColliderBehavior},
         dialogue::{Dialogue, DialogueEvent},
-        game::{Game, process_script_commands},
-        script::ScriptVm,
+        game::Game,
+        script::{SCRIPT_COMMANDS, ScriptCommandEvent, ScriptVm},
         state::{AppState, TransientState},
     },
     loading::LoadProgress,
@@ -117,8 +117,7 @@ pub fn items_system(
     // mut inventory_query: Query<&mut Inventory>,
     mut script_vm: NonSendMut<ScriptVm>,
     mut object_query: Query<(&Object, &mut Visible, &mut Collider)>,
-    mut dialogue_query: Query<&mut Dialogue>,
-    mut dialogue_events: EventWriter<DialogueEvent>,
+    mut script_command_events: EventWriter<ScriptCommandEvent>,
 ) {
     for interaction in interaction_reader.iter() {
         for behavior in interaction.behaviors.iter() {
@@ -138,14 +137,6 @@ pub fn items_system(
                             eprintln!("{}", code);
                             script_vm.eval_repl_code_logging_result(code.as_ref());
                         }
-
-                        // Process commands output from the script.
-                        process_script_commands(
-                            &mut script_vm,
-                            &mut object_query,
-                            &mut dialogue_query,
-                            None,
-                            &mut dialogue_events);
                     }
                 // }
                     // Prevent getting collected again.
@@ -159,6 +150,12 @@ pub fn items_system(
                 ColliderBehavior::Ruby(_) => {}
             }
         }
+    }
+
+    // Make events for script commands.
+    let mut commands = SCRIPT_COMMANDS.lock().expect("mutex poisoned");
+    for command in commands.drain(..) {
+        script_command_events.send(ScriptCommandEvent::new(command));
     }
 }
 

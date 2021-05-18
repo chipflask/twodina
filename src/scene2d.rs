@@ -10,9 +10,9 @@ use bevy_tiled_prototype::{CreatedMapEntities, DebugConfig, LayerData, Map, MapR
 use crate::{DEBUG_MODE_DEFAULT, core::{
         collider::{Collider, ColliderBehavior},
         config::Config,
-        dialogue::{Dialogue, DialogueAsset, DialogueEvent, DialoguePlaceholder},
-        game::{DialogueUiType, Game, process_script_commands},
-        script::ScriptVm,
+        dialogue::{Dialogue, DialogueEvent},
+        game::{DialogueUiType, Game},
+        script::{SCRIPT_COMMANDS, ScriptCommand, ScriptCommandEvent, ScriptVm},
         state::{AppState, TransientState},
     },
     debug::Debuggable,
@@ -67,45 +67,30 @@ pub fn initialize_levels_onboot(
 }
 
 pub fn in_game_start_runonce(
-    mut commands: Commands,
     mut game_state: ResMut<Game>,
     player_query: Query<&Player>,
     mut script_vm: NonSendMut<ScriptVm>,
-    mut object_query: Query<(&Object, &mut Visible, &mut Collider)>,
-    mut dialogue_query: Query<&mut Dialogue>,
-    mut dialogue_events: EventWriter<DialogueEvent>,
-    dialogue_assets: Res<Assets<DialogueAsset>>,
-    query: Query<(Entity, &DialoguePlaceholder), Without<Dialogue>>,
+    mut script_command_events: EventWriter<ScriptCommandEvent>,
 ) {
     let should_begin = !game_state.start_dialogue_shown;
-    // Insert a clone of the asset into a new component.
-    for (entity, placeholder) in query.iter() {
-        let dialogue_asset = dialogue_assets
-            .get(&placeholder.handle)
-            .expect("Couldn't find dialogue asset from placeholder handle");
-        let mut dialogue = Dialogue::new(placeholder, dialogue_asset.clone());
+    if should_begin {
+        let player_str_ids = player_query.iter()
+            .map(|player| player.id.to_string())
+            .collect::<Vec<String>>()
+            .join(", ");
+        let code = format!("
+            game.trigger_new_game([{}])
+        ", player_str_ids);
+        script_vm.eval_repl_code_logging_result(code.as_ref());
 
-        if should_begin {
-            let player_str_ids = player_query.iter()
-                .map(|player| player.id.to_string())
-                .collect::<Vec<String>>()
-                .join(", ");
-            let code = format!("
-                game.trigger_new_game([{}])
-            ", player_str_ids);
-            script_vm.eval_repl_code_logging_result(code.as_ref());
+        game_state.start_dialogue_shown = true;
+        game_state.dialogue_ui = Some(DialogueUiType::Notice);
+    }
 
-            process_script_commands(
-                &mut script_vm,
-                &mut object_query,
-                &mut dialogue_query,
-                Some(&mut dialogue),
-                &mut dialogue_events);
-
-            game_state.start_dialogue_shown = true;
-            game_state.dialogue_ui = Some(DialogueUiType::Notice);
-        }
-        commands.entity(entity).insert(dialogue);
+    // Make events for script commands.
+    let mut commands = SCRIPT_COMMANDS.lock().expect("mutex poisoned");
+    for command in commands.drain(..) {
+        script_command_events.send(ScriptCommandEvent::new(command));
     }
 }
 
@@ -337,6 +322,52 @@ pub fn trigger_map_enter_script_event_system(
             );
             eprintln!("running:\n{}", code);
             script_vm.eval_repl_code_logging_result(code.as_ref());
+        }
+    }
+}
+
+pub fn process_script_commands_system(
+    mut script_vm: NonSendMut<ScriptVm>,
+    mut object_query: Query<(&Object, &mut Visible, &mut Collider)>,
+    mut dialogue_query: Query<&mut Dialogue>,
+    mut dialogue_events: EventWriter<DialogueEvent>,
+    mut script_command_events: EventReader<ScriptCommandEvent>,
+    // asset_server: Res<AssetServer>,
+    // audio: Res<Audio>,
+) {
+    for event in script_command_events.iter() {
+        match &event.command {
+            ScriptCommand::SetVisible(name, new_visible) => {
+                for (object, mut visible, _) in object_query.iter_mut() {
+                    if object.name == *name {
+                        visible.is_visible = *new_visible;
+                    }
+                }
+            }
+            ScriptCommand::SetCollectable(name, _add_or_remove_todo ) => {
+                for (object, _, mut collider) in object_query.iter_mut() {
+                    if object.name == *name {
+                        collider.insert_behavior(ColliderBehavior::Collect);
+                    }
+                }
+            }
+            ScriptCommand::StartDialogueIfExists(node_name) => {
+                for mut dialogue in dialogue_query.iter_mut() {
+                    dialogue.begin_optional(node_name.as_ref(),
+                                            &mut script_vm,
+                                            &mut dialogue_events);
+                }
+            }
+            // ScriptCommand::PlayAudio(sfx_path) => {
+            //     let sfx_path = match obj.name.as_str() {
+            //         "biggem" => {
+            //             "sfx/gem_big.ogg"
+            //         },
+            //         _ => "sfx/gem_small.ogg"
+            //     };
+            //     audio.play(asset_server.load(sfx_path));
+
+            // }
         }
     }
 }

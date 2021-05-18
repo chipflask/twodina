@@ -1,7 +1,5 @@
 use bevy::{prelude::*, utils::{HashMap, HashSet}};
-use bevy_tiled_prototype::{Map, Object};
-
-use super::{collider::{Collider, ColliderBehavior}, dialogue::{Dialogue, DialogueEvent}, script::{SCRIPT_COMMANDS, ScriptVm, ScriptCommand}};
+use bevy_tiled_prototype::Map;
 
 // Game state that shouldn't be saved.
 #[derive(Clone, Debug)]
@@ -46,53 +44,5 @@ pub enum DialogueUiType {
 impl Default for DialogueUiType {
     fn default() -> Self {
         DialogueUiType::MovementDisabled
-    }
-}
-
-pub fn process_script_commands(
-    script_vm: &mut ScriptVm,
-    object_query: &mut Query<(&Object, &mut Visible, &mut Collider)>,
-    dialogue_query: &mut Query<&mut Dialogue>,
-    mut dialogue: Option<&mut Dialogue>,
-    dialogue_events: &mut EventWriter<DialogueEvent>,
-    // asset_server: Res<AssetServer>,
-    // audio: Res<Audio>,
-) {
-    let mut commands = SCRIPT_COMMANDS.lock().expect("mutex was poisoned");
-    for command in commands.drain(..) {
-        match command {
-            ScriptCommand::SetVisible(name, new_visible) => {
-                for (object, mut visible, _) in object_query.iter_mut() {
-                    if object.name == name {
-                        visible.is_visible = new_visible;
-                    }
-                }
-            }
-            ScriptCommand::SetCollectable(name, _add_or_remove_todo ) => {
-                for (object, _, mut collider) in object_query.iter_mut() {
-                    if object.name == name {
-                        collider.insert_behavior(ColliderBehavior::Collect);
-                    }
-                }
-            }
-            ScriptCommand::StartDialogueIfExists(node_name) => {
-                for mut dialogue in dialogue_query.iter_mut() {
-                    dialogue.begin_optional(node_name.as_ref(), script_vm, dialogue_events);
-                }
-                if let Some(dialogue) = &mut dialogue {
-                    dialogue.begin_optional(node_name.as_ref(), script_vm, dialogue_events);
-                }
-            }
-            // ScriptCommand::PlayAudio(sfx_path) => {
-            //     let sfx_path = match obj.name.as_str() {
-            //         "biggem" => {
-            //             "sfx/gem_big.ogg"
-            //         },
-            //         _ => "sfx/gem_small.ogg"
-            //     };
-            //     audio.play(asset_server.load(sfx_path));
-
-            // }
-        }
     }
 }
