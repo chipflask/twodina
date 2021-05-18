@@ -155,10 +155,10 @@ pub fn update_camera_system(
         // TODO: Handle case when window is smaller than margin.
         let full_bb = rect_expand_by(&full_bb, margin_amount);
 
-        // 1.1 is compensation so we reach steady state instead of cycling
+        // 1.2 is damping so we reach steady state instead of cycling
         let margin_vec =  Vec3::new(
-            (win_width - margin_amount * 1.1) / win_width,
-            (win_height - margin_amount * 1.1) / win_height, 1.0);
+            (win_width - margin_amount * 1.2) / win_width,
+            (win_height - margin_amount * 1.2) / win_height, 1.0);
 
         for (mut camera_transform, camera_global, mut projection, mut camera) in camera_query.iter_mut() {
             // println!("projection {:?}", projection);

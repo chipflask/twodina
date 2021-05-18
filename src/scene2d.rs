@@ -332,8 +332,8 @@ pub fn process_script_commands_system(
     mut dialogue_query: Query<&mut Dialogue>,
     mut dialogue_events: EventWriter<DialogueEvent>,
     mut script_command_events: EventReader<ScriptCommandEvent>,
-    // asset_server: Res<AssetServer>,
-    // audio: Res<Audio>,
+    asset_server: Res<AssetServer>,
+    audio: Res<Audio>,
 ) {
     for event in script_command_events.iter() {
         match &event.command {
@@ -358,16 +358,9 @@ pub fn process_script_commands_system(
                                             &mut dialogue_events);
                 }
             }
-            // ScriptCommand::PlayAudio(sfx_path) => {
-            //     let sfx_path = match obj.name.as_str() {
-            //         "biggem" => {
-            //             "sfx/gem_big.ogg"
-            //         },
-            //         _ => "sfx/gem_small.ogg"
-            //     };
-            //     audio.play(asset_server.load(sfx_path));
-
-            // }
+            ScriptCommand::PlaySound(sfx_path) => {
+                audio.play(asset_server.load(sfx_path.as_str()));
+            }
         }
     }
 }

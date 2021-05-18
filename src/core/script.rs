@@ -19,6 +19,7 @@ pub enum ScriptCommand {
     SetVisible(String, bool),
     SetCollectable(String, bool),
     StartDialogueIfExists(String),
+    PlaySound(String),
 }
 
 #[derive(Debug)]
@@ -135,6 +136,7 @@ pub fn new_interpreter() -> VMRef {
     class.add_builtin_class_method("update_map_objects_by_name", update_map_objects_by_name);
     // class.add_builtin_class_method("make_collectable_map_objects_by_name", make_collectable_map_objects_by_name);
     class.add_builtin_class_method("start_dialogue", start_dialogue);
+    class.add_builtin_class_method("play_sound", play_sound);
 
     vm
 }
@@ -189,6 +191,15 @@ fn start_dialogue(_: &mut VM, _self_val: Value, args: &Args) -> VMResult {
     commands.push(ScriptCommand::StartDialogueIfExists(node_name.to_string()));
     Ok(Value::nil())
 }
+fn play_sound(_: &mut VM, _self_val: Value, args: &Args) -> VMResult {
+    args.check_args_num(1)?;
+    let mut arg0 = args[0];
+    let sfx_path = arg0.expect_string("1st arg")?;
+    let mut commands = SCRIPT_COMMANDS.lock().expect("mutex poisoned");
+    commands.push(ScriptCommand::PlaySound(sfx_path.to_string()));
+    Ok(Value::nil())
+}
+
 
 fn example(vm: &mut VM, _self_val: Value, args: &Args) -> VMResult {
     args.check_args_range(0, 2)?;

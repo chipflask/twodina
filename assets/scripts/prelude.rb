@@ -197,6 +197,10 @@ class BaseGame
     ScriptCore.start_dialogue(node_name.to_s)
   end
 
+  def sound(sfx_path)
+    ScriptCore.play_sound(sfx_path)
+  end
+
 end
 
 # To use this, you must define @handlers = Handlers.new

@@ -35,10 +35,12 @@ player do
   on_collect :gem do
     @num_gems += 1
     game.shared_score += 1
+    game.sound "sfx/gem_small.ogg"
   end
   on_collect(:biggem) {
     @num_gems += 5
     game.shared_score += 5
+    game.sound "sfx/gem_big.ogg"
   }
   on_collect :any do
     total = players.map {|pl| pl.num_gems }.sum
