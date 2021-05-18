@@ -34,8 +34,12 @@ player do
 
   on_collect :gem do
     @num_gems += 1
+    game.shared_score += 1
   end
-  on_collect(:biggem) { @num_gems += 5 }
+  on_collect(:biggem) {
+    @num_gems += 5
+    game.shared_score += 5
+  }
   on_collect :any do
     total = players.map {|pl| pl.num_gems }.sum
     puts "total gems: #{total}"

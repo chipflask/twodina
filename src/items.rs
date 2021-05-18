@@ -114,51 +114,40 @@ pub fn items_system(
     mut commands: Commands,
     mut interaction_reader: EventReader<ItemInteraction>,
     player_query: Query<&Player>,
-    mut inventory_query: Query<&mut Inventory>,
+    // mut inventory_query: Query<&mut Inventory>,
     mut script_vm: NonSendMut<ScriptVm>,
     mut object_query: Query<(&Object, &mut Visible, &mut Collider)>,
     mut dialogue_query: Query<&mut Dialogue>,
     mut dialogue_events: EventWriter<DialogueEvent>,
-    asset_server: Res<AssetServer>,
-    audio: Res<Audio>,
 ) {
     for interaction in interaction_reader.iter() {
         for behavior in interaction.behaviors.iter() {
             match behavior {
                 ColliderBehavior::Collect => {
                     commands.entity(interaction.object).despawn_recursive();
-                    if let Ok(mut inventory) = inventory_query.get_mut(interaction.actor) {
-                        inventory.num_gems += 1;
+                    // if let Ok(mut inventory) = inventory_query.get_mut(interaction.actor) {
+                        // inventory.num_gems += 1;
 
-                        // might wish to use type AND name eventually
-                        if let Ok((obj, _, _)) = object_query.get_mut(interaction.object) {
-                            if let Ok(player) = player_query.get(interaction.actor) {
-                                let code = format!("
-                                    player = game.player_by_id!({})
-                                    player.trigger(:collect, MapObject.new(name: :{:?}))
-                                ", player.id, obj.name);
-                                eprintln!("{}", code);
-                                script_vm.eval_repl_code_logging_result(code.as_ref());
-                            }
-
-                            let sfx_path = match obj.name.as_str() {
-                                "biggem" => {
-                                    inventory.num_gems += 4; // big gems worth 5 - should be param..
-                                    "sfx/gem_big.ogg"
-                                },
-                                _ => "sfx/gem_small.ogg"
-                            };
-                            audio.play(asset_server.load(sfx_path));
-
-                            // Process commands output from the script.
-                            process_script_commands(
-                                &mut script_vm,
-                                &mut object_query,
-                                &mut dialogue_query,
-                                None,
-                                &mut dialogue_events);
+                    // might wish to use type AND name eventually
+                    if let Ok((obj, _, _)) = object_query.get_mut(interaction.object) {
+                        if let Ok(player) = player_query.get(interaction.actor) {
+                            let code = format!("
+                                player = game.player_by_id!({})
+                                player.trigger(:collect, MapObject.new(name: :{:?}))
+                            ", player.id, obj.name);
+                            eprintln!("{}", code);
+                            script_vm.eval_repl_code_logging_result(code.as_ref());
                         }
+
+                        // Process commands output from the script.
+                        process_script_commands(
+                            &mut script_vm,
+                            &mut object_query,
+                            &mut dialogue_query,
+                            None,
+                            &mut dialogue_events);
                     }
+                // }
                     // Prevent getting collected again.
                     if let Ok((_, _, mut object_collider)) = object_query.get_mut(interaction.object) {
                         object_collider.remove_behavior(&ColliderBehavior::Collect);

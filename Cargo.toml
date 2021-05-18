@@ -20,7 +20,7 @@ toml = "0.5"
 
 [patch.crates-io]
 bevy_tiled_prototype = { git = "https://github.com/chipflask/bevy_tiled/", branch = "embedded_objects" }
-#bevy_tiled_prototype = { path = "../bevy_tiled" }
+# bevy_tiled_prototype = { path = "../bevy_tiled" }
 # bevy = { git = "https://github.com/bevyengine/bevy/", branch = "main", features = ["vorbis"] }
 
 [profile.dev]

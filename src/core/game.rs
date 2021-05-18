@@ -55,6 +55,8 @@ pub fn process_script_commands(
     dialogue_query: &mut Query<&mut Dialogue>,
     mut dialogue: Option<&mut Dialogue>,
     dialogue_events: &mut EventWriter<DialogueEvent>,
+    // asset_server: Res<AssetServer>,
+    // audio: Res<Audio>,
 ) {
     let mut commands = SCRIPT_COMMANDS.lock().expect("mutex was poisoned");
     for command in commands.drain(..) {
@@ -81,6 +83,16 @@ pub fn process_script_commands(
                     dialogue.begin_optional(node_name.as_ref(), script_vm, dialogue_events);
                 }
             }
+            // ScriptCommand::PlayAudio(sfx_path) => {
+            //     let sfx_path = match obj.name.as_str() {
+            //         "biggem" => {
+            //             "sfx/gem_big.ogg"
+            //         },
+            //         _ => "sfx/gem_small.ogg"
+            //     };
+            //     audio.play(asset_server.load(sfx_path));
+
+            // }
         }
     }
 }
