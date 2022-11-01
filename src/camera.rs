@@ -14,15 +14,14 @@ fn bounding_box(translation: Vec3, size: Vec2) -> Rect {
 }
 
 fn viewport(
-    camera_transform: &Transform,
+    camera_translation: Vec3,
     projection: &OrthographicProjection,
 ) -> Rect {
-    let translation = camera_transform.translation;
     Rect {
-        left: projection.left + translation.x,
-        right: projection.right + translation.x,
-        top: projection.top + translation.y,
-        bottom: projection.bottom + translation.y,
+        left: projection.left + camera_translation.x,
+        right: projection.right + camera_translation.x,
+        top: projection.top + camera_translation.y,
+        bottom: projection.bottom + camera_translation.y,
     }
 }
 
@@ -37,7 +36,7 @@ fn is_rect_completely_inside(r1: &Rect, r2: &Rect) -> bool {
 pub(crate) fn update_camera_system(
     mut player_query: Query<(&GlobalTransform, &Player)>,
     mut camera_query: Query<
-        (&mut Transform, &OrthographicProjection),
+        (&mut Transform, &GlobalTransform, &OrthographicProjection),
         With<Camera>,
     >,
 ) {
@@ -51,9 +50,11 @@ pub(crate) fn update_camera_system(
             Vec2::new(player.width, player.height),
         );
         // println!("char_rect {:?}", char_rect);
-        for (mut camera_transform, projection) in camera_query.iter_mut() {
+        for (mut camera_transform, camera_global, projection) in
+            camera_query.iter_mut()
+        {
             // println!("projection {:?}", projection);
-            let camera_rect = viewport(&camera_transform, projection);
+            let camera_rect = viewport(camera_global.translation(), projection);
             // println!("camera_rect {:?}", camera_rect);
             let is_player_in_view =
                 is_rect_completely_inside(&char_rect, &camera_rect);
