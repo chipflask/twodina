@@ -7,10 +7,9 @@ pub(crate) fn move_sprite_system(
     mut query: Query<(&Character, &mut Transform)>,
 ) {
     for (character, mut transform) in query.iter_mut() {
-        transform.translation = transform.translation
-            + character.velocity
-                * time.delta_seconds()
-                * character.movement_speed;
+        transform.translation += character.velocity
+            * time.delta_seconds()
+            * character.movement_speed;
     }
 }
 
