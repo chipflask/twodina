@@ -1,29 +1,18 @@
 [package]
 name = "twodina"
 description = "A 2d game engine on top of Bevy."
-version = "0.2.3"
-authors = ["Jonathan Tran <jonnytran@gmail.com>", "Daniel Taub <dmtaub@gmail.com>"]
-edition = "2018"
+version = "0.3.0"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "^1.0.36"
-bevy = { version = "0.5.0", features=["vorbis"] }
-bevy_tiled_prototype = "0.2.5"
-parry2d = "^0.3.0"
-ron = "0.6.4"
-serde = { version = "^1.0.123", features = ["derive"] }
+anyhow = "1.0.66"
+bevy = { version = "0.8.1", features = ["vorbis"] }
+parry2d = "0.11.1"
+ron = "0.8.0"
+serde = { version = "1.0.147", features = ["derive"] }
 toml = "0.5"
-
-[patch.crates-io]
-bevy_tiled_prototype = { git = "https://github.com/chipflask/bevy_tiled/", branch = "embedded_objects" }
-#bevy_tiled_prototype = { path = "../bevy_tiled" }
-# bevy = { git = "https://github.com/bevyengine/bevy/", branch = "main", features = ["vorbis"] }
-
-[profile.dev]
-# Speed up dev build on macOS.
-split-debuginfo = "unpacked"
 
 [profile.dev.package."*"]
 # Optimize dependencies.

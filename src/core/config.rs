@@ -18,24 +18,23 @@ pub struct Config {
     pub char_width: f32,
     pub walk_speed: f32,
     pub run_speed: f32,
-
 }
 
 pub fn load_asset_config(name: &str) -> Result<Config> {
-    let mut asset_path = FileAssetIo::get_root_path();
-    asset_path.push("assets");
-    asset_path.push(name);
+    let mut path = PathBuf::from("assets");
+    path.push(name);
+    let asset_path = FileAssetIo::new(path, true).root_path().to_owned();
 
-    let contents = fs::read_to_string(asset_path.as_path())
-        .with_context(||
-            format!("error reading config file: {:?}",
-                    asset_path.as_os_str())
-        )?;
-    let config = toml::from_str(contents.as_ref())
-        .with_context(||
-            format!("error parsing config file to expected TOML format: {:?}",
-                    asset_path.as_os_str())
-        )?;
+    let contents =
+        fs::read_to_string(asset_path.as_path()).with_context(|| {
+            format!("error reading config file: {:?}", asset_path.as_os_str())
+        })?;
+    let config = toml::from_str(contents.as_ref()).with_context(|| {
+        format!(
+            "error parsing config file to expected TOML format: {:?}",
+            asset_path.as_os_str()
+        )
+    })?;
 
     Ok(config)
 }

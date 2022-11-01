@@ -1,3 +1,3 @@
-indent_style = "Visual"
 max_width = 80
-wrap_comments = true
+# Requires nightly rust toolchain.
+# wrap_comments = true

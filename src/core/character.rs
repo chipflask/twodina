@@ -1,24 +1,16 @@
-use bevy::math::Vec2;
-use bevy::prelude::Timer;
+use bevy::math::Vec3;
+use bevy::prelude::Component;
 
-use super::collider::Collision;
-#[derive(Debug)]
+#[derive(Debug, Component)]
 pub struct Character {
     pub direction: Direction,
-    state: CharacterState,
-    previous_state: CharacterState,
-    pub velocity: Vec2,
-    pub movement_speed: f32,
-    pub collision: Collision,
-}
-
-#[derive(Debug)]
-pub struct AnimatedSprite {
+    pub state: CharacterState,
+    pub velocity: Vec3,
     pub animation_index: u32,
-    pub timer: Timer,
+    pub movement_speed: f32,
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug)]
 pub enum Direction {
     North,
     South,
@@ -26,68 +18,27 @@ pub enum Direction {
     West,
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug)]
 pub enum CharacterState {
     Idle,
     Walking,
-    Running,
 }
 
 impl Character {
-    pub fn state(&self) -> CharacterState {
-        self.state
-    }
-
-    pub fn set_state(&mut self, state: CharacterState) {
-        self.previous_state = self.state;
-        self.state = state;
-    }
-
-    pub fn previous_state(&self) -> CharacterState {
-        self.previous_state
-    }
-
-    pub fn did_just_become_idle(&self) -> bool {
-        self.previous_state != self.state && self.state == CharacterState::Idle
-    }
-
-    pub fn is_stepping(&self) -> bool {
-        self.state.is_stepping()
+    pub fn make_idle(&mut self) {
+        self.state = CharacterState::Idle;
+        self.animation_index = 0;
     }
 }
 
 impl Default for Character {
-    fn default() -> Self {
+    fn default() -> Character {
         Character {
             direction: Direction::South,
             state: CharacterState::Idle,
-            previous_state: CharacterState::Idle,
-            velocity: Vec2::ZERO,
-            movement_speed: 0.0,
-            collision: Collision::default(),
-        }
-    }
-}
-
-impl CharacterState {
-    pub fn is_stepping(&self) -> bool {
-        match self {
-            CharacterState::Walking | CharacterState::Running => true,
-            CharacterState::Idle => false,
-        }
-    }
-}
-
-impl AnimatedSprite {
-    // Specify the amount of time for each animation frame in seconds.
-    pub fn with_frame_seconds(seconds: f32) -> AnimatedSprite {
-        AnimatedSprite {
             animation_index: 0,
-            timer: Timer::from_seconds(seconds, true),
+            velocity: Vec3::ZERO,
+            movement_speed: 175.0,
         }
-    }
-
-    pub fn reset(&mut self) {
-        self.animation_index = 0;
     }
 }

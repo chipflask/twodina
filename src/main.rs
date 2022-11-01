@@ -1,107 +1,66 @@
 use anyhow::Result;
-use bevy::{
-    prelude::*,
-    app::CoreStage::Update,
-    app::CoreStage::PreUpdate,
-    app::StartupStage::Startup,
-};
-use bevy_tiled_prototype::TiledMapPlugin;
+use bevy::prelude::*;
 
-mod actions;
 mod camera;
 mod core;
-mod debug;
-mod scene2d;
-mod items;
-mod loading;
 mod motion;
 mod players;
-mod ui; // in-game ui
 
-use loading::LoadProgress;
-use players::Player;
-
-use crate::core::state::{
-    AppState,
-    StageLabels::Early, // only used for startup systems now
-    StageLabels::Later,
-    TransientState,
-};
-
-const DEBUG_MODE_DEFAULT: bool = false;
+use crate::camera::update_camera_system;
+use crate::core::character::{Character};
+use crate::core::input::keyboard_input_system;
+use crate::motion::{AnimateTimer, animate_sprite_system, move_sprite_system};
+use crate::players::Player;
 
 fn main() -> Result<()> {
     let config = core::config::load_asset_config("app.toml")?;
 
-    App::build()
+    App::new()
         .insert_resource(config)
-        .insert_resource(LoadProgress::default())
-        .add_event::<motion::MoveEntityEvent<Player>>()
-        .add_state(AppState::default())
-        // add stages to run loop
-        .add_startup_stage_before(Startup, Early, SystemStage::parallel())
-        .add_startup_stage_after(Startup, Later, SystemStage::parallel())
-        // add library plugins
         .add_plugins(DefaultPlugins)
-        .add_plugin(TiledMapPlugin)
-        // add our plugins
-        .add_plugin(core::menu::MenuPlugin::default())
-        .add_plugin(core::dialogue::DialoguePlugin::default())
-        .add_plugin(core::input::InputActionPlugin::default())
-        .add_plugin(items::ItemsPlugin::default())
-        // initialization
-        .add_startup_system_to_stage(Startup, setup_onboot.system())
-        .add_startup_system_to_stage(Later, scene2d::initialize_levels_onboot.system())
-        // run in all states:
-        .add_system_to_stage(Update, bevy::input::system::exit_on_esc_system.system())
-        .add_system_to_stage(Update, motion::instant_move_player_system.system())
-        .add_system_to_stage(PreUpdate, loading::setup_map_objects_system.system())
-        // -- why is "preupdate" required here ^ ? Without it, there's an intermittent bug where colliders aren't added
-
-        // loading
-        .add_system_set(SystemSet::on_update(AppState::Loading)
-            .with_system(loading::wait_for_map_ready_system.system().before("main")) // this just removes Complicated tag
-            .with_system(loading::wait_for_asset_loading_system.system().label("main"))
-            .with_system(scene2d::create_tile_objects_system.system().after("main"))
-        ).add_system_set(SystemSet::on_exit(AppState::Loading).with_system(scene2d::hide_non_map_objects_runonce.system()))
-
-        // menu
-        .add_system_set(SystemSet::on_update(AppState::Menu)
-            .with_system(core::menu::menu_system.system()
-                // TODO: run these once using stages
-                .chain(players::setup_players_runonce.system())
-                .chain(ui::setup_dialogue_window_runonce.system())
-            )
-        )
-
-        // in-game:
-        .add_system_set(SystemSet::on_enter(AppState::InGame).with_system(scene2d::show_map_and_objects_runonce.system()))
-        .add_system_set(SystemSet::on_enter(AppState::InGame).with_system(scene2d::in_game_start_runonce.system()))
-        .add_system_set(SystemSet::on_update(AppState::InGame)
-            .with_system(actions::handle_movement_input_system.system()
-                .label("early"))
-            .with_system(actions::handle_dialogue_input_system.system())
-            .with_system(camera::update_camera_system.system().after("early"))
-            .with_system(debug::position_display_system.system().after("early"))
-            .with_system(motion::animate_sprite_system.system().after("early"))
-            .with_system(motion::continous_move_character_system.system().after("early"))
-            .with_system(ui::display_dialogue_system.system().after("early"))
-        )
+        .add_startup_system(setup_system)
+        .add_system(animate_sprite_system)
+        .add_system(move_sprite_system)
+        .add_system(update_camera_system)
+        .add_system(keyboard_input_system)
         .run();
 
     Ok(())
 }
 
-fn setup_onboot(
+fn setup_system(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
+    mut texture_atlases: ResMut<Assets<TextureAtlas>>,
 ) {
-    camera::initialize_camera(&mut commands);
-
-    // Watch for asset changes.
-    asset_server.watch_for_changes().expect("watch for changes");
-
-    let transient_state = TransientState::from_materials(&mut materials, DEBUG_MODE_DEFAULT);
-    commands.insert_resource(transient_state);
+    let player = Player::default();
+    let texture_handle = asset_server.load("sprites/character.png");
+    let texture_atlas = TextureAtlas::from_grid(
+        texture_handle,
+        Vec2::new(player.width, player.height),
+        8,
+        16,
+    );
+    let texture_atlas_handle = texture_atlases.add(texture_atlas);
+    commands.spawn().insert_bundle(Camera2dBundle::default());
+    commands
+        .spawn()
+        .insert_bundle(SpriteSheetBundle {
+            texture_atlas: texture_atlas_handle,
+            transform: Transform::from_scale(Vec3::splat(4.0)).mul_transform(
+                Transform::from_translation(Vec3::new(0.0, 0.0, 5.0)),
+            ),
+            ..Default::default()
+        })
+        .insert(AnimateTimer {
+            timer: Timer::from_seconds(0.1, true),
+        })
+        .insert(Character::default())
+        .insert(player);
+    // background
+    commands.spawn().insert_bundle(SpriteBundle {
+        texture: asset_server.load("backgrounds/world_map_wallpaper.png"),
+        transform: Transform::from_scale(Vec3::splat(2.0)),
+        ..Default::default()
+    });
 }
