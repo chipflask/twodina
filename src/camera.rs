@@ -35,7 +35,7 @@ fn is_rect_completely_inside(r1: &Rect, r2: &Rect) -> bool {
 }
 
 pub(crate) fn update_camera_system(
-    mut player_query: Query<(&Transform, &Player)>,
+    mut player_query: Query<(&GlobalTransform, &Player)>,
     mut camera_query: Query<
         (&mut Transform, &OrthographicProjection),
         With<Camera>,
@@ -44,7 +44,7 @@ pub(crate) fn update_camera_system(
     for (player_transform, player) in player_query.iter_mut() {
         // Is sprite in view frame?
         // println!("player {:?}", player_transform.translation);
-        let char_translation = player_transform.translation;
+        let char_translation = player_transform.translation();
         // TODO: Use player scaling.
         let char_rect = bounding_box(
             char_translation,
@@ -58,7 +58,7 @@ pub(crate) fn update_camera_system(
             let is_player_in_view =
                 is_rect_completely_inside(&char_rect, &camera_rect);
             if !is_player_in_view {
-                camera_transform.translation = player_transform.translation;
+                camera_transform.translation = char_translation;
             }
         }
     }
